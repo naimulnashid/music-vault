@@ -28,7 +28,10 @@ class AuthViewModel @Inject constructor(
     val syncStatus: StateFlow<SyncStatus> = syncManager.status
 
     val authState: StateFlow<AuthState> =
-        if (!authRepository.isConfigured) {
+        if (com.musicvault.BuildConfig.DEMO) {
+            // A stand-in account, so the avatar shows an initial instead of "not configured".
+            MutableStateFlow(AuthState.SignedIn(userId = "demo", email = "you@example.com"))
+        } else if (!authRepository.isConfigured) {
             MutableStateFlow(AuthState.Disabled)
         } else {
             authRepository.sessionStatus

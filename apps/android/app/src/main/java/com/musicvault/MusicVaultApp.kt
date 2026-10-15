@@ -16,6 +16,7 @@ class MusicVaultApp : Application(), Configuration.Provider {
     @Inject lateinit var syncManager: SyncManager
     @Inject lateinit var autoDownloader: AutoDownloader
     @Inject lateinit var workerFactory: HiltWorkerFactory
+    @Inject lateinit var demoLibrary: dagger.Lazy<com.musicvault.demo.DemoLibrary>
 
     /** Hilt-aware WorkManager (DownloadWorker is @HiltWorker). */
     override val workManagerConfiguration: Configuration
@@ -28,6 +29,8 @@ class MusicVaultApp : Application(), Configuration.Provider {
         }
         // Before anything opens the audio cache or the artwork folder.
         FreshStart.runOnce(this)
+        // Demo build only, and before the player restores its last session.
+        if (BuildConfig.DEMO) kotlinx.coroutines.runBlocking { demoLibrary.get().seed() }
         // No-op without Supabase credentials; otherwise runs the sync engine
         // for the signed-in session (docs/sync-protocol.md).
         syncManager.start()

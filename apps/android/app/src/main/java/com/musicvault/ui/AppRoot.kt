@@ -158,6 +158,26 @@ fun AppRoot() {
     var activePanel by rememberSaveable { mutableStateOf<PanelKey?>(null) }
     var nowPlayingExpanded by rememberSaveable { mutableStateOf(false) }
 
+    // Demo build only: the screenshot script picks the screen.
+    if (com.musicvault.BuildConfig.DEMO) {
+        LaunchedEffect(Unit) {
+            com.musicvault.demo.DemoShots.screens.collect { screen ->
+                nowPlayingExpanded = screen == "now-playing"
+                val route = when (screen) {
+                    "album" -> libraryViewModel.tracks.value.firstOrNull { it.album == "Saltwater Hours" }
+                        ?.let { Routes.album(Albums.albumKey(it)) }
+                    "statistics" -> Routes.STATS
+                    "downloads" -> Routes.DOWNLOADS
+                    else -> Routes.TRACKS
+                } ?: Routes.TRACKS
+                navController.navigate(route) {
+                    popUpTo(navController.graph.findStartDestination().id)
+                    launchSingleTop = true
+                }
+            }
+        }
+    }
+
     // Download progress notifications need POST_NOTIFICATIONS on Android 13+.
     val context = LocalContext.current
     val notificationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }

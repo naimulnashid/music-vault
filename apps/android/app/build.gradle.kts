@@ -57,6 +57,7 @@ android {
 
         buildConfigField("String", "SUPABASE_URL", "\"${secret("supabase.url", "SUPABASE_URL")}\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${secret("supabase.anonKey", "SUPABASE_ANON_KEY")}\"")
+        buildConfigField("boolean", "DEMO", "false")
     }
 
     signingConfigs {
@@ -82,6 +83,19 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        // README screenshots (scripts/demo-shots.mjs): an invented library and
+        // no account. Its own application id keeps it apart from a real install
+        // on the same device, and the Supabase settings are blanked so nothing
+        // real can load even when local.properties has them.
+        create("demo") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".demo"
+            versionNameSuffix = "-demo"
+            matchingFallbacks += "debug"
+            buildConfigField("boolean", "DEMO", "true")
+            buildConfigField("String", "SUPABASE_URL", "\"\"")
+            buildConfigField("String", "SUPABASE_ANON_KEY", "\"\"")
         }
     }
     compileOptions {

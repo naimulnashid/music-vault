@@ -16,7 +16,14 @@
 
 ## [Unreleased]
 
+### Added
+- README: Android screenshots (library, full player and statistics, plus an album and Downloads
+  under More screens) in both themes. They come from `npm run android:demo-shots`: a `demo` build
+  type (`com.musicvault.demo`, no Supabase settings) loads the same invented library as the web
+  demo, and the script captures it on an emulator with the status bar cropped off.
+
 ### Changed
+- The web screenshot script no longer deletes the Android shots in `docs/screenshots/`.
 - README rewritten as a project front page: what it is, screenshots, features, how it works,
   requirements, running your own, development, documentation, contributing, security and license.
   The phase-by-phase build history moved out (it stays in PHASE_PROGRESS.md and this changelog).

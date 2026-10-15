@@ -23,6 +23,7 @@
     "vault:test": "vitest run --root supabase/functions",
     "vault:typecheck": "tsc -p supabase/functions",
     "desktop:test": "npm run test -w music-vault-desktop",
-    "web:test": "npm run test -w music-vault-web"
+    "web:test": "npm run test -w music-vault-web",
+    "android:demo-shots": "node apps/android/scripts/demo-shots.mjs"
   }
 }

@@ -142,10 +142,13 @@ Package layout under `app/src/main/java/com/musicvault/` (14 903 lines of Kotlin
 | `playback/` | `VaultPlayer.kt` (653 — dual-ExoPlayer gapless/crossfade), `PlaybackService.kt`, `PlaybackController.kt`, `QueueState.kt`, `EqController.kt`, `VaultDataSource.kt` |
 | `ui/` | Compose: `AppRoot.kt` (top bar, bottom tabs, routes), `AccountMenu.kt` + `AccountSection.kt` (the avatar's dropdown), ViewModels, `screens/` (11, including `HeatmapScreen.kt`), `player/` (8), `components/` (9, including `Mosaic.kt`), `vault/` (upload screen, track editor, share intake), `theme/Theme.kt` |
 | `di/` | Hilt modules: `AppModule.kt`, `CoroutinesModule.kt` |
+| `demo/` | `DemoLibrary.kt` (the invented library for README screenshots, ported from the web's `demo.ts`) and `DemoShots.kt` (which screen to show); both act only in the `demo` build type |
 
 Entry points: [MainActivity.kt](../apps/android/app/src/main/java/com/musicvault/MainActivity.kt) and
 the `@HiltAndroidApp` [MusicVaultApp.kt](../apps/android/app/src/main/java/com/musicvault/MusicVaultApp.kt).
 JVM unit tests sit in `app/src/test/java/com/musicvault/` (7 suites).
+`scripts/demo-shots.mjs` builds the `demo` build type, captures it on an emulator and writes
+`docs/screenshots/android-*.webp` (`npm run android:demo-shots`).
 
 ## `apps/web` — Next.js 16
 

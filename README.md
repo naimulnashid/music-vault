@@ -19,8 +19,25 @@ The library, with the player bar along the bottom. Windows and the web share the
   <img alt="The library: every song with its album and length, the sidebar with smart playlists and your playlists, and the player bar" src="docs/screenshots/library.webp">
 </picture>
 
+The Android app: the library, the full player and statistics.
+
+<p>
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/android-library-light.webp">
+    <img width="32%" alt="Android library: songs with covers, Play and Shuffle, the mini player and the bottom tabs" src="docs/screenshots/android-library.webp">
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/android-now-playing-light.webp">
+    <img width="32%" alt="Android full player: a large cover, the seek bar, playback controls, and Up next and Lyrics" src="docs/screenshots/android-now-playing.webp">
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/android-statistics-light.webp">
+    <img width="32%" alt="Android statistics: range chips, summary cards and the listening activity chart" src="docs/screenshots/android-statistics.webp">
+  </picture>
+</p>
+
 <details>
-<summary><b>An album, the full player, statistics and downloads</b></summary>
+<summary><b>More screens: an album, the full player, statistics and downloads</b></summary>
 
 An album page, with downloaded songs ticked.
 
@@ -50,12 +67,27 @@ Downloads: auto-download, the auto-cache limit and the songs kept on this device
   <img alt="Downloads: the auto-download switch, the auto-cache limit with Clear cache, and the downloaded songs" src="docs/screenshots/downloads.webp">
 </picture>
 
+On Android: an album and Downloads.
+
+<p>
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/android-album-light.webp">
+    <img width="32%" alt="Android album page: a large cover, Play, Shuffle and Download, and the album's songs" src="docs/screenshots/android-album.webp">
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/android-downloads-light.webp">
+    <img width="32%" alt="Android Downloads: the auto-download and Wi-Fi switches, the auto-cache limit and the downloaded songs" src="docs/screenshots/android-downloads.webp">
+  </picture>
+</p>
+
 </details>
 
-> **Every song, cover and number in these images is invented.** They come from
-> `npm run demo:shots -w music-vault-web`, which builds the web app with a made-up library
-> ([apps/web/src/lib/demo.ts](apps/web/src/lib/demo.ts)) and no account, and captures it in
-> both themes.
+> **Every song, cover and number in these images is invented.** The Windows and web screens
+> come from `npm run demo:shots -w music-vault-web`, which builds the web app with a made-up
+> library ([apps/web/src/lib/demo.ts](apps/web/src/lib/demo.ts)) and no account. The Android
+> screens come from `npm run android:demo-shots`, which builds a separate demo app with the
+> same library ([DemoLibrary.kt](apps/android/app/src/main/java/com/musicvault/demo/DemoLibrary.kt))
+> and captures it on an emulator. Both capture every screen in both themes.
 
 ## Features
 

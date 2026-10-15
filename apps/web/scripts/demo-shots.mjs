@@ -69,7 +69,8 @@ const SHOTS = [
 
 async function capture(browser) {
   mkdirSync(OUT, { recursive: true });
-  for (const f of readdirSync(OUT)) if (f.endsWith(".webp")) rmSync(join(OUT, f));
+  // The Android shots (android-*.webp) come from apps/android/scripts/demo-shots.mjs.
+  for (const f of readdirSync(OUT)) if (f.endsWith(".webp") && !f.startsWith("android-")) rmSync(join(OUT, f));
   // One page for every shot: the demo loads once (the first visit may also run
   // the one-time fresh start and reload), then views change in the app.
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });

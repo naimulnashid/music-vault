@@ -45,6 +45,13 @@ backed up: an update must be signed with the same key, or Android refuses to ins
 the old app. A debug-signed install has to be uninstalled once (losing its local data) before
 the first release APK goes on. Release builds skip R8, so they run the same code as debug.
 
+### README screenshots
+
+`npm run android:demo-shots` (from the repo root) builds the `demo` build type, a separate app
+(`com.musicvault.demo`) with no Supabase settings that loads an invented library on start, and
+captures it on an emulator into `docs/screenshots/android-*.webp`. It uses a running emulator, or
+starts the AVD named by `MV_SHOTS_AVD` (default: the first one), and never a phone.
+
 - SDK: compile/target 35, min 28 (Android 9+; required for the 10-band `DynamicsProcessing` EQ).
 - `local.properties` points at `%LOCALAPPDATA%\Android\Sdk` and must hold `supabase.url` and `supabase.anonKey` ([../../reports/ENVIRONMENT_VARIABLES.md](../../reports/ENVIRONMENT_VARIABLES.md)).
 - Emulator: start it with `-no-snapshot-load -no-snapshot-save`; a restored snapshot brings back an already-used session token and signs you out.

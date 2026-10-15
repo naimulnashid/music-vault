@@ -55,6 +55,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
+        com.musicvault.demo.DemoShots.theme(intent)?.let { theme ->
+            viewModel.setFollowSystemTheme(false)
+            viewModel.setTheme(if (theme == "light") com.musicvault.domain.model.ThemeMode.LIGHT else com.musicvault.domain.model.ThemeMode.DARK)
+        }
+        com.musicvault.demo.DemoShots.offer(intent)
         sharedAudio(intent)?.let {
             com.musicvault.ui.vault.IncomingShares.offer(it)
             return
