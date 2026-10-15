@@ -1,0 +1,101 @@
+---
+import Logo from './Logo.astro';
+import { LINKS, SITE } from '../lib/site';
+
+const links = [
+  { href: LINKS.repo, label: 'GitHub' },
+  { href: LINKS.setup, label: 'Setup guide' },
+  { href: LINKS.releases, label: 'Releases' },
+  { href: LINKS.issues, label: 'Issues' },
+  { href: LINKS.security, label: 'Security' },
+  { href: LINKS.license, label: 'MIT license' },
+];
+---
+
+<footer class="footer">
+  <div class="container footer-inner">
+    <div class="footer-brand">
+      <Logo size={28} />
+      <div>
+        <p class="name">Music Vault <span class="version">{SITE.version}</span></p>
+        <p class="by">Built by {SITE.author}. Free and open source.</p>
+      </div>
+    </div>
+    <nav aria-label="Footer">
+      <ul>
+        {links.map((link) => <li><a href={link.href}>{link.label}</a></li>)}
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    border-top: 1px solid var(--line);
+    background: var(--surface);
+    padding-block: 40px;
+  }
+
+  .footer-inner {
+    display: grid;
+    gap: 28px;
+  }
+
+  .footer-brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .name {
+    font-weight: 800;
+  }
+
+  .version {
+    margin-left: 6px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent-text);
+    font-size: 0.8125rem;
+    font-weight: 700;
+  }
+
+  .by {
+    color: var(--muted);
+    font-size: 0.9375rem;
+  }
+
+  ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 24px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  a {
+    color: var(--muted);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  a:hover {
+    color: var(--fg);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  @media (min-width: 860px) {
+    .footer-inner {
+      grid-template-columns: auto 1fr;
+      align-items: center;
+    }
+
+    nav ul {
+      justify-content: flex-end;
+    }
+  }
+</style>

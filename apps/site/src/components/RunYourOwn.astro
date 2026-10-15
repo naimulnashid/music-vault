@@ -1,0 +1,185 @@
+---
+import Icon from './Icon.astro';
+import { LINKS } from '../lib/site';
+
+const steps = [
+  {
+    title: 'Create a Supabase project',
+    text: 'A free project, with the migrations applied. It holds your account and library.',
+    href: LINKS.setupSupabase,
+  },
+  {
+    title: 'Set up the vault',
+    text: 'An R2 bucket with its CORS rules and API token, and the vault Edge Function that signs its URLs.',
+    href: LINKS.vaultSetup,
+  },
+  {
+    title: 'Deploy the web app',
+    text: 'Import the repository into Vercel and add your Supabase project’s URL and anon key.',
+    href: LINKS.webSetup,
+  },
+  {
+    title: 'Build the Windows and Android apps',
+    text: 'Built with your project’s URL and anon key, so they connect to your backend and no one else’s.',
+    href: LINKS.setup,
+  },
+];
+
+const needs = [
+  'A free Supabase project',
+  'A Cloudflare R2 bucket',
+  'A Vercel account, for the web app',
+  'To build the apps: Node, Rust, JDK 17 and the Android SDK',
+];
+---
+
+<section class="section" id="run" aria-labelledby="run-title">
+  <div class="container run">
+    <div>
+      <div class="section-head reveal">
+        <p class="eyebrow">Run your own</p>
+        <h2 id="run-title">Four steps, each with its own guide.</h2>
+        <p class="lead">
+          Music Vault has no shared server, so there is nothing to sign up for. You set up your own
+          backend once, on free tiers, and every app you build connects to it.
+        </p>
+      </div>
+
+      <ol class="steps">
+        {
+          steps.map((step, i) => (
+            <li class="reveal">
+              <span class="step-number" aria-hidden="true">
+                {i + 1}
+              </span>
+              <div>
+                <h3>{step.title}</h3>
+                <p>{step.text}</p>
+                <a class="step-link" href={step.href}>
+                  Read the guide<span class="visually-hidden">: {step.title}</span>
+                  <Icon name="arrowRight" />
+                </a>
+              </div>
+            </li>
+          ))
+        }
+      </ol>
+    </div>
+
+    <aside class="side reveal" aria-labelledby="needs-title">
+      <div class="card">
+        <h3 id="needs-title">What you need</h3>
+        <ul class="ticks">
+          {needs.map((need) => <li>{need}</li>)}
+        </ul>
+        <p class="side-note">
+          <strong>No prebuilt installers.</strong> Every build carries the Supabase project it was
+          made for, so you build your own. The guides walk through it.
+        </p>
+        <div class="buttons">
+          <a class="button button-primary" href={LINKS.setup}>
+            Start the setup guide
+            <Icon name="arrowRight" />
+          </a>
+          <a class="button button-secondary" href={LINKS.repo}>
+            <Icon name="github" />
+            Source code
+          </a>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<style>
+  .run {
+    display: grid;
+    gap: clamp(40px, 6vw, 72px);
+    align-items: start;
+  }
+
+  .steps {
+    display: grid;
+    gap: 28px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .steps li {
+    display: flex;
+    gap: 20px;
+  }
+
+  .step-number {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent-text);
+    font-weight: 800;
+  }
+
+  .steps h3 {
+    margin: 6px 0 8px;
+    font-size: 1.1875rem;
+  }
+
+  .steps p {
+    color: var(--muted);
+  }
+
+  .step-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    color: var(--accent-text);
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .step-link:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .step-link :global(svg) {
+    width: 16px;
+    height: 16px;
+  }
+
+  .side .card h3 {
+    margin-bottom: 18px;
+  }
+
+  .side-note {
+    margin-top: 22px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 0.9375rem;
+  }
+
+  .side-note strong {
+    color: var(--fg);
+  }
+
+  .side .buttons {
+    margin-top: 24px;
+  }
+
+  @media (min-width: 980px) {
+    .run {
+      grid-template-columns: 1.35fr 1fr;
+    }
+
+    .side {
+      position: sticky;
+      top: 96px;
+    }
+  }
+</style>

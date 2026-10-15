@@ -1,0 +1,129 @@
+---
+import Icon from './Icon.astro';
+import Shot from './Shot.astro';
+import { screenshot } from '../lib/screenshots';
+import { LINKS } from '../lib/site';
+---
+
+<section class="hero" aria-labelledby="hero-title">
+  <div class="container hero-inner">
+    <div class="hero-copy">
+      <p class="eyebrow">Open source · Self-hosted</p>
+      <h1 id="hero-title">Your music, in your own vault.</h1>
+      <p class="hero-lead">
+        A music library and player for people who keep their own music. A Windows app, an Android
+        app and a web app share one account, one library, and the same playlists, favorites and
+        listening history.
+      </p>
+      <p class="hero-sub">
+        Your songs live in your own private Cloudflare R2 bucket and your library in your own
+        Supabase project. Upload the music you own and play it anywhere, online or off.
+      </p>
+      <div class="buttons">
+        <a class="button button-primary" href="#run">
+          Run your own
+          <Icon name="arrowRight" />
+        </a>
+        <a class="button button-secondary" href={LINKS.repo}>
+          <Icon name="github" />
+          View on GitHub
+        </a>
+      </div>
+      <ul class="hero-facts" aria-label="At a glance">
+        <li><Icon name="check" /> Free, MIT license</li>
+        <li><Icon name="check" /> Windows · Android · Web</li>
+        <li><Icon name="check" /> No analytics</li>
+      </ul>
+    </div>
+
+    <figure class="hero-shot">
+      <Shot
+        class="frame"
+        shot={screenshot('library')}
+        alt="The Music Vault library: every song with its album and length, the sidebar with smart playlists and playlists, and the player bar along the bottom"
+        widths={[640, 960, 1280, 1600, 2000]}
+        sizes="(min-width: 1180px) 1180px, calc(100vw - 32px)"
+        eager
+      />
+      <figcaption>The library on Windows and the web. Every song and cover shown is invented.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<style>
+  .hero {
+    position: relative;
+    padding-top: clamp(56px, 9vw, 104px);
+    padding-bottom: clamp(64px, 9vw, 112px);
+    background:
+      radial-gradient(900px 600px at 6% -10%, var(--glow-1), transparent 70%),
+      radial-gradient(800px 600px at 100% 40%, var(--glow-2), transparent 70%);
+  }
+
+  .hero-inner {
+    display: grid;
+    gap: clamp(48px, 7vw, 80px);
+  }
+
+  /* The headline takes the full width; the paragraphs keep a readable measure. */
+  .hero-lead,
+  .hero-sub {
+    max-width: 46rem;
+  }
+
+  h1 {
+    font-size: clamp(2.6rem, 7.2vw, 4.75rem);
+    font-weight: 850;
+    letter-spacing: -0.04em;
+    line-height: 1.02;
+  }
+
+  .hero-lead {
+    margin-top: 24px;
+    font-size: clamp(1.125rem, 2vw, 1.375rem);
+    line-height: 1.5;
+    color: var(--fg);
+    font-weight: 500;
+  }
+
+  .hero-sub {
+    margin-top: 14px;
+    color: var(--muted);
+    font-size: clamp(1rem, 1.6vw, 1.125rem);
+  }
+
+  .buttons {
+    margin-top: 32px;
+  }
+
+  .hero-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 22px;
+    margin: 28px 0 0;
+    padding: 0;
+    list-style: none;
+    color: var(--muted);
+    font-size: 0.9375rem;
+    font-weight: 600;
+  }
+
+  .hero-facts li {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .hero-facts :global(svg) {
+    width: 16px;
+    height: 16px;
+    color: var(--accent-text);
+  }
+
+  .hero-shot figcaption {
+    margin-top: 16px;
+    color: var(--muted);
+    font-size: 0.875rem;
+    text-align: center;
+  }
+</style>

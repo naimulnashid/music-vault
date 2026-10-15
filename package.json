@@ -6,7 +6,8 @@
   "workspaces": [
     "packages/core",
     "apps/desktop",
-    "apps/web"
+    "apps/web",
+    "apps/site"
   ],
   "scripts": {
     "core:test": "npm run test -w @musicvault/core",
@@ -24,6 +25,9 @@
     "vault:typecheck": "tsc -p supabase/functions",
     "desktop:test": "npm run test -w music-vault-desktop",
     "web:test": "npm run test -w music-vault-web",
+    "site:dev": "npm run dev -w music-vault-site",
+    "site:build": "npm run build -w music-vault-site",
+    "site:check": "npm run check -w music-vault-site",
     "android:demo-shots": "node apps/android/scripts/demo-shots.mjs"
   }
 }

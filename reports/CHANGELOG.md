@@ -17,12 +17,20 @@
 ## [Unreleased]
 
 ### Added
+- A landing page in `apps/site` (Astro, static output): what Music Vault is, the three apps,
+  features, the screenshots from `docs/screenshots/`, how it works, privacy and its limits, the
+  four setup steps and an FAQ. No client framework, no third-party requests, no analytics; a CSP
+  with hashed inline scripts. Deployed as its own Vercel project (Root Directory `apps/site`); see
+  [docs/site-setup.md](../docs/site-setup.md). CI runs `site:check` and `site:build`.
 - README: Android screenshots (library, full player and statistics, plus an album and Downloads
   under More screens) in both themes. They come from `npm run android:demo-shots`: a `demo` build
   type (`com.musicvault.demo`, no Supabase settings) loads the same invented library as the web
   demo, and the script captures it on an emulator with the status bar cropped off.
 
 ### Changed
+- `package-lock.json`: adding the landing page moved the shared Vite from 8.1.4 to 8.3.4 (and
+  Rolldown with it), which Astro requires; the desktop app's declared range already allowed it,
+  and its build and tests pass unchanged.
 - The web screenshot script no longer deletes the Android shots in `docs/screenshots/`.
 - README rewritten as a project front page: what it is, screenshots, features, how it works,
   requirements, running your own, development, documentation, contributing, security and license.

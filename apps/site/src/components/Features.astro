@@ -1,0 +1,127 @@
+---
+import Icon, { type IconName } from './Icon.astro';
+import { LINKS } from '../lib/site';
+
+const groups: { icon: IconName; title: string; points: string[] }[] = [
+  {
+    icon: 'library',
+    title: 'Library',
+    points: [
+      'Upload songs from any app and review each song’s details first; tags only pre-fill the form.',
+      'Edit title, artist, album, genre, language, release date, lyrics and cover, for one song or many.',
+      'Browse by song, album, artist, genre, year and language, and search across all of them.',
+      'Playlists with drag-and-drop ordering, favorites, and smart playlists built from rules.',
+    ],
+  },
+  {
+    icon: 'play',
+    title: 'Playback',
+    points: [
+      'A queue with play next and add to queue.',
+      'Synced lyrics, a visualizer, a sleep timer and a 10-band equalizer in every app.',
+      'Gapless playback and crossfade on Windows and Android.',
+    ],
+  },
+  {
+    icon: 'download',
+    title: 'Offline',
+    points: [
+      'Songs you play are cached on the device, from Off to 10 GB, so nothing downloads twice.',
+      'Download a song, album, artist or playlist to keep it.',
+      '“Download all songs automatically” keeps the whole vault on a device.',
+      'Every download is checked against the song’s BLAKE3 hash before it is kept.',
+    ],
+  },
+  {
+    icon: 'chart',
+    title: 'Statistics',
+    points: [
+      'Listening time, plays, streaks and an activity chart.',
+      'The last six months as a heatmap, with your whole history a click away.',
+      'A listening clock and your top artists, albums, genres and songs.',
+      'A yearly recap on Windows and the web.',
+    ],
+  },
+  {
+    icon: 'sync',
+    title: 'Sync',
+    points: [
+      'Favorites, playlists, edits, the queue, settings and play history sync between devices.',
+      'Edits made offline wait in a queue and go up when you reconnect.',
+      'When two devices disagree, the newest edit wins.',
+    ],
+  },
+];
+---
+
+<section class="section" id="features" aria-labelledby="features-title">
+  <div class="container">
+    <div class="section-head reveal">
+      <p class="eyebrow">Features</p>
+      <h2 id="features-title">A complete player for the music you already own.</h2>
+      <p class="lead">
+        There is no catalog to stream from: just your files, organized and playable everywhere.{' '}
+        <a href={LINKS.features}>The full feature list</a> and{' '}
+        <a href={LINKS.parity}>where the apps differ</a> are on GitHub.
+      </p>
+    </div>
+
+    <ul class="features">
+      {
+        groups.map((group) => (
+          <li class="card reveal">
+            <span class="icon-tile">
+              <Icon name={group.icon} />
+            </span>
+            <h3>{group.title}</h3>
+            <ul class="ticks">
+              {group.points.map((point) => (
+                <li>{point}</li>
+              ))}
+            </ul>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</section>
+
+<style>
+  .features {
+    display: grid;
+    gap: 18px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .features h3 {
+    margin-bottom: 16px;
+  }
+
+  .lead a {
+    color: var(--accent-text);
+    text-underline-offset: 3px;
+  }
+
+  @media (min-width: 720px) {
+    .features {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 1080px) {
+    .features {
+      grid-template-columns: repeat(6, 1fr);
+    }
+
+    /* Three cards on the first row, two wider ones on the second. */
+    .features > li {
+      grid-column: span 2;
+    }
+
+    .features > li:nth-child(n + 4) {
+      grid-column: span 3;
+    }
+  }
+</style>

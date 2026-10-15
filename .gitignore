@@ -42,3 +42,7 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Astro (landing page)
+apps/site/dist/
+apps/site/.astro/

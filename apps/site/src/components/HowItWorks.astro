@@ -1,0 +1,311 @@
+---
+import { LINKS } from '../lib/site';
+import { nextId } from '../lib/ids';
+
+// Two drawings of the README's architecture diagram: a wide one, and a
+// stacked one that stays legible on phones. CSS shows one at a time.
+const wide = nextId('arrow');
+const wideAccent = nextId('arrow');
+const narrow = nextId('arrow');
+const narrowAccent = nextId('arrow');
+
+const apps = [
+  { name: 'Windows app', short: 'Windows', stack: 'Tauri 2 · React · Rust', shortStack: 'Tauri · Rust' },
+  { name: 'Android app', short: 'Android', stack: 'Kotlin · Compose · Media3', shortStack: 'Kotlin · Compose' },
+  { name: 'Web app', short: 'Web', stack: 'Next.js · PWA', shortStack: 'Next.js · PWA' },
+];
+---
+
+<section class="section" id="how" aria-labelledby="how-title">
+  <div class="container">
+    <div class="section-head reveal">
+      <p class="eyebrow">How it works</p>
+      <h2 id="how-title">No shared server. Just your own two accounts.</h2>
+      <p class="lead">
+        Each install runs on its owner's free Supabase project and Cloudflare R2 bucket. The apps
+        talk to those directly; nothing in between belongs to this project.
+      </p>
+    </div>
+
+    <figure class="diagram reveal">
+      <svg
+        class="diagram-wide"
+        viewBox="0 0 760 400"
+        role="img"
+        aria-labelledby="diagram-wide-title"
+      >
+        <title id="diagram-wide-title">
+          The Windows, Android and web apps sync with Supabase, ask the vault function for signed
+          URLs, and upload and download audio directly from Cloudflare R2.
+        </title>
+        <defs>
+          <marker id={wide} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 10 5 0 10z" fill="currentColor"></path>
+          </marker>
+          <marker id={wideAccent} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path class="d-marker-accent" d="M0 0 10 5 0 10z"></path>
+          </marker>
+        </defs>
+
+        <rect class="d-group" x="1" y="1" width="250" height="398" rx="18"></rect>
+        <text class="d-kicker" x="20" y="28">YOUR DEVICES</text>
+        {
+          apps.map((app, i) => (
+            <g>
+              <rect class="d-box" x="16" y={44 + i * 104} width="220" height="88" rx="12" />
+              <text class="d-title" x="34" y={80 + i * 104}>{app.name}</text>
+              <text class="d-sub" x="34" y={106 + i * 104}>{app.stack}</text>
+            </g>
+          ))
+        }
+        <text class="d-note" x="126" y="378" text-anchor="middle">Each keeps a local copy and works offline</text>
+
+        <line class="d-edge" x1="252" y1="60" x2="498" y2="60" marker-start={`url(#${wide})`} marker-end={`url(#${wide})`}></line>
+        <text class="d-label" x="375" y="48" text-anchor="middle">sync</text>
+        <line class="d-edge" x1="252" y1="200" x2="498" y2="200" marker-end={`url(#${wide})`}></line>
+        <text class="d-label" x="375" y="188" text-anchor="middle">ask for a signed URL</text>
+        <line class="d-edge d-edge-accent" x1="252" y1="340" x2="498" y2="340" marker-start={`url(#${wideAccent})`} marker-end={`url(#${wideAccent})`}></line>
+        <text class="d-label" x="375" y="328" text-anchor="middle">upload and download audio</text>
+
+        <rect class="d-box" x="500" y="0" width="259" height="120" rx="12"></rect>
+        <text class="d-title" x="520" y="36">Supabase</text>
+        <text class="d-sub" x="520" y="64">account · song details · playlists</text>
+        <text class="d-sub" x="520" y="88">play history · sync state</text>
+
+        <rect class="d-box" x="500" y="160" width="259" height="80" rx="12"></rect>
+        <text class="d-title" x="520" y="194">vault function</text>
+        <text class="d-sub" x="520" y="220">signs short-lived URLs</text>
+
+        <line class="d-edge" x1="630" y1="242" x2="630" y2="292" marker-end={`url(#${wide})`}></line>
+        <text class="d-label" x="642" y="272">holds the R2 keys</text>
+
+        <rect class="d-box d-box-accent" x="500" y="296" width="259" height="88" rx="12"></rect>
+        <text class="d-title" x="520" y="332">Cloudflare R2</text>
+        <text class="d-sub" x="520" y="358">your audio and covers</text>
+      </svg>
+
+      <svg
+        class="diagram-narrow"
+        viewBox="0 0 360 572"
+        role="img"
+        aria-labelledby="diagram-narrow-title"
+      >
+        <title id="diagram-narrow-title">
+          The Windows, Android and web apps sync with Supabase, ask the vault function for signed
+          URLs, and upload and download audio directly from Cloudflare R2.
+        </title>
+        <defs>
+          <marker id={narrow} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 10 5 0 10z" fill="currentColor"></path>
+          </marker>
+          <marker id={narrowAccent} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path class="d-marker-accent" d="M0 0 10 5 0 10z"></path>
+          </marker>
+        </defs>
+
+        <rect class="d-group" x="1" y="1" width="358" height="152" rx="16"></rect>
+        <text class="d-kicker" x="14" y="24">YOUR DEVICES</text>
+        {
+          apps.map((app, i) => (
+            <g>
+              <rect class="d-box" x={12 + i * 116} y="36" width="104" height="72" rx="10" />
+              <text class="d-title d-small" x={64 + i * 116} y="68" text-anchor="middle">{app.short}</text>
+              <text class="d-sub d-small" x={64 + i * 116} y="90" text-anchor="middle">{app.shortStack}</text>
+            </g>
+          ))
+        }
+        <text class="d-note" x="180" y="136" text-anchor="middle">Each keeps a local copy and works offline</text>
+
+        <line class="d-edge" x1="24" y1="154" x2="24" y2="508"></line>
+
+        <line class="d-edge" x1="24" y1="236" x2="46" y2="236" marker-end={`url(#${narrow})`}></line>
+        <rect class="d-box" x="48" y="184" width="311" height="104" rx="12"></rect>
+        <text class="d-kicker" x="64" y="208">SYNC BOTH WAYS</text>
+        <text class="d-title" x="64" y="234">Supabase</text>
+        <text class="d-sub d-small" x="64" y="256">account · song details · playlists</text>
+        <text class="d-sub d-small" x="64" y="276">play history · sync state</text>
+
+        <line class="d-edge" x1="24" y1="368" x2="46" y2="368" marker-end={`url(#${narrow})`}></line>
+        <rect class="d-box" x="48" y="324" width="311" height="88" rx="12"></rect>
+        <text class="d-kicker" x="64" y="348">ASK FOR A SIGNED URL</text>
+        <text class="d-title" x="64" y="374">vault function</text>
+        <text class="d-sub d-small" x="64" y="396">signs short-lived URLs</text>
+
+        <line class="d-edge" x1="204" y1="414" x2="204" y2="458" marker-end={`url(#${narrow})`}></line>
+        <text class="d-label d-small" x="214" y="441">holds the R2 keys</text>
+
+        <line class="d-edge d-edge-accent" x1="24" y1="508" x2="46" y2="508" marker-end={`url(#${narrowAccent})`}></line>
+        <rect class="d-box d-box-accent" x="48" y="462" width="311" height="96" rx="12"></rect>
+        <text class="d-kicker" x="64" y="486">UPLOAD AND DOWNLOAD</text>
+        <text class="d-title" x="64" y="512">Cloudflare R2</text>
+        <text class="d-sub d-small" x="64" y="534">your audio and covers</text>
+      </svg>
+    </figure>
+
+    <ul class="points">
+      <li class="card reveal">
+        <h3>Supabase holds the library</h3>
+        <p>
+          The account, every song's details and the sync state live there, behind row-level
+          security, so each account only ever sees its own rows.
+        </p>
+      </li>
+      <li class="card reveal">
+        <h3>R2 holds the music</h3>
+        <p>
+          The vault is a private R2 bucket. Only the <code>vault</code> function holds its keys; the
+          apps ask it for short-lived upload and download URLs.
+        </p>
+      </li>
+      <li class="card reveal">
+        <h3>Each app keeps a local copy</h3>
+        <p>
+          So it starts instantly and works offline. Changes go into a local queue and sync in the
+          background.
+        </p>
+      </li>
+    </ul>
+
+    <p class="more">
+      More detail in <a href={LINKS.architecture}>the architecture notes</a> and{' '}
+      <a href={LINKS.syncProtocol}>the sync protocol</a>.
+    </p>
+  </div>
+</section>
+
+<style>
+  .diagram {
+    max-width: 880px;
+    margin: 0 auto clamp(48px, 6vw, 72px);
+    color: var(--muted);
+  }
+
+  .diagram-wide {
+    display: none;
+  }
+
+  .diagram-narrow {
+    max-width: 420px;
+    margin-inline: auto;
+  }
+
+  @media (min-width: 720px) {
+    .diagram-wide {
+      display: block;
+    }
+
+    .diagram-narrow {
+      display: none;
+    }
+  }
+
+  .diagram svg {
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    font-family: var(--font);
+  }
+
+  .d-group {
+    fill: none;
+    stroke: var(--line-strong);
+    stroke-width: 1.5;
+    stroke-dasharray: 6 6;
+  }
+
+  .d-box {
+    fill: var(--surface);
+    stroke: var(--line-strong);
+    stroke-width: 1.5;
+  }
+
+  .d-box-accent {
+    stroke: var(--accent);
+  }
+
+  .d-title {
+    fill: var(--fg);
+    font-size: 18px;
+    font-weight: 750;
+  }
+
+  .d-sub {
+    fill: var(--muted);
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .d-kicker {
+    fill: var(--accent-text);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+  }
+
+  .d-note {
+    fill: var(--muted);
+    font-size: 12.5px;
+    font-style: italic;
+  }
+
+  .d-label {
+    fill: var(--fg);
+    font-size: 13.5px;
+    font-weight: 650;
+  }
+
+  .d-small.d-title {
+    font-size: 15px;
+  }
+
+  .d-small.d-sub,
+  .d-small.d-label {
+    font-size: 12.5px;
+  }
+
+  .d-edge {
+    stroke: currentColor;
+    stroke-width: 1.75;
+  }
+
+  .d-edge-accent {
+    stroke: var(--accent);
+  }
+
+  .d-marker-accent {
+    fill: var(--accent);
+  }
+
+  .points {
+    display: grid;
+    gap: 18px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .points h3 {
+    margin-bottom: 10px;
+    font-size: 1.125rem;
+  }
+
+  .points p {
+    color: var(--muted);
+  }
+
+  .more {
+    margin-top: 28px;
+    color: var(--muted);
+  }
+
+  .more a {
+    color: var(--accent-text);
+    text-underline-offset: 3px;
+  }
+
+  @media (min-width: 860px) {
+    .points {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+</style>

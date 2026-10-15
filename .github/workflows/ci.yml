@@ -45,6 +45,10 @@ jobs:
           npm run web:typecheck
           npm run web:test
           npm run web:build
+      - name: Landing page check + build
+        run: |
+          npm run site:check
+          npm run site:build
 
   # Playwright smoke suite (route protection, login form, API 401s).
   # Authenticated flows need E2E_EMAIL/E2E_PASSWORD and skip without them.

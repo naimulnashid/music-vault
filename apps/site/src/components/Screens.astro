@@ -1,0 +1,332 @@
+---
+import Shot from './Shot.astro';
+import { screenshot } from '../lib/screenshots';
+
+const desktop = [
+  {
+    name: 'album',
+    caption: 'An album, with downloaded songs ticked.',
+    alt: 'An album page: a large cover, Play and Shuffle, and the album’s songs',
+  },
+  {
+    name: 'now-playing',
+    caption: 'The full player, with what plays next.',
+    alt: 'The full player: the cover, title and artist, and the Up next queue beside them',
+  },
+  {
+    name: 'statistics',
+    caption: 'Statistics: listening time, activity and a six-month heatmap.',
+    alt: 'Statistics: summary cards, the listening activity chart and a six-month heatmap',
+  },
+  {
+    name: 'downloads',
+    caption: 'Downloads: auto-download, the cache limit and kept songs.',
+    alt: 'Downloads: the auto-download switch, the auto-cache limit with Clear cache, and the downloaded songs',
+  },
+];
+
+const android = [
+  {
+    name: 'android-library',
+    caption: 'Library',
+    alt: 'Android library: songs with covers, Play and Shuffle, the mini player and the bottom tabs',
+  },
+  {
+    name: 'android-now-playing',
+    caption: 'Full player',
+    alt: 'Android full player: a large cover, the seek bar, playback controls, and Up next and Lyrics',
+  },
+  {
+    name: 'android-statistics',
+    caption: 'Statistics',
+    alt: 'Android statistics: range chips, summary cards and the listening activity chart',
+  },
+  {
+    name: 'android-album',
+    caption: 'Album',
+    alt: 'Android album page: a large cover, Play, Shuffle and Download, and the album’s songs',
+  },
+  {
+    name: 'android-downloads',
+    caption: 'Downloads',
+    alt: 'Android Downloads: the auto-download and Wi-Fi switches, the auto-cache limit and the downloaded songs',
+  },
+];
+---
+
+<section class="section" id="screens" aria-labelledby="screens-title">
+  <div class="container">
+    <div class="section-head reveal">
+      <p class="eyebrow">Screens</p>
+      <h2 id="screens-title">See it before you set it up.</h2>
+      <p class="lead">
+        Windows and the web share these screens; Android has its own, built for touch. Each follows
+        your light or dark theme, as this page does.
+      </p>
+    </div>
+
+    <!-- Without JavaScript both panels show, one after the other, under their
+         own headings. The script turns them into tabs. -->
+    <div class="tabs" data-tabs>
+      <div class="tablist" role="tablist" aria-label="Screenshots" hidden>
+        <button type="button" role="tab" id="tab-desktop" aria-controls="panel-desktop" aria-selected="true">
+          Windows and web
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="tab-android"
+          aria-controls="panel-android"
+          aria-selected="false"
+          tabindex="-1"
+        >
+          Android
+        </button>
+      </div>
+
+      <div class="panel" id="panel-desktop" aria-labelledby="tab-desktop">
+        <h3 class="panel-title">Windows and web</h3>
+        <ul class="desktop-grid">
+          {
+            desktop.map((item) => (
+              <li>
+                <figure>
+                  <Shot
+                    class="frame crop"
+                    shot={screenshot(item.name)}
+                    alt={item.alt}
+                    widths={[480, 720, 960, 1200]}
+                    sizes="(min-width: 1180px) 580px, (min-width: 760px) calc(50vw - 40px), calc(100vw - 32px)"
+                  />
+                  <figcaption>{item.caption}</figcaption>
+                </figure>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+
+      <div class="panel" id="panel-android" aria-labelledby="tab-android">
+        <h3 class="panel-title">Android</h3>
+        <ul class="android-row">
+          {
+            android.map((item) => (
+              <li>
+                <figure>
+                  <Shot
+                    class="phone"
+                    shot={screenshot(item.name)}
+                    alt={item.alt}
+                    widths={[240, 360, 480]}
+                    sizes="(min-width: 1180px) 220px, (min-width: 760px) 18vw, 62vw"
+                  />
+                  <figcaption>{item.caption}</figcaption>
+                </figure>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </div>
+
+    <p class="note">
+      Every song, cover and number in these images is invented. They come from a demo library built
+      into the source code, captured without an account.
+    </p>
+  </div>
+</section>
+
+<script>
+  // The ARIA tabs pattern: arrow keys, Home and End move between tabs, and
+  // only the selected tab is in the Tab order.
+  for (const root of document.querySelectorAll<HTMLElement>('[data-tabs]')) {
+    const tablist = root.querySelector<HTMLElement>('[role="tablist"]');
+    const tabs = [...root.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+    if (!tablist || tabs.length === 0) continue;
+
+    const panelOf = (tab: HTMLButtonElement) =>
+      document.getElementById(tab.getAttribute('aria-controls') ?? '');
+
+    const select = (next: HTMLButtonElement, focus: boolean) => {
+      for (const tab of tabs) {
+        const on = tab === next;
+        tab.setAttribute('aria-selected', String(on));
+        tab.tabIndex = on ? 0 : -1;
+        const panel = panelOf(tab);
+        if (panel) panel.hidden = !on;
+      }
+      if (focus) next.focus();
+    };
+
+    for (const panel of tabs.map(panelOf)) {
+      panel?.setAttribute('role', 'tabpanel');
+      panel?.setAttribute('tabindex', '0');
+    }
+    root.classList.add('is-tabbed');
+    tablist.hidden = false;
+    select(tabs[0], false);
+
+    tablist.addEventListener('click', (event) => {
+      const tab = (event.target as Element).closest<HTMLButtonElement>('[role="tab"]');
+      if (tab) select(tab, false);
+    });
+    tablist.addEventListener('keydown', (event) => {
+      const at = tabs.indexOf(document.activeElement as HTMLButtonElement);
+      if (at < 0) return;
+      const moves: Record<string, number> = {
+        ArrowRight: (at + 1) % tabs.length,
+        ArrowLeft: (at - 1 + tabs.length) % tabs.length,
+        Home: 0,
+        End: tabs.length - 1,
+      };
+      if (!(event.key in moves)) return;
+      event.preventDefault();
+      select(tabs[moves[event.key]], true);
+    });
+  }
+</script>
+
+<style>
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .tablist {
+    display: inline-flex;
+    gap: 4px;
+    margin-bottom: 32px;
+    padding: 4px;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+
+  .tablist[hidden] {
+    display: none;
+  }
+
+  [role='tab'] {
+    min-height: 42px;
+    padding: 8px 20px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+      background-color 0.2s var(--ease),
+      color 0.2s var(--ease);
+  }
+
+  [role='tab']:hover {
+    color: var(--fg);
+  }
+
+  [role='tab'][aria-selected='true'] {
+    background: var(--accent-strong);
+    color: #fff;
+  }
+
+  .panel + .panel {
+    margin-top: 56px;
+  }
+
+  .panel-title {
+    margin-bottom: 24px;
+    font-size: 1.375rem;
+    font-weight: 750;
+  }
+
+  /* Once the tabs work, the panel headings repeat the tab labels: hide them
+     visually but keep them for screen readers. */
+  .is-tabbed .panel + .panel {
+    margin-top: 0;
+  }
+
+  .is-tabbed .panel-title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .panel:focus-visible {
+    outline-offset: 8px;
+  }
+
+  figcaption {
+    margin-top: 14px;
+    color: var(--muted);
+    font-size: 0.9375rem;
+  }
+
+  .desktop-grid {
+    display: grid;
+    gap: 36px 28px;
+  }
+
+  /* Statistics is taller than the other captures; a shared 16:10 crop keeps
+     the grid even, showing the top of each screen. */
+  .desktop-grid :global(.crop) {
+    display: block;
+    aspect-ratio: 16 / 10;
+  }
+
+  .desktop-grid :global(.crop img) {
+    height: 100%;
+    object-fit: cover;
+    object-position: top;
+  }
+
+  /* Phones scroll sideways on narrow screens and sit in one row on wide ones. */
+  .android-row {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: min(62vw, 260px);
+    gap: 20px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    margin-inline: calc(-1 * var(--gutter));
+    padding: 4px var(--gutter) 40px;
+    scrollbar-width: thin;
+  }
+
+  .android-row li {
+    scroll-snap-align: start;
+  }
+
+  .android-row figcaption {
+    text-align: center;
+  }
+
+  .note {
+    margin-top: 40px;
+    padding: 16px 20px;
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 0.9375rem;
+  }
+
+  @media (min-width: 760px) {
+    .desktop-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .android-row {
+      grid-auto-flow: row;
+      grid-template-columns: repeat(5, 1fr);
+      overflow: visible;
+      margin-inline: 0;
+      padding: 0 0 24px;
+    }
+  }
+</style>

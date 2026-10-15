@@ -1,0 +1,44 @@
+---
+/**
+ * A screenshot that follows the visitor's theme: the light capture under
+ * prefers-color-scheme: light, the dark one otherwise. Each is resized to the
+ * given widths so phones never download the 2880 px originals.
+ */
+import { getImage } from 'astro:assets';
+import type { Screenshot } from '../lib/screenshots';
+
+interface Props {
+  shot: Screenshot;
+  alt: string;
+  widths: number[];
+  sizes: string;
+  eager?: boolean;
+  class?: string;
+}
+
+const { shot, alt, widths, sizes, eager = false, class: className } = Astro.props;
+
+const render = (src: Screenshot['dark']) =>
+  getImage({ src, widths, sizes, format: 'webp', quality: 82 });
+const [dark, light] = await Promise.all([render(shot.dark), render(shot.light)]);
+---
+
+<picture class={className}>
+  <source
+    media="(prefers-color-scheme: light)"
+    srcset={light.srcSet.attribute}
+    sizes={sizes}
+    type="image/webp"
+  />
+  <img
+    src={dark.src}
+    srcset={dark.srcSet.attribute}
+    sizes={sizes}
+    width={shot.dark.width}
+    height={shot.dark.height}
+    alt={alt}
+    loading={eager ? 'eager' : 'lazy'}
+    decoding={eager ? 'sync' : 'async'}
+    fetchpriority={eager ? 'high' : 'auto'}
+  />
+</picture>

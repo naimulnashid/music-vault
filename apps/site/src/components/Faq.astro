@@ -1,0 +1,124 @@
+---
+import { LINKS } from '../lib/site';
+
+// Answers stay factual: anything that depends on a third party's prices or
+// limits points to that party instead of quoting a number that will age.
+const faqs = [
+  {
+    q: 'Is Music Vault free?',
+    a: `Yes. The code is open source under the <a href="${LINKS.license}">MIT license</a>. It runs on Supabase, Cloudflare R2 and Vercel, which all have free tiers; whether your library fits in them depends on its size, so check their current limits.`,
+  },
+  {
+    q: 'Is there a hosted version I can sign up for?',
+    a: 'No. Each install runs on its owner’s own Supabase project and R2 bucket. Nobody else, including this project, holds your music or your library.',
+  },
+  {
+    q: 'Can I stream music I don’t own?',
+    a: 'No. There is no catalog to stream from. You upload the music you own, from any of the three apps, and play it anywhere.',
+  },
+  {
+    q: 'Which audio formats play?',
+    a: 'The Windows app plays FLAC, ALAC, APE, WavPack, MP3, AAC, Ogg Vorbis and WAV. Android plays what its built-in media player supports, and the web app what your browser supports, so APE and WavPack files play on Windows only.',
+  },
+  {
+    q: 'Is there an iPhone or Mac app?',
+    a: 'No. The web app runs in a current browser, but only Chromium-based browsers (Chrome, Edge) are tested.',
+  },
+  {
+    q: 'Does it work offline?',
+    a: 'Yes. Each app keeps a local copy of your library and of the songs it has played or downloaded. Edits made offline wait in a queue and sync when you reconnect.',
+  },
+  {
+    q: 'Can I contribute or report a bug?',
+    a: `Yes. <a href="${LINKS.issues}">Issues</a> and small pull requests are welcome; for anything larger, open an issue first. Report security problems privately, as the <a href="${LINKS.security}">security policy</a> describes.`,
+  },
+];
+---
+
+<section class="section" id="faq" aria-labelledby="faq-title">
+  <div class="container faq">
+    <div class="section-head reveal">
+      <p class="eyebrow">FAQ</p>
+      <h2 id="faq-title">Questions, answered.</h2>
+    </div>
+
+    <div class="list">
+      {
+        faqs.map((item) => (
+          <details class="reveal">
+            <summary>
+              <span>{item.q}</span>
+            </summary>
+            <p set:html={item.a} />
+          </details>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<style>
+  .faq {
+    display: grid;
+    gap: 8px;
+  }
+
+  .list {
+    border-top: 1px solid var(--line);
+  }
+
+  details {
+    border-bottom: 1px solid var(--line);
+  }
+
+  summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 22px 4px;
+    font-size: 1.125rem;
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  /* A plus that turns into a minus. */
+  summary::after {
+    content: '';
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    background:
+      linear-gradient(currentColor, currentColor) center / 100% 2px no-repeat,
+      linear-gradient(currentColor, currentColor) center / 2px 100% no-repeat;
+    color: var(--accent-text);
+    transition: transform 0.25s var(--ease);
+  }
+
+  details[open] summary::after {
+    background: linear-gradient(currentColor, currentColor) center / 100% 2px no-repeat;
+  }
+
+  details p {
+    max-width: 760px;
+    padding: 0 4px 24px;
+    color: var(--muted);
+  }
+
+  details p :global(a) {
+    color: var(--accent-text);
+    text-underline-offset: 3px;
+  }
+
+  @media (min-width: 980px) {
+    .faq {
+      grid-template-columns: 1fr 2fr;
+      gap: 64px;
+    }
+  }
+</style>

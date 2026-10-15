@@ -1,0 +1,93 @@
+---
+import Icon, { type IconName } from './Icon.astro';
+
+const apps: { icon: IconName; name: string; needs: string; points: string[] }[] = [
+  {
+    icon: 'monitor',
+    name: 'Windows',
+    needs: 'Windows 10 or 11',
+    points: [
+      'A Rust audio engine with gapless playback and crossfade',
+      'A 10-band equalizer and ReplayGain',
+      'FLAC, ALAC, APE, WavPack and the common lossy formats',
+      'A mini player, tray controls and Windows media keys',
+    ],
+  },
+  {
+    icon: 'smartphone',
+    name: 'Android',
+    needs: 'Android 9 or later',
+    points: [
+      'Background and lock-screen playback',
+      'Notification and Android Auto controls',
+      'Gapless, crossfade and the same equalizer',
+      'Share files to Music Vault to upload them',
+    ],
+  },
+  {
+    icon: 'globe',
+    name: 'Web',
+    needs: 'A current browser; Chrome and Edge are tested',
+    points: [
+      'Plays in the browser, with the same 10-band equalizer',
+      'Installs as an app (PWA) that opens offline',
+      'Drop files on the window to upload them',
+      'The user guide lives in its Help page',
+    ],
+  },
+];
+---
+
+<section class="section" id="apps" aria-labelledby="apps-title">
+  <div class="container">
+    <div class="section-head reveal">
+      <p class="eyebrow">Three apps</p>
+      <h2 id="apps-title">One library on every screen you use.</h2>
+      <p class="lead">
+        Sign in with the same email and password on each device. Favorites, playlists, edits, the
+        queue, settings and play history follow you between them.
+      </p>
+    </div>
+
+    <ul class="apps">
+      {
+        apps.map((app) => (
+          <li class="card reveal">
+            <span class="icon-tile">
+              <Icon name={app.icon} />
+            </span>
+            <h3>{app.name}</h3>
+            <p class="needs">{app.needs}</p>
+            <ul class="ticks">
+              {app.points.map((point) => (
+                <li>{point}</li>
+              ))}
+            </ul>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</section>
+
+<style>
+  .apps {
+    display: grid;
+    gap: 18px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .needs {
+    margin: 6px 0 20px;
+    color: var(--muted);
+    font-size: 0.9375rem;
+  }
+
+  @media (min-width: 860px) {
+    .apps {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+</style>

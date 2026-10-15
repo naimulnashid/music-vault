@@ -67,6 +67,7 @@ Two sets of documents live in this repository:
 | [setup.md](setup.md) | Zero-to-running walkthrough for all three apps. |
 | [setup-supabase.md](setup-supabase.md) | Creating the Supabase project and applying migrations. |
 | [web-setup.md](web-setup.md) | Web env, local dev, Vercel deployment. |
+| [site-setup.md](site-setup.md) | The landing page (`apps/site`): local dev, checks, and deploying it as its own Vercel project. |
 | [vault-setup.md](vault-setup.md) | Creating the private R2 bucket, its API token and CORS policy, the Supabase secrets, and deploying the `vault` function. |
 | [drive-to-r2-migration.md](drive-to-r2-migration.md) | The record of how Google Drive was replaced by the vault (complete). |
 | [fixtures/smart-rules.golden.json](fixtures/smart-rules.golden.json) | ⚠️ **Not documentation** — the golden fixture pinning the TypeScript and Kotlin rule engines. |

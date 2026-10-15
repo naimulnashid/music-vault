@@ -3,6 +3,7 @@
 [![CI](https://github.com/naimulnashid/music-vault/actions/workflows/ci.yml/badge.svg)](https://github.com/naimulnashid/music-vault/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/naimulnashid/music-vault)](https://github.com/naimulnashid/music-vault/releases/latest)
 [![MIT license](https://img.shields.io/github/license/naimulnashid/music-vault)](LICENSE)
+[![Website](https://img.shields.io/badge/website-live-8b5cf6)](https://music-vault-site.vercel.app/)
 
 A music library and player for people who keep their own music: a Windows app, an Android app
 and a web app sharing one account, one library, and the same playlists, favorites and listening
@@ -261,6 +262,7 @@ builds by hand builds the Windows installer and a debug APK
 apps/desktop     Windows app: Tauri 2, React 19, TypeScript, Tailwind, a Rust audio engine
 apps/android     Android app: Kotlin, Jetpack Compose, Media3, Room
 apps/web         Web app: Next.js 16
+apps/site        Landing page: Astro, static, no client framework
 packages/core    Shared TypeScript: sync engine, vault client, uploads, smart playlists, statistics
 supabase/        SQL migrations with row-level security, and the vault Edge Function
 docs/            Setup guides, architecture and the sync protocol

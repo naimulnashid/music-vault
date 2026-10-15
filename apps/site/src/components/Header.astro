@@ -1,0 +1,197 @@
+---
+import Icon from './Icon.astro';
+import Logo from './Logo.astro';
+import { LINKS } from '../lib/site';
+
+const nav = [
+  { href: '#features', label: 'Features' },
+  { href: '#screens', label: 'Screens' },
+  { href: '#how', label: 'How it works' },
+  { href: '#run', label: 'Run your own' },
+  { href: '#faq', label: 'FAQ' },
+];
+---
+
+<header class="header">
+  <div class="container header-inner">
+    <a class="brand" href="#top" aria-label="Music Vault, back to top">
+      <Logo size={30} />
+      <span>Music Vault</span>
+    </a>
+
+    <nav class="nav-wide" aria-label="Main">
+      <ul>
+        {nav.map((item) => <li><a href={item.href}>{item.label}</a></li>)}
+      </ul>
+      <a class="button button-secondary header-github" href={LINKS.repo}>
+        <Icon name="github" />
+        GitHub
+      </a>
+    </nav>
+
+    <!-- Phones: a disclosure menu. It opens and closes without JavaScript;
+         the script only closes it after a link is chosen. -->
+    <details class="nav-narrow">
+      <summary aria-label="Menu">
+        <Icon name="menu" class="icon-open" />
+        <Icon name="close" class="icon-close" />
+      </summary>
+      <nav aria-label="Main">
+        <ul>
+          {nav.map((item) => <li><a href={item.href}>{item.label}</a></li>)}
+          <li>
+            <a href={LINKS.repo}><Icon name="github" /> GitHub</a>
+          </li>
+        </ul>
+      </nav>
+    </details>
+  </div>
+</header>
+
+<script>
+  const menu = document.querySelector<HTMLDetailsElement>('.nav-narrow');
+  menu?.addEventListener('click', (event) => {
+    if ((event.target as Element).closest('a')) menu.open = false;
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && menu?.open) {
+      menu.open = false;
+      menu.querySelector('summary')?.focus();
+    }
+  });
+</script>
+
+<style>
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--header-bg);
+    backdrop-filter: saturate(1.4) blur(14px);
+    -webkit-backdrop-filter: saturate(1.4) blur(14px);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    min-height: 64px;
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 11px;
+    font-size: 1.125rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    text-decoration: none;
+  }
+
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .nav-wide {
+    display: none;
+    align-items: center;
+    gap: 28px;
+  }
+
+  .nav-wide ul {
+    display: flex;
+    gap: 26px;
+  }
+
+  .nav-wide ul a {
+    color: var(--muted);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+
+  .nav-wide ul a:hover {
+    color: var(--fg);
+  }
+
+  .header-github {
+    min-height: 40px;
+    padding: 8px 16px;
+    font-size: 0.9375rem;
+  }
+
+  .nav-narrow summary {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    border: 1px solid var(--line-strong);
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .nav-narrow summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .nav-narrow summary :global(svg) {
+    width: 22px;
+    height: 22px;
+  }
+
+  .nav-narrow :global(.icon-close),
+  .nav-narrow[open] :global(.icon-open) {
+    display: none;
+  }
+
+  .nav-narrow[open] :global(.icon-close) {
+    display: block;
+  }
+
+  .nav-narrow nav {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    padding: 8px var(--gutter) 20px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    box-shadow: 0 30px 40px -20px rgb(0 0 0 / 0.5);
+  }
+
+  .nav-narrow nav a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 4px;
+    border-bottom: 1px solid var(--line);
+    font-size: 1.0625rem;
+    font-weight: 650;
+    text-decoration: none;
+  }
+
+  .nav-narrow nav li:last-child a {
+    border-bottom: 0;
+  }
+
+  .nav-narrow nav :global(svg) {
+    width: 18px;
+    height: 18px;
+  }
+
+  @media (min-width: 960px) {
+    .nav-wide {
+      display: flex;
+    }
+
+    .nav-narrow {
+      display: none;
+    }
+  }
+</style>
