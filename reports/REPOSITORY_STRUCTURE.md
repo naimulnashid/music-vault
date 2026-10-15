@@ -155,10 +155,11 @@ request and bounces signed-out visitors to `/login` (public paths: `/login`, `/a
 
 | Path | Contents |
 |---|---|
-| `src/app/` | Routes: `[[...view]]/page.tsx` (the app, at every in-app address), `login/`, `account/` (no longer linked from the menu), `help/` (public user docs), `layout.tsx`, `globals.css`, favicon/icon assets |
+| `src/app/` | Routes: `[[...view]]/page.tsx` (the app, at every in-app address), `manifest.ts` (the PWA manifest), `login/`, `account/` (no longer linked from the menu), `help/` (public user docs), `layout.tsx`, `globals.css`, favicon/icon assets |
 | `src/components/` | 47 components (2026-10-15) — largely 1:1 counterparts of the desktop set, plus `MusicVaultApp.tsx` |
-| `src/lib/` | `audioEngine.ts`, `audioCache.ts` (OPFS, BLAKE3-verified), `db.ts` (IndexedDB), `syncStorage.ts`, `playEventLog.ts`, `vault.ts`, `uploadPrepare.ts`, `vaultActions.ts`, `trackForm.ts`, `artwork.ts`, `trackMap.ts` (library projection), `urlSync.ts` (address bar ↔ view), `freshStart.ts`, `smartEval.ts`, `errorBus.ts`, `lastPlayback.ts`, `supabase/{browser,server}.ts` |
+| `src/lib/` | `audioEngine.ts`, `audioCache.ts` (OPFS, BLAKE3-verified), `db.ts` (IndexedDB), `syncStorage.ts`, `playEventLog.ts`, `vault.ts`, `uploadPrepare.ts`, `vaultActions.ts`, `trackForm.ts`, `artwork.ts`, `trackMap.ts` (library projection), `urlSync.ts` (address bar ↔ view), `pwa.ts` (service worker + install offer), `freshStart.ts`, `smartEval.ts`, `errorBus.ts`, `lastPlayback.ts`, `supabase/{browser,server}.ts` |
 | `src/store/` | The same 11 Zustand stores as desktop |
+| `public/` | `sw.js` (the service worker), `icons/` (PWA icons, including a maskable one) |
 | `src/hooks/` | `useAudioEngine`, `useMediaSession`, `useKeyboardShortcuts`, `useNotifications`, `useVirtualRows` |
 | `e2e/` | Playwright specs: `unauthenticated.spec.ts`, `authenticated.spec.ts` |
 
@@ -202,7 +203,7 @@ The fixtures are **not documentation** — they are test inputs loaded by both
 ## `.github/workflows/`
 
 - [ci.yml](../.github/workflows/ci.yml) — runs every suite per push/PR
-- [release.yml](../.github/workflows/release.yml) — NSIS installer + APK on `v*` tags or manual dispatch
+- [release.yml](../.github/workflows/release.yml) — NSIS installer + debug APK on manual dispatch
 
 Details in [BUILD_AND_RUN.md](BUILD_AND_RUN.md#cicd).
 

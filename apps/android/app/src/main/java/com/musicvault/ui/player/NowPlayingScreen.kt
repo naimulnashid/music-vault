@@ -384,6 +384,7 @@ fun NowPlayingScreen(
                     IconButton(onClick = playerViewModel::clearQueue) {
                         Icon(Icons.Rounded.CleaningServices, "Clear queue", tint = colors.textMuted, modifier = Modifier.size(22.dp))
                     }
+                    VolumeButton(volume = playback.volume, onVolume = playerViewModel::setVolume)
                 }
             }
 

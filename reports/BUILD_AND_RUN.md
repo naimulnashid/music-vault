@@ -110,13 +110,13 @@ cd apps/android
 ```
 
 ### Debug vs release
-- **Debug** — no minification; signed with the debug keystore. This is what CI ships:
-  "Debug build: signed with the debug keystore, installable for personal use. Play-store signing is
-  out of scope for v1" ([release.yml](../.github/workflows/release.yml)).
-- **Release** — `isMinifyEnabled = true`, `isShrinkResources = true`, proguard
-  `proguard-android-optimize.txt` + [proguard-rules.pro](../apps/android/app/proguard-rules.pro)
-  ([build.gradle.kts:44-53](../apps/android/app/build.gradle.kts)). 🚧 **No signing config exists**
-  in the Gradle file, so `assembleRelease` produces an unsigned APK.
+- **Debug** — no minification; signed with the debug keystore. This is what CI builds, since the
+  release key never leaves the owner's machine ([release.yml](../.github/workflows/release.yml)).
+- **Release** (since 2026-10-15) — no R8 (`isMinifyEnabled = false`; Hilt, serialization and the
+  Supabase client rely on reflection), signed with the key that `signing.properties` in
+  `local.properties` names; without that line the APK is unsigned
+  ([build.gradle.kts](../apps/android/app/build.gradle.kts),
+  [apps/android/README.md](../apps/android/README.md#release-apk)).
 
 ### Credentials
 Create `apps/android/local.properties` (git-ignored):
@@ -216,11 +216,11 @@ Four jobs, with `concurrency: cancel-in-progress`:
 | `rust` | **windows** | Builds the desktop frontend **first** — "the frontend dist must exist first: `tauri::generate_context!` embeds it at compile time" — then `cargo test -- --skip plays_hires_tone_through_default_device` because "CI runners have no audio output device" |
 | `android` | ubuntu | JDK 17 + `./gradlew testDebugUnitTest` ("JVM only — no emulator on CI") |
 
-### [release.yml](../.github/workflows/release.yml) — `v*` tags or manual dispatch
+### [release.yml](../.github/workflows/release.yml) — manual dispatch only (since 2026-10-15)
 | Job | Produces |
 |---|---|
-| `windows-installer` | NSIS `.exe` → artifact `music-vault-windows-installer`; attached to the GitHub release on tags |
-| `android-apk` | Debug `.apk` → artifact `music-vault-android-apk`; attached on tags |
+| `windows-installer` | NSIS `.exe` → artifact `music-vault-windows-installer`; attached to the release when run on a tag |
+| `android-apk` | Debug `.apk` → artifact `music-vault-android-apk`; attached when run on a tag |
 
 Both jobs read repository secrets that a usable build needs — "Music Vault needs an account, so a
 build without them can't reach the library". Desktop reads `VITE_SUPABASE_URL`,

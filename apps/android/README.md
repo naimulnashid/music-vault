@@ -29,6 +29,22 @@ $env:JAVA_HOME = "$env:LOCALAPPDATA\MusicVaultBuild\jdk"   # any JDK 17 works
 .\gradlew.bat testDebugUnitTest         # unit tests (queue, LRC, smart playlists…)
 ```
 
+### Release APK
+
+`.\gradlew.bat :app:assembleRelease` writes `app/build/outputs/apk/release/app-release.apk`.
+It is signed only when `local.properties` names a key:
+
+```properties
+signing.properties=D\:/path/to/keystore.properties
+```
+
+That file holds `storeFile` (resolved relative to it), `storePassword`, `keyAlias` and
+`keyPassword`, so the key and its passwords stay outside the repo. Without the line the release
+APK comes out unsigned; with it, a missing file or empty value fails the build. Keep the key
+backed up: an update must be signed with the same key, or Android refuses to install it over
+the old app. A debug-signed install has to be uninstalled once (losing its local data) before
+the first release APK goes on. Release builds skip R8, so they run the same code as debug.
+
 - SDK: compile/target 35, min 28 (Android 9+; required for the 10-band `DynamicsProcessing` EQ).
 - `local.properties` points at `%LOCALAPPDATA%\Android\Sdk` and must hold `supabase.url` and `supabase.anonKey` ([../../reports/ENVIRONMENT_VARIABLES.md](../../reports/ENVIRONMENT_VARIABLES.md)).
 - Emulator: start it with `-no-snapshot-load -no-snapshot-save`; a restored snapshot brings back an already-used session token and signs you out.

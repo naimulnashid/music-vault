@@ -49,6 +49,17 @@
   "Bangla (India)" → B(I) (desktop/web).
 - Android: the account menu drops down under the avatar at the top right, laid out like the desktop
   one (account, sync status with Sync now, Upload, appearance, Sign out) instead of a bottom sheet.
+- Web: installable as an app (PWA): a manifest with regular and maskable icons, a service worker
+  that keeps the app shell and build files so the installed app opens offline, and an
+  "Install app" item in the account menu when the browser offers it.
+- Android: a volume button at the right of the full player's second row opens a vertical slider
+  that shows the percentage while you drag.
+- Android: signed release APK. The key lives outside the repo; `local.properties` points at it
+  (`signing.properties=…`), and without that line a release build comes out unsigned. Release
+  builds no longer run R8.
+- Release builds (`release.yml`) run only when started by hand; releases with installers are built
+  locally and attached to the private repo's release, so a pushed tag no longer triggers CI builds
+  that would replace them.
 - Android: the upload page has one back arrow, with "Upload to your vault" in the top bar, and a
   larger "Add files" button in the middle of the empty page (centered above the list once files
   are added).

@@ -30,14 +30,13 @@ graph LR
         P7 --> P8[P8 desktop power]
         P8 --> P9[P9 hardening]
         P9 --> V[Vault migration M0–M8]
+        V --> G4[Release signing]
     end
     subgraph next["🚧 Not started"]
         G1[Parity backfill]
         G2[Output abstraction]
-        G4[Release signing]
     end
     V --> G1
-    V --> G4
     P8 -.->|"needs a trait first"| G2
 ```
 
@@ -98,8 +97,8 @@ The largest coherent body of work. Every item is a gap in
 ### 2. Release engineering
 | Item | Effort | Notes |
 |---|---|---|
-| **Android release signing** | Small | ⚠️ CI ships a **debug-signed** APK; "Play-store signing is out of scope for v1" ([release.yml](../.github/workflows/release.yml)). No signing config exists in Gradle |
-| **Release-build verification in CI** | Small | CI never builds `assembleRelease`, so the minify/shrink path is untested — a classic source of "debug works, release crashes" ([TROUBLESHOOTING.md](TROUBLESHOOTING.md#release-build-crashes-but-debug-works)) |
+| **Android release signing** | Small | ✅ Done 2026-10-15: release builds are signed with a local key named by `signing.properties` ([apps/android/README.md](../apps/android/README.md#release-apk)). CI still builds debug only, since the key stays local |
+| **Release-build verification in CI** | Small | CI never builds `assembleRelease`. Since 2026-10-15 release builds skip R8, so they run the same code as debug and the old "debug works, release crashes" risk is gone; what CI can't check is the signing ([TROUBLESHOOTING.md](TROUBLESHOOTING.md#release-build-crashes-but-debug-works)) |
 | **RLS/schema checks in CI** | Medium | ⚠️ The authorization layer and the vault schema are verified by manual scripts ([TESTING.md §6](TESTING.md#6-supabase-sql-and-the-vault--manual)) |
 | **Room migration tests** | Small | Desktop asserts its risky migrations; Room has none, and `exportSchema = false` removes the usual safety net |
 

@@ -2,9 +2,19 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@musicvault/core";
 
-/** Paths reachable without a session. */
+/**
+ * Paths reachable without a session. The manifest and service worker are
+ * fetched by the browser without cookies, so they must be public too.
+ */
 function isPublic(pathname: string): boolean {
-  return pathname.startsWith("/login") || pathname.startsWith("/auth") || pathname.startsWith("/help");
+  return (
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/help") ||
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/sw.js" ||
+    pathname.startsWith("/icons/")
+  );
 }
 
 /**

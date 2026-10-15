@@ -5,6 +5,8 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Music Vault",
   description: "Your music library, on every device.",
+  // iOS ignores the manifest's display mode; these make the home-screen app standalone.
+  appleWebApp: { capable: true, title: "Music Vault", statusBarStyle: "black-translucent" },
 };
 
 export const viewport: Viewport = {

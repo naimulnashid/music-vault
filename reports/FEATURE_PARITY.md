@@ -244,6 +244,8 @@ shared fixture makes disagreement a test failure ([TESTING.md §1](TESTING.md#1-
 | Account menu under the avatar | ✅ | ✅ | ✅ | Same sections everywhere; Android's is a dropdown since 2026-10-15 ([AccountMenu.kt](../apps/android/app/src/main/java/com/musicvault/ui/AccountMenu.kt)). |
 | Playlist covers (2×2 mosaic) | ✅ | ✅ | ✅ | `Mosaic.tsx` ×2 · [Mosaic.kt](../apps/android/app/src/main/java/com/musicvault/ui/components/Mosaic.kt); smart playlists use the songs their rules match. |
 | Address bar follows the page | — | — | ✅ | Web only by nature ([lib/urlSync.ts](../apps/web/src/lib/urlSync.ts)). |
+| Installable app (PWA), opens offline | — | — | ✅ | Since 2026-10-15 ([app/manifest.ts](../apps/web/src/app/manifest.ts), [public/sw.js](../apps/web/public/sw.js)); desktop and Android are installed apps already. |
+| Volume control in the player | ✅ | ✅ | ✅ | Android's is a vertical slider on the full player since 2026-10-15 ([VolumeButton.kt](../apps/android/app/src/main/java/com/musicvault/ui/player/VolumeButton.kt)). |
 | Sidebar / navigation | ✅ | ✅ | ✅ | `Sidebar.tsx` ×2 · [AppRoot.kt](../apps/android/app/src/main/java/com/musicvault/ui/AppRoot.kt) (bottom navigation since the 2026-10-13 redesign). Collapsible sections + header account menu added post-1.0 (`8ff276c`, `d441968`) to desktop and web only. |
 | State management | ✅ | ✅ | ✅ | 11 identical Zustand stores on desktop/web; Hilt ViewModels on Android. |
 | Error toasts | ✅ | ⚠️ | ✅ | `ErrorToast` + `errorBus.ts` (desktop/web); Android surfaces errors per-screen. |

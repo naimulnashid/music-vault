@@ -201,16 +201,13 @@ JDK **17** is required — `sourceCompatibility`/`targetCompatibility = VERSION_
 `JAVA_HOME` is the usual culprit for cryptic Gradle failures. ⚠️ Inferred from the pinning.
 
 ### `assembleRelease` produces an unsigned APK
-**Expected**: no signing config exists in the Gradle file, and CI ships **debug** builds — "signed
-with the debug keystore, installable for personal use. Play-store signing is out of scope for v1"
-([release.yml](../.github/workflows/release.yml)).
+**Expected** when `local.properties` has no `signing.properties=` line naming the release key
+([apps/android/README.md](../apps/android/README.md#release-apk)). CI builds debug only.
 
 ### Release build crashes but debug works
-**Cause**: `isMinifyEnabled`/`isShrinkResources` are on for release
-([build.gradle.kts:44-53](../apps/android/app/build.gradle.kts)). Reflection-based paths
-(kotlinx-serialization, Room, Hilt) need keep rules — check
-[proguard-rules.pro](../apps/android/app/proguard-rules.pro). ⚠️ **Inferred**: CI never builds
-release, so this path is genuinely under-exercised.
+**Unlikely since 2026-10-15**: release builds no longer run R8, so they execute the same code
+as debug. If minification is ever turned back on, reflection-based paths (kotlinx-serialization,
+Room, Hilt) need keep rules in [proguard-rules.pro](../apps/android/app/proguard-rules.pro).
 
 ### Room `IllegalStateException: migration didn't properly handle`
 **Cause**: adding/altering an entity without a matching `Migration`. Room is at **v7** with six

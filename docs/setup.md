@@ -47,9 +47,11 @@ GitHub Actions run on every push/PR to `main` (`.github/workflows/ci.yml`):
 core/web/desktop lint + typecheck + tests, Playwright web smoke e2e, Rust
 `cargo test` (Windows), Android unit tests.
 
-Installers (`.github/workflows/release.yml`) build on a `v*` tag or manual
-dispatch: the Windows NSIS installer and the Android debug APK, uploaded as
-run artifacts and attached to the GitHub release on tag builds. Repository
+Installers (`.github/workflows/release.yml`) build when you run the workflow
+by hand: the Windows NSIS installer and the Android debug APK, uploaded as
+run artifacts, and attached to the tag's release when you run it on a tag.
+A signed Android release APK needs your own key, so it is built locally
+(see [apps/android/README.md](../apps/android/README.md#release-apk)). Repository
 secrets bake the account settings into the binaries (a build without them
 can't reach the library):
 

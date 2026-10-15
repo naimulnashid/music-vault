@@ -1,7 +1,10 @@
 name: Release builds
 
-# Installers on demand or on a version tag. Artifacts land on the workflow
-# run; tag builds also attach them to a GitHub release.
+# Installers on demand only (Actions > Release builds > Run workflow).
+# Artifacts land on the run; run it on a tag and they are attached to that
+# tag's release too. It no longer runs on every pushed tag: the owner's
+# releases are built locally (the Android release key never leaves the
+# machine), and a tag-triggered run would attach keyless builds over them.
 #
 # Repository secrets baked into the builds (Music Vault needs an account, so
 # a build without them can't reach the library):
@@ -15,8 +18,6 @@ name: Release builds
 
 on:
   workflow_dispatch:
-  push:
-    tags: ["v*"]
 
 jobs:
   windows-installer:
@@ -59,8 +60,8 @@ jobs:
           distribution: temurin
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
-      # Debug build: signed with the debug keystore, installable for personal
-      # use. Play-store signing is out of scope for v1.
+      # Debug build: CI has no release key (it stays on the owner's machine,
+      # see apps/android/app/build.gradle.kts), so this APK is debug-signed.
       - name: Build APK
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

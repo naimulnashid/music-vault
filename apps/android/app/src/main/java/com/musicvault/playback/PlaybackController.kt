@@ -263,6 +263,7 @@ class PlaybackController @Inject constructor(
 
     fun setVolume(volume: Float) {
         player.setMasterVolume(volume) // apply immediately for responsive dragging
+        rebuildUiState() // the player fires no event for it, and the slider follows uiState
         appScope.launch { settingsRepository.setVolume(volume) }
     }
 

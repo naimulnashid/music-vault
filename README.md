@@ -84,9 +84,10 @@ cd apps/android && ./gradlew.bat testDebugUnitTest
 
 GitHub Actions run all of the above on every push/PR
 ([ci.yml](.github/workflows/ci.yml)). In a fork with your own Supabase secrets,
-tagging `v*` (or manual dispatch) builds the Windows NSIS installer and Android
-APK ([release.yml](.github/workflows/release.yml)); it skips itself in the
-public `naimulnashid/music-vault` repository. Vercel builds web previews per
+running Release builds by hand builds the Windows NSIS installer and a debug
+Android APK ([release.yml](.github/workflows/release.yml)); it skips itself in
+the public `naimulnashid/music-vault` repository. A signed release APK is built
+locally with your own key ([apps/android/README.md](apps/android/README.md#release-apk)). Vercel builds web previews per
 push once the repo is linked. User docs ship with the web app at `/help`.
 
 ## Status

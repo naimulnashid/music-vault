@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertTriangle, Bell, CircleHelp, CloudOff, LogIn, LogOut, RefreshCw, UserRound, WifiOff } from "lucide-react";
+import { AlertTriangle, Bell, CircleHelp, CloudOff, Download, LogIn, LogOut, RefreshCw, UserRound, WifiOff } from "lucide-react";
+import { installApp, useCanInstall } from "../lib/pwa";
 import { useAuthStore } from "../store/authStore";
 import { useSyncStore } from "../store/syncStore";
 import { ThemeSwitcher } from "./ThemeSwitcher";
@@ -18,6 +19,7 @@ export function AccountMenu() {
   const session = useAuthStore((s) => s.session);
   const signOut = useAuthStore((s) => s.signOut);
   const [open, setOpen] = useState(false);
+  const canInstall = useCanInstall();
   const wrapRef = useRef<HTMLDivElement>(null);
 
   // Dismiss on outside click / Escape, the way a menu is expected to behave.
@@ -104,6 +106,17 @@ export function AccountMenu() {
               <NotificationToggle />
             </div>
             <div className="border-t border-line py-1.5">
+              {canInstall && (
+                <button
+                  onClick={() => {
+                    setOpen(false);
+                    void installApp();
+                  }}
+                  className="w-full flex items-center gap-3 px-4 h-11 text-sm text-muted hover:text-fg hover:bg-surface-2 transition-colors"
+                >
+                  <Download className="w-4 h-4" /> Install app
+                </button>
+              )}
               <MenuLink href="/help" onClick={() => setOpen(false)} icon={<CircleHelp className="w-4 h-4" />}>
                 Help
               </MenuLink>

@@ -45,6 +45,7 @@ import { usePlayerStore } from "../store/playerStore";
 import { useUiStore } from "../store/uiStore";
 import { useDownloadStore } from "../store/downloadStore";
 import { startUrlSync } from "../lib/urlSync";
+import { startPwa } from "../lib/pwa";
 import { loadLastPlayback } from "../lib/lastPlayback";
 import { freshStartOnce } from "../lib/freshStart";
 // Side-effect import: subscribes the sync engine to auth state changes.
@@ -74,6 +75,7 @@ export default function MusicVaultApp() {
 
   useEffect(() => {
     startUrlSync();
+    startPwa();
     void (async () => {
       // One-time clean slate for the rebuilt library; reload so nothing stale lingers.
       if (await freshStartOnce()) {

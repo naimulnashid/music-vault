@@ -536,6 +536,15 @@ broom).
 `/stats/history`, `/downloads`, `/search`), written with `history.pushState`; the optional
 catch-all route `app/[[...view]]` serves those paths on reload, and the in-app Back button walks
 the browser history ([lib/urlSync.ts](../apps/web/src/lib/urlSync.ts)).
+**Installable web app** (since 2026-10-15): [app/manifest.ts](../apps/web/src/app/manifest.ts)
+with regular and maskable icons; [public/sw.js](../apps/web/public/sw.js) keeps the app shell
+(network first) and the build's static files, so the installed app opens offline and plays what
+is downloaded; it never handles Supabase, R2, `/api` or the sign-in pages. The account menu
+offers Install app when the browser does ([lib/pwa.ts](../apps/web/src/lib/pwa.ts)).
+**Android volume**: a speaker button at the right of the full player's second row opens a
+vertical slider showing the percentage while you drag; it sets the app's own volume, as the
+desktop and web volume sliders do
+([VolumeButton.kt](../apps/android/app/src/main/java/com/musicvault/ui/player/VolumeButton.kt)).
 **State** — the same 11 Zustand stores on desktop and web (`library`, `player`, `download`,
 `upload`, `sync`, `stats`, `history`, `auth`, `settings`, `sleep`, `ui`); Android uses Hilt-injected
 ViewModels.
