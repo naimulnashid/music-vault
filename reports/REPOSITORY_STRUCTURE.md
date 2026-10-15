@@ -157,9 +157,10 @@ request and bounces signed-out visitors to `/login` (public paths: `/login`, `/a
 |---|---|
 | `src/app/` | Routes: `[[...view]]/page.tsx` (the app, at every in-app address), `manifest.ts` (the PWA manifest), `login/`, `account/` (no longer linked from the menu), `help/` (public user docs), `layout.tsx`, `globals.css`, favicon/icon assets |
 | `src/components/` | 47 components (2026-10-15) — largely 1:1 counterparts of the desktop set, plus `MusicVaultApp.tsx` |
-| `src/lib/` | `audioEngine.ts`, `audioCache.ts` (OPFS, BLAKE3-verified), `db.ts` (IndexedDB), `syncStorage.ts`, `playEventLog.ts`, `vault.ts`, `uploadPrepare.ts`, `vaultActions.ts`, `trackForm.ts`, `artwork.ts`, `trackMap.ts` (library projection), `urlSync.ts` (address bar ↔ view), `pwa.ts` (service worker + install offer), `freshStart.ts`, `smartEval.ts`, `errorBus.ts`, `lastPlayback.ts`, `supabase/{browser,server}.ts` |
+| `src/lib/` | `audioEngine.ts`, `audioCache.ts` (OPFS, BLAKE3-verified), `db.ts` (IndexedDB), `syncStorage.ts`, `playEventLog.ts`, `vault.ts`, `uploadPrepare.ts`, `vaultActions.ts`, `trackForm.ts`, `artwork.ts`, `trackMap.ts` (library projection), `urlSync.ts` (address bar ↔ view), `pwa.ts` (service worker + install offer), `demo.ts` (the invented library for README screenshots; dead code outside demo builds), `freshStart.ts`, `smartEval.ts`, `errorBus.ts`, `lastPlayback.ts`, `supabase/{browser,server}.ts` |
 | `src/store/` | The same 11 Zustand stores as desktop |
 | `public/` | `sw.js` (the service worker), `icons/` (PWA icons, including a maskable one) |
+| `scripts/` | `demo-shots.mjs`: builds a demo into `.next-demo/` and captures the README screenshots into `docs/screenshots/` |
 | `src/hooks/` | `useAudioEngine`, `useMediaSession`, `useKeyboardShortcuts`, `useNotifications`, `useVirtualRows` |
 | `e2e/` | Playwright specs: `unauthenticated.spec.ts`, `authenticated.spec.ts` |
 

@@ -9,7 +9,8 @@
     "lint": "oxlint src",
     "typecheck": "tsc --noEmit",
     "e2e": "playwright test",
-    "test": "vitest run src"
+    "test": "vitest run src",
+    "demo:shots": "node scripts/demo-shots.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

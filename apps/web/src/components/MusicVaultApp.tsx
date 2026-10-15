@@ -46,6 +46,7 @@ import { useUiStore } from "../store/uiStore";
 import { useDownloadStore } from "../store/downloadStore";
 import { startUrlSync } from "../lib/urlSync";
 import { startPwa } from "../lib/pwa";
+import { DEMO, loadDemo } from "../lib/demo";
 import { loadLastPlayback } from "../lib/lastPlayback";
 import { freshStartOnce } from "../lib/freshStart";
 // Side-effect import: subscribes the sync engine to auth state changes.
@@ -85,6 +86,7 @@ export default function MusicVaultApp() {
       init();
       void loadSettings();
       void useDownloadStore.getState().init();
+      if (DEMO) void loadDemo();
     })();
   }, [init, loadSettings]);
 

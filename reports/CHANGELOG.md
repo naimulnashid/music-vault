@@ -49,6 +49,12 @@
   "Bangla (India)" → B(I) (desktop/web).
 - Android: the account menu drops down under the avatar at the top right, laid out like the desktop
   one (account, sync status with Sync now, Upload, appearance, Sign out) instead of a bottom sheet.
+- README rewritten as a project front page: what it is, screenshots, features, how it works,
+  requirements, running your own, development, documentation, contributing, security and license.
+  The phase-by-phase build history moved out (it stays in PHASE_PROGRESS.md and this changelog).
+- README: Release and License badges, and screenshots of the library, an album, the full player,
+  statistics and downloads in both themes, captured from an invented demo library
+  (`npm run demo:shots -w music-vault-web`; demo builds go to `apps/web/.next-demo/`).
 - Web: installable as an app (PWA): a manifest with regular and maskable icons, a service worker
   that keeps the app shell and build files so the installed app opens offline, and an
   "Install app" item in the account menu when the browser offers it.

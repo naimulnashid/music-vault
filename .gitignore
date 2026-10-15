@@ -17,6 +17,7 @@ apps/android/.kotlin/
 
 # Next.js
 apps/web/.next/
+apps/web/.next-demo/
 apps/web/out/
 
 # Playwright

@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // The screenshot demo builds into its own folder so it never replaces the
+  // real build (scripts/demo-shots.mjs).
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   // @musicvault/core ships raw TypeScript source (no build step) — Next must
   // compile it alongside the app.
   transpilePackages: ["@musicvault/core"],
