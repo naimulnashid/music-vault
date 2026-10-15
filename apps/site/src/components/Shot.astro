@@ -2,7 +2,8 @@
 /**
  * A screenshot that follows the visitor's theme: the light capture under
  * prefers-color-scheme: light, the dark one otherwise. Each is resized to the
- * given widths so phones never download the 2880 px originals.
+ * given widths so phones never download the 2880 px originals. data-scheme
+ * lets the theme toggle pin the query to the visitor's choice.
  */
 import { getImage } from 'astro:assets';
 import type { Screenshot } from '../lib/screenshots';
@@ -25,6 +26,7 @@ const [dark, light] = await Promise.all([render(shot.dark), render(shot.light)])
 
 <picture class={className}>
   <source
+    data-scheme="light"
     media="(prefers-color-scheme: light)"
     srcset={light.srcSet.attribute}
     sizes={sizes}

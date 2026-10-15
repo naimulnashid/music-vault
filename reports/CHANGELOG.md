@@ -22,6 +22,10 @@
   four setup steps and an FAQ. No client framework, no third-party requests, no analytics; a CSP
   with hashed inline scripts. Deployed as its own Vercel project (Root Directory `apps/site`); see
   [docs/site-setup.md](../docs/site-setup.md). CI runs `site:check` and `site:build`.
+- Landing page: a light/dark toggle in the header. First visits still follow the system theme; a
+  choice is saved in the browser and applied before first paint, and choosing the system's own
+  theme goes back to following the system. Screenshots and the browser's theme color follow the
+  toggle. Without JavaScript the toggle is hidden and the page follows the system as before.
 - README: Android screenshots (library, full player and statistics, plus an album and Downloads
   under More screens) in both themes. They come from `npm run android:demo-shots`: a `demo` build
   type (`com.musicvault.demo`, no Supabase settings) loads the same invented library as the web

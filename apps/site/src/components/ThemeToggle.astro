@@ -1,0 +1,124 @@
+---
+/**
+ * Light/dark switch. The page follows the system theme until the visitor
+ * picks one here; the choice is kept in localStorage and applied before first
+ * paint by the inline script in Base.astro. Picking the theme the system is
+ * already on goes back to following the system.
+ *
+ * Without JavaScript the button stays hidden and the system theme applies.
+ */
+import Icon from './Icon.astro';
+---
+
+<button type="button" class="theme-toggle" data-theme-toggle hidden>
+  <Icon name="sun" class="icon-sun" />
+  <Icon name="moon" class="icon-moon" />
+</button>
+
+<script>
+  type Theme = 'light' | 'dark';
+
+  // Also read by the inline script in Base.astro.
+  const KEY = 'theme';
+  const root = document.documentElement;
+  const systemLight = matchMedia('(prefers-color-scheme: light)');
+  const buttons = document.querySelectorAll<HTMLButtonElement>('[data-theme-toggle]');
+
+  const systemTheme = (): Theme => (systemLight.matches ? 'light' : 'dark');
+  const chosenTheme = () => root.dataset.theme as Theme | undefined;
+  const currentTheme = () => chosenTheme() ?? systemTheme();
+
+  /*
+   * Screenshot <source>s and theme-color <meta>s pick their theme with a
+   * prefers-color-scheme media query. data-scheme names that theme; while the
+   * visitor has chosen one, the query is pinned on or off to match it.
+   */
+  function syncMedia() {
+    const chosen = chosenTheme();
+    for (const el of document.querySelectorAll<HTMLElement>('[data-scheme]')) {
+      const scheme = el.dataset.scheme;
+      el.setAttribute(
+        'media',
+        chosen ? (chosen === scheme ? 'all' : 'not all') : `(prefers-color-scheme: ${scheme})`,
+      );
+    }
+  }
+
+  function render() {
+    const current = currentTheme();
+    const label = `Switch to ${current === 'dark' ? 'light' : 'dark'} theme`;
+    for (const button of buttons) {
+      button.dataset.current = current;
+      button.setAttribute('aria-label', label);
+      button.title = label;
+    }
+  }
+
+  function choose(theme: Theme) {
+    try {
+      if (theme === systemTheme()) {
+        delete root.dataset.theme;
+        localStorage.removeItem(KEY);
+      } else {
+        root.dataset.theme = theme;
+        localStorage.setItem(KEY, theme);
+      }
+    } catch {
+      // Storage blocked (private mode, site data off): the choice lasts for this visit.
+    }
+    syncMedia();
+    render();
+  }
+
+  for (const button of buttons) {
+    button.hidden = false;
+    button.addEventListener('click', () => choose(currentTheme() === 'dark' ? 'light' : 'dark'));
+  }
+  systemLight.addEventListener('change', render);
+  syncMedia();
+  render();
+</script>
+
+<style>
+  .theme-toggle {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 12px;
+    border: 1px solid var(--line-strong);
+    background: transparent;
+    color: var(--fg);
+    cursor: pointer;
+    transition: border-color 0.2s var(--ease);
+  }
+
+  .theme-toggle[hidden] {
+    display: none;
+  }
+
+  .theme-toggle:hover {
+    border-color: var(--accent);
+  }
+
+  .theme-toggle :global(svg) {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* The icon shows the theme a click switches to. */
+  .theme-toggle[data-current='dark'] :global(.icon-moon),
+  .theme-toggle[data-current='light'] :global(.icon-sun) {
+    display: none;
+  }
+
+  @media (min-width: 960px) {
+    .theme-toggle {
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      background: var(--surface);
+    }
+  }
+</style>

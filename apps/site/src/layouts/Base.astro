@@ -28,8 +28,17 @@ const ogImage = new URL(socialPreview.src, Astro.site);
     <link rel="canonical" href={canonical} />
 
     <meta name="color-scheme" content="dark light" />
-    <meta name="theme-color" content="#0d0d10" media="(prefers-color-scheme: dark)" />
-    <meta name="theme-color" content="#f6f6f9" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0d0d10" data-scheme="dark" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f6f6f9" data-scheme="light" media="(prefers-color-scheme: light)" />
+    <!-- Before first paint: the theme chosen with the header toggle on an earlier
+         visit, if any (ThemeToggle.astro). Inline so the page never flashes the
+         other theme. -->
+    <script is:inline>
+      try {
+        const theme = localStorage.getItem('theme');
+        if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+      } catch {}
+    </script>
 
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href={appleIcon.src} />

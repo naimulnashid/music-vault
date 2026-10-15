@@ -7,8 +7,14 @@ private player, so its home page cannot be a public page.
 
 It ships no client framework and makes no third-party requests: the font is self-hosted, the
 screenshots are the README's own (`docs/screenshots/`, imported at build time), and there is no
-analytics. The only JavaScript is the screenshot tabs and closing the phone menu after a link is
-chosen; without it, both screenshot sets show one after the other and the menu still works.
+analytics. The only JavaScript is the screenshot tabs, closing the phone menu after a link is
+chosen, and the light/dark toggle in the header; without it, both screenshot sets show one after
+the other, the menu still works, and the page follows the system theme with the toggle hidden.
+
+The theme follows the visitor's system setting until they pick one with the toggle. The choice
+is saved in the browser (`localStorage`) and applied by a small inline script in `<head>` before
+first paint, so a returning visitor never sees the other theme flash. Choosing the theme the
+system is already on clears the saved choice.
 
 ## 1. Run locally
 

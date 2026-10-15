@@ -3,7 +3,8 @@
  *
  * Tokens follow apps/web/src/app/globals.css (dark-first, one accent: Vibrant
  * Violet #8b5cf6) so the site reads as part of the product. The theme follows
- * the visitor's system setting; there is no toggle.
+ * the visitor's system setting until they pick one with the header's toggle,
+ * which sets data-theme="light" or "dark" on <html> (ThemeToggle.astro).
  *
  * Two additions for text contrast (WCAG AA): --accent-strong is the button
  * fill (white on #8b5cf6 is only 4.2:1, on #7c3aed it is 5.7:1), and
@@ -39,8 +40,10 @@
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* Light: the system setting unless the visitor chose dark, or the visitor's
+   own choice. The two rules carry the same tokens; keep them in step. */
 @media (prefers-color-scheme: light) {
-  :root {
+  :root:not([data-theme='dark']) {
     color-scheme: light;
 
     --bg: #f6f6f9;
@@ -58,6 +61,25 @@
     --shadow: 0 40px 80px -36px rgb(40 30 80 / 0.35);
     --header-bg: rgb(246 246 249 / 0.92);
   }
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --bg: #f6f6f9;
+  --surface: #ffffff;
+  --surface-2: #ececf1;
+  --surface-3: #dfdfe6;
+  --line: rgb(20 20 40 / 0.09);
+  --line-strong: rgb(20 20 40 / 0.16);
+  --fg: #141419;
+  --muted: #55556a;
+  --accent-text: #6d28d9;
+  --accent-soft: rgb(139 92 246 / 0.12);
+  --glow-1: rgb(139 92 246 / 0.22);
+  --glow-2: rgb(192 38 211 / 0.1);
+  --shadow: 0 40px 80px -36px rgb(40 30 80 / 0.35);
+  --header-bg: rgb(246 246 249 / 0.92);
 }
 
 @media (min-width: 640px) {
