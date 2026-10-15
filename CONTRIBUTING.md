@@ -17,7 +17,8 @@ npm run core:test
 npm run desktop:typecheck && npm run desktop:lint && npm run desktop:test
 npm run web:typecheck && npm run web:lint && npm run web:test && npm run web:build
 npm run vault:test
-cd apps/desktop/src-tauri && cargo test
+npm run desktop:build    # cargo test embeds the built frontend
+cd apps/desktop/src-tauri && cargo test -- --skip plays_hires_tone_through_default_device
 cd apps/android && ./gradlew testDebugUnitTest
 ```
 

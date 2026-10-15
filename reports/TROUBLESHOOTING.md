@@ -256,7 +256,7 @@ CORS policy lists the deployment's origin (see [The vault](#the-vault-uploads-do
 There is no `vercel.json` — all configuration is dashboard-side.
 
 ### Node version
-CI uses Node **22**; the README says "Node 20+" ([README.md:25](../README.md)). Prefer 22 to match CI.
+CI uses Node **22**; the README says "Node 20.19+ or 22.12+" ([README.md](../README.md)), the floor Vite 8 and Next 16 set. Prefer 22 to match CI.
 
 ---
 

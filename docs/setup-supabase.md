@@ -64,6 +64,9 @@ Dashboard → **Authentication → Providers → Email**:
   in” flow.
 - Under **Authentication → URL Configuration**, set the Site URL to your web
   app's address so confirmation emails link back to it.
+- Once your own account exists, turn off new-user sign-ups in the project's
+  Authentication settings. Any account on the project can upload into your R2
+  bucket: the `vault` function has no allowlist or storage quota.
 
 ## 6. Verify
 

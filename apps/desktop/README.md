@@ -40,7 +40,7 @@ with no browser resampling.
 
 ## Development
 
-Prerequisites: Node 20+, Rust (stable, MSVC), WebView2 runtime.
+Prerequisites: Node 20.19+ or 22.12+, Rust (stable, MSVC), WebView2 runtime.
 
 ```sh
 npm install

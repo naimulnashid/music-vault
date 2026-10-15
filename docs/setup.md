@@ -6,7 +6,7 @@ your private R2 vault, so steps 1–3 are required before the apps are useful.
 
 ## 1. Build & run
 
-Prerequisites: Node 20+, Rust stable (MSVC) + WebView2 for desktop,
+Prerequisites: Node 20.19+ or 22.12+, Rust stable (MSVC) + WebView2 for desktop,
 JDK 17 + Android SDK for Android.
 
 ```sh

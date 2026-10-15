@@ -130,7 +130,8 @@ More in [docs/architecture.md](docs/architecture.md) and
 - **To run your own:** a free [Supabase](https://supabase.com) project, a
   [Cloudflare R2](https://www.cloudflare.com/developer-platform/products/r2/) bucket, and (for the
   web app) a [Vercel](https://vercel.com) account.
-- **Windows app:** Windows 10 or 11. To build it: Node 20+, Rust (stable, MSVC) and WebView2.
+- **Windows app:** Windows 10 or 11. To build it: Node 20.19+ or 22.12+ (CI uses 22), Rust
+  (stable, MSVC) and WebView2.
 - **Android app:** Android 9 or later. To build it: JDK 17 and the Android SDK.
 - **Web app:** a current browser; Chromium-based ones (Chrome, Edge) are the ones tested.
 
@@ -151,6 +152,45 @@ each with its own guide:
 There are no prebuilt installers: a build carries the Supabase project it was
 made for, so you build your own.
 
+## Configuration
+
+Every app is built with your Supabase project's URL and anon key. Only the `vault` function holds
+real secrets. Copy a template, fill in your own values, and keep the result out of git (the
+`.gitignore` already excludes these files).
+
+| Part | Where the settings go | Settings |
+|---|---|---|
+| Windows app | `apps/desktop/.env`, from [.env.example](apps/desktop/.env.example) | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` |
+| Web app | `apps/web/.env.local`, from [.env.example](apps/web/.env.example); on Vercel, the project's environment variables | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` |
+| Android app | `apps/android/local.properties`, or environment variables | `supabase.url` / `SUPABASE_URL`, `supabase.anonKey` / `SUPABASE_ANON_KEY` |
+| `vault` function | Supabase secrets | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` |
+
+```properties
+# apps/android/local.properties
+supabase.url=https://your-project-ref.supabase.co
+supabase.anonKey=your-anon-key
+```
+
+Every variable, what reads it and how exposed it is:
+[reports/ENVIRONMENT_VARIABLES.md](reports/ENVIRONMENT_VARIABLES.md).
+
+## Usage
+
+1. **Create your account.** Choose Sign up in any of the apps, confirm the email, then sign in. The
+   same email and password work on every device.
+2. **Upload music.** Use the upload button, drop files on the Windows or web window, or share files
+   to Music Vault on Android. Review each song's details before it uploads; the file's tags only
+   pre-fill the form.
+3. **Play.** Click a song to play it and queue what follows. The queue, lyrics and equalizer open from
+   the player.
+4. **Keep music offline.** Use Download on a song, album, artist or playlist, or switch on
+   "Download all songs automatically" on the Downloads page.
+5. **Organize.** Make playlists and drag songs to reorder them; smart playlists fill themselves
+   from rules such as genre, language or play count.
+
+The full user guide is the web app's Help page (`/help` on your deployment; source in
+[apps/web/src/app/help/page.tsx](apps/web/src/app/help/page.tsx)).
+
 ## Development
 
 ```sh
@@ -164,16 +204,26 @@ cd apps/android && ./gradlew assembleDebug    # Android APK
 npm run core:test                             # shared engine: sync conflicts, smart rules, stats, LRC
 npm run desktop:test && npm run web:test      # app-level unit tests
 npm run vault:test                            # the vault function
-cd apps/desktop/src-tauri && cargo test       # Rust: audio, cache, database
+npm run desktop:build                         # the Rust tests embed the built frontend
+# Rust: audio, cache, database. The skipped test plays a tone through your speakers.
+cd apps/desktop/src-tauri && cargo test -- --skip plays_hires_tone_through_default_device
 cd apps/android && ./gradlew testDebugUnitTest
 npm run web:e2e                               # Playwright (E2E_EMAIL/E2E_PASSWORD for signed-in flows)
 ```
 
+```sh
+npm run tauri build -w music-vault-desktop    # Windows installer (NSIS), using apps/desktop/.env
+```
+
+Run each command from the repository root. The commands use `sh` syntax; on Windows, run them in
+Git Bash or PowerShell 7. The web app is
+built by Vercel when it deploys ([docs/web-setup.md](docs/web-setup.md)), and a signed release APK
+is built locally with your own key ([apps/android/README.md](apps/android/README.md#release-apk)).
+
 GitHub Actions run the tests on every push and pull request
 ([ci.yml](.github/workflows/ci.yml)). In a fork with your own Supabase secrets, running Release
 builds by hand builds the Windows installer and a debug APK
-([release.yml](.github/workflows/release.yml)); a signed release APK is built locally with your own
-key ([apps/android/README.md](apps/android/README.md#release-apk)).
+([release.yml](.github/workflows/release.yml)).
 
 ```
 apps/desktop     Windows app: Tauri 2, React 19, TypeScript, Tailwind, a Rust audio engine
@@ -199,12 +249,28 @@ reports/         Feature inventory, cross-platform parity, API, database, change
 
 ## Contributing
 
-Issues and small pull requests are welcome; for anything larger, open an issue first. See
-[CONTRIBUTING.md](CONTRIBUTING.md).
+[Issues](https://github.com/naimulnashid/music-vault/issues) and small pull requests are welcome;
+for anything larger, open an issue first. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Security
+## Security and privacy
 
-Please report vulnerabilities privately; see [SECURITY.md](SECURITY.md).
+- **Where your data lives.** Audio and covers are in your R2 bucket; song details, playlists,
+  favorites, play history and sync state are in your Supabase project. No server run by this
+  project sees any of it, and the apps contain no analytics or crash reporting.
+- **Credentials.** The Supabase anon key is built into every app by design; row-level security,
+  keyed to the signed-in account, is what protects the data. The R2 keys exist only as Supabase
+  secrets read by the `vault` function, which gives the apps short-lived signed URLs. Each app keeps
+  your sign-in session on the device (in cookies on the web).
+- **On each device.** The apps keep a copy of your library and the audio they have cached or
+  downloaded: in the app's data folder on Windows, app-private storage on Android and the
+  browser's storage on the web. The apps don't encrypt these copies, so anyone with access to the
+  device's files can play them.
+- **Integrity.** Every download is checked against the song's BLAKE3 hash before it is kept.
+- **Limitation: open sign-ups.** Any account on your Supabase project can upload into your bucket;
+  the `vault` function has no allowlist or storage quota. Once your own account exists, turn off
+  new-user sign-ups ([docs/setup-supabase.md](docs/setup-supabase.md#5-auth-settings-recommended)).
+- **Reporting a vulnerability.** Report it privately; [SECURITY.md](SECURITY.md) has the process
+  and what is in scope.
 
 ## License
 

@@ -9,10 +9,56 @@
 > `versionCode 1`).
 > Entries are grouped by release and theme rather than one line per commit.
 > Format follows [Keep a Changelog](https://keepachangelog.com/) conventions.
+> Releases since: `v1.0.0` and `v1.1.0`, both 2026-10-15, published as source on the public repo
+> (see [Notes on this changelog](#notes-on-this-changelog)).
 
 ---
 
-## [Unreleased] — owner feedback batch (2026-10-15)
+## [Unreleased]
+
+### Changed
+- README rewritten as a project front page: what it is, screenshots, features, how it works,
+  requirements, running your own, development, documentation, contributing, security and license.
+  The phase-by-phase build history moved out (it stays in PHASE_PROGRESS.md and this changelog).
+- README: Release and License badges, and screenshots of the library, an album, the full player,
+  statistics and downloads in both themes, captured from an invented demo library
+  (`npm run demo:shots -w music-vault-web`; demo builds go to `apps/web/.next-demo/`).
+- README: Configuration, Usage and Security and privacy sections; the Node requirement corrected
+  to 20.19+ or 22.12+ (the floor Vite 8 and Next 16 set); the Rust test command skips the test
+  that plays a tone through the speakers, as CI does; the Windows installer build command; a link
+  to Issues.
+- Supabase setup guide: turn off new-user sign-ups once your own account exists, because any
+  account on the project can upload into the R2 bucket.
+
+## [1.1.0] - 2026-10-15
+
+Tagged `v1.1.0` at `21fdcd4`. Source only on the public repo, as with 1.0.0.
+
+### Added
+- Web: installable as an app (PWA): a manifest with regular and maskable icons, a service worker
+  that keeps the app shell and build files so the installed app opens offline, and an
+  "Install app" item in the account menu when the browser offers it.
+- Android: a volume button at the right of the full player's second row opens a vertical slider
+  that shows the percentage while you drag.
+- Android: signed release APK. The key lives outside the repo; `local.properties` points at it
+  (`signing.properties=…`), and without that line a release build comes out unsigned. Release
+  builds no longer run R8.
+
+### Changed
+- Release builds (`release.yml`) run only when started by hand; releases with installers are built
+  locally and attached to the private repo's release, so a pushed tag no longer triggers CI builds
+  that would replace them.
+- Docs and reports brought up to date with the 2026-10-13 to 2026-10-15 changes: removed features
+  (star ratings, the accent picker, Duplicates, Android's drawer) no longer appear as current, test
+  counts were recounted, and the new download, cache, statistics and UI features are documented.
+- Web: the Help page describes the current downloads and themes.
+- Version 1.1.0 in every manifest (Android: `versionName "1.1.0"`, `versionCode 2`).
+
+## [1.0.0 public release] — owner feedback batch (2026-10-15)
+
+The first public release, tagged `v1.0.0` on the public repo and exported from `4ff2cca`. The
+version number had stayed at 1.0.0 since July, so this release holds every group from here down to
+the July [1.0.0](#100--2026-07-17) entry.
 
 ### Added
 - Public source repository `naimulnashid/music-vault`, a squashed export of this one, with
@@ -22,9 +68,6 @@
 
 ### Changed
 - Android launcher icon now matches the desktop and web icon (violet gradient tile, white notes).
-- Docs and reports brought up to date with the 2026-10-13 to 2026-10-15 changes: removed features
-  (star ratings, the accent picker, Duplicates, Android's drawer) no longer appear as current, test
-  counts were recounted, and the new download, cache, statistics and UI features are documented.
 - A downloaded song is marked with a tick instead of a down arrow (all apps).
 - Statistics heatmap covers the last 6 months (was 12), with month and weekday labels; cells grow
   on hover (desktop/web) or tap (Android). The Yearly recap button lost its sparkle icon.
@@ -49,23 +92,6 @@
   "Bangla (India)" → B(I) (desktop/web).
 - Android: the account menu drops down under the avatar at the top right, laid out like the desktop
   one (account, sync status with Sync now, Upload, appearance, Sign out) instead of a bottom sheet.
-- README rewritten as a project front page: what it is, screenshots, features, how it works,
-  requirements, running your own, development, documentation, contributing, security and license.
-  The phase-by-phase build history moved out (it stays in PHASE_PROGRESS.md and this changelog).
-- README: Release and License badges, and screenshots of the library, an album, the full player,
-  statistics and downloads in both themes, captured from an invented demo library
-  (`npm run demo:shots -w music-vault-web`; demo builds go to `apps/web/.next-demo/`).
-- Web: installable as an app (PWA): a manifest with regular and maskable icons, a service worker
-  that keeps the app shell and build files so the installed app opens offline, and an
-  "Install app" item in the account menu when the browser offers it.
-- Android: a volume button at the right of the full player's second row opens a vertical slider
-  that shows the percentage while you drag.
-- Android: signed release APK. The key lives outside the repo; `local.properties` points at it
-  (`signing.properties=…`), and without that line a release build comes out unsigned. Release
-  builds no longer run R8.
-- Release builds (`release.yml`) run only when started by hand; releases with installers are built
-  locally and attached to the private repo's release, so a pushed tag no longer triggers CI builds
-  that would replace them.
 - Android: the upload page has one back arrow, with "Upload to your vault" in the top bar, and a
   larger "Add files" button in the middle of the empty page (centered above the list once files
   are added).
@@ -85,7 +111,7 @@
   added later download on their own, songs deleted from the vault are removed, and the auto-cache is
   bypassed while it is on.
 
-## [Unreleased] — new look and playback fixes (2026-10-13)
+## [1.0.0 public release] — new look and playback fixes (2026-10-13)
 
 ### Changed
 - **Redesign of all three apps** (inspired by modern streaming apps): dark-first design tokens, one
@@ -116,7 +142,7 @@
 - Lyrics saved as LRC text in the plain-lyrics field now display synced instead of showing raw
   timestamps.
 
-## [Unreleased] — song details and fixes (2026-10-13)
+## [1.0.0 public release] — song details and fixes (2026-10-13)
 
 ### Removed
 - **Star ratings** on all three apps (rows, Now Playing, menus) and the Rating field of the
@@ -139,7 +165,7 @@
 - Desktop/web smart playlist rules: typing in a value box no longer drops or reverts characters
   (edits are kept locally and saved after a short pause).
 
-## [Unreleased] — the vault (2026-10-11 → 2026-10-13)
+## [1.0.0 public release] — the vault (2026-10-11 → 2026-10-13)
 
 Google Drive, local-folder libraries and local mode replaced by a private Cloudflare R2 vault —
 steps M0–M8 of [docs/drive-to-r2-migration.md](../docs/drive-to-r2-migration.md). No version bump.
@@ -186,7 +212,7 @@ steps M0–M8 of [docs/drive-to-r2-migration.md](../docs/drive-to-r2-migration.m
 
 ---
 
-## [Unreleased] — post-1.0
+## [1.0.0 public release] — post-1.0
 
 Work after the final phase commit (`36e11d8`, 2026-07-17). All of it lands on 2026-07-17.
 No version bump accompanies these changes.
@@ -370,10 +396,16 @@ Useful when diagnosing an old install. Details in [DATABASE.md](DATABASE.md).
 
 ## Notes on this changelog
 
-- **No tags exist**, so the 1.0.0 boundary is drawn at `36e11d8` — the last commit that names a
-  phase and the one that marks the README complete. `release.yml` triggers on `v*` tags, so a
-  `v1.0.0` tag would produce the installer and APK.
+- **Two version 1.0.0s.** No tags existed in July, so the July 1.0.0 boundary is drawn at
+  `36e11d8`, the last commit that names a phase and the one that marks the README complete. The
+  version number then stayed at 1.0.0 until the first public release on 2026-10-15, so that
+  release (public tag `v1.0.0`, exported from `4ff2cca`) contains everything from the July entry
+  up. Its sections are headed "1.0.0 public release".
+- **Tags (checked 2026-10-15):** `v1.0.0` exists on the public repo only; `v1.1.0` (`21fdcd4`) is
+  on both. Each public release's tree matches the private commit it was exported from.
+  `release.yml` no longer runs on tags; it is started by hand.
 - Phase commits carry their own summaries; this changelog compresses 32 phase commits into ten
   sections and lists the 13 post-1.0 commits by theme.
-- Version numbers are inconsistent across manifests: `1.0.0` in the JS/Rust manifests vs `"1.0"` /
-  `versionCode 1` on Android. Worth aligning before a real release.
+- Version numbers agree across manifests since 1.1.0: `1.1.0` in the JS, Rust and Tauri manifests
+  and on Android (`versionName "1.1.0"`, `versionCode 2`). In July they disagreed (`1.0.0` vs
+  Android's `"1.0"` / `versionCode 1`).

@@ -20,7 +20,7 @@ mode. So the order is: Supabase (§6) → the vault (§7) → the clients.
 
 | Tool | Version | Needed for | Evidence |
 |---|---|---|---|
-| **Node.js** | **22** (CI); README says 20+ | everything JS | [ci.yml](../.github/workflows/ci.yml) uses `node-version: 22`; [README.md:25](../README.md) says "Node 20+" |
+| **Node.js** | **22** (CI); README says 20.19+ or 22.12+ | everything JS | [ci.yml](../.github/workflows/ci.yml) uses `node-version: 22`; [README.md](../README.md) says "Node 20.19+ or 22.12+", the floor Vite 8 and Next 16 set |
 | **npm** | ships with Node | workspaces | root [package.json](../package.json) |
 | **Rust** | stable, **MSVC** toolchain | desktop | [README.md:25](../README.md); CI uses `dtolnay/rust-toolchain@stable` on `windows-latest` |
 | **WebView2** | current | desktop runtime | [README.md:25-26](../README.md) |
