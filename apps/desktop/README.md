@@ -59,7 +59,7 @@ M mute · S shuffle · R repeat · F favorite
 All Tracks / Albums / Artist views, search + sort, playlists (create, rename,
 delete, drag reorder), smart playlists, queue panel, favorites, synced LRC
 lyrics, 10-band EQ with presets, gapless + crossfade, spectrum/waveform
-visualizer, listening statistics, sleep timer, dark/light themes with 4
-accents, resume playback — plus native additions: folder upload, OS
+visualizer, listening statistics, sleep timer, light/dark/system themes with
+AMOLED, resume playback — plus native additions: folder upload, OS
 drag-and-drop upload, Windows media-key/flyout integration, and native
 notifications.

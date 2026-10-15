@@ -1,7 +1,8 @@
 # Feature Inventory
 
 > Audit date: 2026-07-17 · branch `main` @ `e3b5237`; library, vault, caching and auth sections
-> updated 2026-10-13 for the vault (Google Drive's replacement).
+> updated 2026-10-13 for the vault (Google Drive's replacement); caching, downloads, statistics,
+> theming and UI updated 2026-10-15.
 > Every claim cites the file (and line range where practical) that implements it. Status values:
 > ✅ Implemented · ⚠️ Implemented with a platform gap · 🚧 Planned — not yet implemented.
 > The platform-by-platform matrix is in [FEATURE_PARITY.md](FEATURE_PARITY.md); this document
@@ -224,8 +225,17 @@ Android: tier 1 is Media3 `SimpleCache` (needs no Room bookkeeping), tier 2 is t
 table — stated at [Entities.kt:155-160](../apps/android/app/src/main/java/com/musicvault/data/db/Entities.kt).
 Web: OPFS bytes + IndexedDB bookkeeping with `tier: "cache" | "pin"` and the copy's hash
 ([lib/db.ts:10-32](../apps/web/src/lib/db.ts), [lib/audioCache.ts](../apps/web/src/lib/audioCache.ts)).
-**Commands** — `vault_cache_stats`, `vault_cache_set_max`, `vault_downloads_list`,
-`vault_download_remove`, `vault_forget_deleted` ([commands/vault.rs](../apps/desktop/src-tauri/src/commands/vault.rs)).
+**Cap**: Off, 1, 2, 5 or 10 GB, and never more than 10 GiB; each device keeps its own (defaults:
+desktop 10 GiB, Android 2 GiB, web 4 GiB). Desktop and web never evict the two most recently used
+cached songs (the one playing and the one preloaded after it), so Off keeps just those
+(`KEEP_RECENT` in [vault/cache.rs](../apps/desktop/src-tauri/src/vault/cache.rs) and
+[lib/audioCache.ts](../apps/web/src/lib/audioCache.ts)). Android streams without the cache when
+it is Off, and applies a new cap at once through its own LRU evictor that reads the cap on every
+eviction ([AudioCache.kt](../apps/android/app/src/main/java/com/musicvault/data/vault/AudioCache.kt)).
+**Clear cache**: a button beside the cap empties the auto tier; pinned downloads stay.
+**Commands** — `vault_cache_stats`, `vault_cache_set_max` (clamped to 0..10 GiB), `vault_cache_clear`,
+`vault_downloads_list`, `vault_download_remove`, `vault_download_cancel`, `vault_forget_deleted`
+([commands/vault.rs](../apps/desktop/src-tauri/src/commands/vault.rs)).
 
 ### Artwork thumbnails
 **Status** ✅ Every vault cover is uploaded with a 256 px `.thumb.jpg` beside the full image
@@ -348,6 +358,17 @@ unlike `sync_*`. Idempotency is proven by a test —
 inserting the same event id twice leaves one row
 ([db/mod.rs:302-318](../apps/desktop/src-tauri/src/db/mod.rs)).
 
+**On screen**: a range selector, summary cards, an activity chart, the last 6 months as a
+calendar heatmap (26 Saturday-first week columns, month and weekday labels, a Less/More scale),
+a listening clock and top lists. **Expand** opens Listening History: every 6-month block since
+1 January of the first year with plays, on one shared colour scale
+([Heatmap.tsx](../apps/desktop/src/components/Heatmap.tsx), the same file on web;
+[HeatmapScreen.kt](../apps/android/app/src/main/java/com/musicvault/ui/screens/HeatmapScreen.kt)).
+On desktop and web every chart shares one hover tooltip in the seek bar's style, drawn in a
+portal so a scroller never clips it ([ChartTooltip.tsx](../apps/desktop/src/components/ChartTooltip.tsx)),
+and heatmap squares grow under the pointer. On Android the heatmap is view-only, since its
+squares are too small to tap.
+
 **Recap UI** — ⚠️ desktop + web only ([RecapView.tsx](../apps/desktop/src/components/RecapView.tsx),
 [RecapView.tsx](../apps/web/src/components/RecapView.tsx)). Android has the **engine** ported
 (`Stats.Recap`, `computeRecap`, `recapYears` at
@@ -425,12 +446,11 @@ web IndexedDB `settings` store ([lib/db.ts:23-32](../apps/web/src/lib/db.ts)).
 ### Theming
 **Status** ⚠️ **Files** — `useTheme.ts` / `ThemeSwitcher.tsx` (desktop/web),
 [ui/theme/Theme.kt](../apps/android/app/src/main/java/com/musicvault/ui/theme/Theme.kt).
-`theme` is `dark | light`; `accent` is a preset name (`purple`/`blue`/`green`/`pink`, hex values
-at [core/types.ts:72-77](../packages/core/src/types.ts)) **or** a custom `#rrggbb`. The type
-comment records the fallback contract: "Clients that only understand presets fall back to their
-default accent when they receive a hex value" ([core/types.ts:64-69](../packages/core/src/types.ts))
-— i.e. custom hex accents are a desktop/web feature that Android silently degrades. Android adds
-Material You dynamic color (commit `d459f1e`), which desktop/web don't have.
+`theme` is `dark | light`, with device-local follow-system and pure-black AMOLED on all three
+apps. Since the 2026-10-13 redesign every client uses one accent, Vibrant Violet `#8B5CF6`, and
+the Figtree typeface; accent presets, the custom accent picker and Android's Material You colour
+are gone. The synced `accent` field stays in the `Settings` shape so older builds can still
+write it, but nothing applies it ([useTheme.ts](../apps/desktop/src/hooks/useTheme.ts)).
 
 ---
 
@@ -444,8 +464,25 @@ Android runs downloads through **WorkManager**
 [DownloadRepository.kt](../apps/android/app/src/main/java/com/musicvault/data/vault/DownloadRepository.kt)),
 so they survive app death — desktop/web downloads are in-process. Copies of tracks deleted from the
 vault (on any device) are removed automatically.
-**Desktop extras** — bounded-concurrency downloading (commit `b3b9c50`), live speed + aggregate
-total in the Downloading section (`3e94b37`), and "Download all" (pins the whole vault).
+**One queue**: desktop and web run every pinned download through one queue in
+[store/downloadStore.ts](../apps/desktop/src/store/downloadStore.ts) (desktop: 4 at a time; web:
+one at a time); Android queues one WorkManager job per song.
+**Collection button**: the Download button on an album, artist, playlist or group shows how many
+songs are done and left while it runs; a click (tap on Android) then **cancels**: queued songs
+leave the queue and in-flight transfers stop (desktop: the Rust download checks a cancel set
+every chunk; web: an `AbortController`; Android: `cancelUniqueWork`). Once everything is here, a
+click removes the downloads ([DownloadAllButton.tsx](../apps/desktop/src/components/DownloadAllButton.tsx),
+`useCollectionDownload` in [lib/trackState.ts](../apps/desktop/src/lib/trackState.ts),
+[CollectionHeader.kt](../apps/android/app/src/main/java/com/musicvault/ui/components/CollectionHeader.kt)).
+A downloaded song shows a tick.
+**Auto-download**: a device-local switch, "Download all songs automatically", on every client:
+every vault song is pinned, songs added later follow, songs deleted from the vault lose their
+copies as before, and playback skips the auto-cache meanwhile (desktop/web
+[downloadStore.ts](../apps/desktop/src/store/downloadStore.ts), Android
+[AutoDownloader.kt](../apps/android/app/src/main/java/com/musicvault/data/vault/AutoDownloader.kt)).
+The web app only downloads while it is open.
+**Desktop and web extras**: live speed and an aggregate total in the Downloading section, and
+"Download all" in the header.
 
 ---
 
@@ -477,12 +514,28 @@ policies **and no update/delete policies** — append-only enforced at the datab
 
 ## UI
 
-**Status** ✅ Desktop and web share a near-1:1 component set (33 vs 28 components with matching
-names); Android is an independent Compose implementation.
+**Status** ✅ Desktop and web share a near-1:1 component set (47 components each, counted
+2026-10-15); Android is an independent Compose implementation.
 **Shell** — `Sidebar` + `ViewHeader` + `NowPlayingBar` (desktop/web);
 [AppRoot.kt](../apps/android/app/src/main/java/com/musicvault/ui/AppRoot.kt) (top bar and
-bottom navigation since the 2026-10-13 redesign; it replaced `VaultDrawer.kt`) on Android. Recent commits added collapsible sidebar sections and folded the account control into
-each view's header (`8ff276c`, `d441968`).
+bottom navigation since the 2026-10-13 redesign; it replaced `VaultDrawer.kt`) on Android.
+**Account menu**: the avatar at the top right opens it on every client: who is signed in, sync
+status with Sync now, appearance, sign out (Android adds Upload music; the web adds Help)
+([AccountMenu.tsx](../apps/desktop/src/components/AccountMenu.tsx),
+[AccountMenu.kt](../apps/android/app/src/main/java/com/musicvault/ui/AccountMenu.kt)).
+**Sidebar** (desktop/web): collapses to an icon rail that also lists the playlists. A playlist
+with no cover shows the first letter of its name, plus a bracketed qualifier's initial
+("Bangla (India)" reads B(I)); playlist pages and Android's Collections use a 2×2 mosaic of
+four song covers ([Mosaic.tsx](../apps/desktop/src/components/Mosaic.tsx),
+[Mosaic.kt](../apps/android/app/src/main/java/com/musicvault/ui/components/Mosaic.kt)).
+**Player bar** (desktop/web): a click anywhere outside its controls opens the full player;
+Lyrics, Sound, Queue and Clear queue have distinct icons (microphone, vertical sliders, list,
+broom).
+**Web addresses**: the address bar follows the page (`/albums`, `/album/<key>`,
+`/artist/<name>`, `/playlist/<id>`, `/smart/<key>[/<group>]`, `/stats`, `/stats/recap`,
+`/stats/history`, `/downloads`, `/search`), written with `history.pushState`; the optional
+catch-all route `app/[[...view]]` serves those paths on reload, and the in-app Back button walks
+the browser history ([lib/urlSync.ts](../apps/web/src/lib/urlSync.ts)).
 **State** — the same 11 Zustand stores on desktop and web (`library`, `player`, `download`,
 `upload`, `sync`, `stats`, `history`, `auth`, `settings`, `sleep`, `ui`); Android uses Hilt-injected
 ViewModels.

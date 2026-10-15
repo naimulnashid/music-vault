@@ -22,6 +22,9 @@
 
 ### Changed
 - Android launcher icon now matches the desktop and web icon (violet gradient tile, white notes).
+- Docs and reports brought up to date with the 2026-10-13 to 2026-10-15 changes: removed features
+  (star ratings, the accent picker, Duplicates, Android's drawer) no longer appear as current, test
+  counts were recounted, and the new download, cache, statistics and UI features are documented.
 - A downloaded song is marked with a tick instead of a down arrow (all apps).
 - Statistics heatmap covers the last 6 months (was 12), with month and weekday labels; cells grow
   on hover (desktop/web) or tap (Android). The Yearly recap button lost its sparkle icon.

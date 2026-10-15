@@ -4,9 +4,9 @@ The Android client of Music Vault. Fully native — Kotlin, Jetpack Compose, Med
 
 ## Features
 
-- **Library**: every song in your vault, synced from Supabase. Add songs with **Upload music** in the drawer (system file picker) or **Share → Music Vault** from another app; each file is hashed (BLAKE3) and its details reviewed in a form before upload. Already-uploaded files are recognized.
+- **Library**: every song in your vault, synced from Supabase. Add songs with **Upload music** in the account menu (the avatar, top right; system file picker) or **Share → Music Vault** from another app; each file is hashed (BLAKE3) and its details reviewed in a form before upload. Already-uploaded files are recognized.
 - **Details, edited online**: title/artist/album/genre/language/country/release date/lyrics and the cover are edited from the track menu (one or several tracks) and sync to every device. Tags read at upload (JAudioTagger) only pre-fill the form; technical facts are read-only.
-- **Delete from vault**: track menu or multi-select, after a confirmation; the song, its cover (if unused elsewhere) and its ratings, favorites, playlist entries and history go everywhere.
+- **Delete from vault**: track menu or multi-select, after a confirmation; the song, its cover (if unused elsewhere) and its favorites, playlist entries and history go everywhere.
 - **Downloads**: played songs are cached (Media3, LRU); **Download** pins a song for offline play (WorkManager, optional Wi-Fi-only), verified against its hash.
 - **Lyrics**: synced lyrics auto-scroll with active-line highlight; plain lyrics fallback; active line shown on the Now Playing screen.
 - **Playback**: play/pause/next/previous (restarts after 3 s), seek, queue with drag-reorder/remove/clear/jump, shuffle-on-start (tapped track first), repeat off/all/one.
@@ -14,10 +14,10 @@ The Android client of Music Vault. Fully native — Kotlin, Jetpack Compose, Med
 - **Equalizer**: 10-band ±12 dB (31 Hz–16 kHz) via `DynamicsProcessing`, presets Flat / Bass Boost / Vocal / Treble Boost / Custom.
 - **Visualizer**: spectrum bars + waveform modes (platform `Visualizer`; Android requires the mic permission to tap audio output — nothing is recorded).
 - **Views**: All Tracks (search + sort by artist/album/title), Albums grid, Album page, Artist page, Playlists (create/rename/delete/reorder), Smart playlists (Recently Added/Played, Most Played, Favorites, Never Played), grouped browse (Genre/Artist/Year/Language), Statistics (listening time, tracks played, top artists/genres, most played).
-- **Sync**: favorites, ratings, playlists, smart playlists, edits, play history, settings and the queue sync with desktop and web through the shared sync protocol (Kotlin port of the engine).
+- **Sync**: favorites, playlists, smart playlists, edits, play history, settings and the queue sync with desktop and web through the shared sync protocol (Kotlin port of the engine).
 - **Persistence**: queue, playback position and settings survive restarts (Room + DataStore). Playback resumes paused at the saved position.
 - **System integration**: MediaStyle notification, lock screen controls, Bluetooth/headset buttons, Android Auto browse tree (Tracks/Albums/Playlists/Favorites), audio-focus and becoming-noisy handling, sleep timer (15/30/45/60 min) that keeps counting in the background.
-- **Theming**: dark/light + purple/blue/green/pink accents, exact web palette.
+- **Theming**: light, dark or follow the system, plus pure-black AMOLED; one violet accent and the Figtree typeface, as on desktop and web.
 
 ## Building
 
@@ -52,13 +52,14 @@ app/src/main/java/com/musicvault/
 ├─ playback/   VaultPlayer (SimpleBasePlayer over two ExoPlayers: gapless + crossfade),
 │              QueueState (pure, tested), EqController, PlaybackController,
 │              PlaybackService (MediaLibraryService + Android Auto tree)
-└─ ui/         Compose: drawer, screens, mini player, Now Playing, bottom-sheet panels,
+└─ ui/         Compose: top bar + account menu, bottom tabs, screens, mini player,
+               Now Playing, bottom-sheet panels,
                vault/ (upload screen, track editor, share intake)
 ```
 
 ## Manual test checklist (on device)
 
-1. **Upload**: drawer → Upload music → pick songs; review the details and upload. They appear in the library here and on desktop/web.
+1. **Upload**: avatar → Upload music → Add files → pick songs; review the details and upload. They appear in the library here and on desktop/web.
 2. **Playback**: tap a track — it plays and the mini bar fills the queue from that list. Notification with artwork + transport appears; lock screen controls work.
 3. **Background**: leave the app; playback continues. Swipe the app away while playing — playback should survive.
 4. **Headset/Bluetooth**: play/pause/next from headphones or a BT device; unplugging pauses.

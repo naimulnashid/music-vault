@@ -1,6 +1,7 @@
 # Roadmap
 
-> Audit date: 2026-07-17 · branch `main` @ `e3b5237`; updated 2026-10-13 after the vault
+> Audit date: 2026-07-17 · branch `main` @ `e3b5237`; parity backfill rechecked 2026-10-15 ("Download
+> all" shipped on every client; custom accents were retired); updated 2026-10-13 after the vault
 > migration.
 > **Completed** is derived from the code and commit history ([PHASE_PROGRESS.md](PHASE_PROGRESS.md)).
 > **Not Started / Future** items are either named as future work in [PLAN.md](../PLAN.md) or are
@@ -53,7 +54,7 @@ commit-level table. In capability terms:
 | Playback (3 engines, gapless, crossfade, EQ, visualizer, lyrics) | All three |
 | The vault (R2 + `vault` function, signed URLs, verified downloads) | All three |
 | Two-tier cache | All three |
-| Ratings, favorites, playlists, smart playlists | All three |
+| Favorites, playlists, smart playlists (star ratings removed 2026-10-13) | All three |
 | Statistics 2.0 | All three (recap: desktop + web) |
 | Cross-device sync | All three |
 | Auth (account required) | All three |
@@ -88,10 +89,8 @@ The largest coherent body of work. Every item is a gap in
 | **Recap screen** | Android | **Small** | Engine already ported and golden-tested — pure UI work |
 | **ReplayGain application** | Android, web | Medium | Values are stored on the track row; only application is missing |
 | **ReplayGain on Android uploads** | Android | Small | JAudioTagger has no ReplayGain FieldKey, so a phone upload carries none |
-| **"Download all"** | Android, web | Small | Desktop's Downloads view has it |
 | **Verify Android's streaming cache** | Android | Medium | Pinned downloads are BLAKE3-checked; Media3's streaming cache isn't |
 | **Replace a track's audio** | All | Medium | Swap in a better file while keeping the row's history — today: upload the new file, delete the old |
-| **Custom hex accents** | Android | Small | Currently falls back to the default accent |
 | **Playlist folders** | All | Medium | ⚠️ **Schema-ready, UI-less on every client**: Supabase has `is_folder`/`parent_id` and the sync snapshot carries them, but desktop's `playlists` table has no such columns. Half-built since Phase 1 |
 
 **Dependencies**: none — all build on shipped foundations.

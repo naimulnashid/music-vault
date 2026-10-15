@@ -1,6 +1,7 @@
 # Repository Structure
 
-> Audit date: 2026-07-17 · branch `main` @ `e3b5237` · 450 tracked files.
+> Audit date: 2026-07-17 · branch `main` @ `e3b5237` · 450 tracked files. Folder tables for the
+> three apps updated 2026-10-15.
 > Derived from `git ls-files`, so build outputs (`target/`, `.gradle/`, `.next/`,
 > `node_modules/`) are excluded — they are ignored by [.gitignore](../.gitignore).
 
@@ -91,7 +92,7 @@ and targets `chrome120`. App config: [tauri.conf.json](../apps/desktop/src-tauri
 
 | Folder | Contents |
 |---|---|
-| `components/` | 35 React components — views (`LibraryView`, `AlbumPage`, `ArtistPage`, `PlaylistView`, `SmartPlaylistView`, `StatsView`, `RecapView`, `DownloadsView`), vault (`UploadButton`, `UploadDialog`, `TrackEditor`, `TrackFields`), chrome (`Sidebar`, `ViewHeader`, `AccountMenu`, `NowPlayingBar`, `NowPlayingScreen`, `MiniPlayer`, `QueuePanel`), controls (`EqualizerPanel`, `Visualizer`, `LyricsPanel`, `SleepTimer`, `StarRating`, `ThemeSwitcher`, `SmartRulesEditor`) |
+| `components/` | 47 React components (2026-10-15) — views (`LibraryView`, `AlbumPage`, `ArtistPage`, `PlaylistView`, `SmartPlaylistView`, `StatsView`, `Heatmap` (6-month card + Listening History), `RecapView`, `DownloadsView`), vault (`UploadDialog`, `TrackEditor`, `TrackFields`), chrome (`TopBar`, `Sidebar`, `ViewHeader`, `AccountMenu`, `NowPlayingBar`, `NowPlayingScreen`, `MiniPlayer`, `QueuePanel`), controls (`EqualizerPanel`, `Visualizer`, `LyricsPanel`, `SleepTimer`, `ThemeSwitcher`, `SmartRulesEditor`, `SmartPlaylistDialog`, `DownloadAllButton`, `ChartTooltip`, `Mosaic`) |
 | `store/` | 11 Zustand stores: `library`, `player`, `download`, `upload`, `sync`, `stats`, `history`, `auth`, `settings`, `sleep`, `ui` |
 | `lib/` | `ipc.ts` (the typed `invoke` wrapper), `db.ts`, `player.ts`, `vault.ts` (vault client + play resolver), `vaultMerge.ts` (library projection), `vaultActions.ts`, `vaultCleanup.ts`, `trackForm.ts`, `covers.ts`, `freshStart.ts`, `smartEval.ts`, `syncBus.ts`, `syncStorage.ts`, `miniBridge.ts`, `lastPlayback.ts`, `paths.ts`, `supabase.ts` |
 | `hooks/` | `useAudioEngine`, `useKeyboardShortcuts`, `useSmtc`, `useTheme`, `useVirtualRows`, `useNotifications`, `useFileDrop`, `useMiniBridge` |
@@ -131,7 +132,7 @@ Package layout under `app/src/main/java/com/musicvault/` (14 903 lines of Kotlin
 |---|---|
 | `data/db/` | Room: `Entities.kt`, `Daos.kt`, `MusicVaultDatabase.kt` (v7 + 6 migrations) |
 | `data/sync/` | Kotlin sync-engine port: `SyncEngine.kt` (785), `SupabaseSyncTransport.kt` (364), `RoomSyncStorage.kt`, `Fractional.kt`, `SyncTypes.kt`, `SyncManager.kt`, `SyncBus.kt`, `RemoteTrackIndex.kt` |
-| `data/vault/` | `VaultApi.kt` (function client over OkHttp), `UploadManager.kt`, `TrackForm.kt`, `VaultMerge.kt` (library projection), `VaultArtwork.kt`, `AudioCache.kt`, `DownloadRepository.kt`, `DownloadWorker.kt` |
+| `data/vault/` | `VaultApi.kt` (function client over OkHttp), `UploadManager.kt`, `TrackForm.kt`, `VaultMerge.kt` (library projection), `VaultArtwork.kt`, `AudioCache.kt` (auto-cache cap, clear, auto-download switch), `DownloadRepository.kt`, `DownloadWorker.kt`, `AutoDownloader.kt` |
 | `data/repo/` | `LibraryRepository.kt`, `HistoryRepository.kt`, `StatsRepository.kt` |
 | `data/scanner/` | `TagParser.kt` (JAudioTagger) — tag reading for uploads |
 | `data/FreshStart.kt` | One-time cleanup of the pre-vault library's files |
@@ -139,7 +140,7 @@ Package layout under `app/src/main/java/com/musicvault/` (14 903 lines of Kotlin
 | `data/prefs/` | `SettingsRepository.kt` (DataStore) |
 | `domain/` | The **Kotlin ports** of the shared engine: `SmartRules.kt`, `SmartRulesMeta.kt`, `SmartPlaylists.kt`, `Stats.kt` (460), `Albums.kt`, `Lrc.kt`, `Format.kt`, `model/Models.kt` |
 | `playback/` | `VaultPlayer.kt` (653 — dual-ExoPlayer gapless/crossfade), `PlaybackService.kt`, `PlaybackController.kt`, `QueueState.kt`, `EqController.kt`, `VaultDataSource.kt` |
-| `ui/` | Compose: `AppRoot.kt`, `VaultDrawer.kt`, ViewModels, `screens/` (9), `player/` (8), `components/` (5), `vault/` (upload screen, track editor, share intake), `theme/Theme.kt` |
+| `ui/` | Compose: `AppRoot.kt` (top bar, bottom tabs, routes), `AccountMenu.kt` + `AccountSection.kt` (the avatar's dropdown), ViewModels, `screens/` (11, including `HeatmapScreen.kt`), `player/` (8), `components/` (9, including `Mosaic.kt`), `vault/` (upload screen, track editor, share intake), `theme/Theme.kt` |
 | `di/` | Hilt modules: `AppModule.kt`, `CoroutinesModule.kt` |
 
 Entry points: [MainActivity.kt](../apps/android/app/src/main/java/com/musicvault/MainActivity.kt) and
@@ -154,9 +155,9 @@ request and bounces signed-out visitors to `/login` (public paths: `/login`, `/a
 
 | Path | Contents |
 |---|---|
-| `src/app/` | Routes: `page.tsx` (the app), `login/`, `account/`, `help/` (public user docs), `layout.tsx`, `globals.css`, favicon/icon assets |
-| `src/components/` | 28 components — largely 1:1 counterparts of the desktop set, plus `MusicVaultApp.tsx` |
-| `src/lib/` | `audioEngine.ts`, `audioCache.ts` (OPFS, BLAKE3-verified), `db.ts` (IndexedDB), `syncStorage.ts`, `playEventLog.ts`, `vault.ts`, `uploadPrepare.ts`, `vaultActions.ts`, `trackForm.ts`, `artwork.ts`, `trackMap.ts` (library projection), `freshStart.ts`, `smartEval.ts`, `errorBus.ts`, `lastPlayback.ts`, `supabase/{browser,server}.ts` |
+| `src/app/` | Routes: `[[...view]]/page.tsx` (the app, at every in-app address), `login/`, `account/` (no longer linked from the menu), `help/` (public user docs), `layout.tsx`, `globals.css`, favicon/icon assets |
+| `src/components/` | 47 components (2026-10-15) — largely 1:1 counterparts of the desktop set, plus `MusicVaultApp.tsx` |
+| `src/lib/` | `audioEngine.ts`, `audioCache.ts` (OPFS, BLAKE3-verified), `db.ts` (IndexedDB), `syncStorage.ts`, `playEventLog.ts`, `vault.ts`, `uploadPrepare.ts`, `vaultActions.ts`, `trackForm.ts`, `artwork.ts`, `trackMap.ts` (library projection), `urlSync.ts` (address bar ↔ view), `freshStart.ts`, `smartEval.ts`, `errorBus.ts`, `lastPlayback.ts`, `supabase/{browser,server}.ts` |
 | `src/store/` | The same 11 Zustand stores as desktop |
 | `src/hooks/` | `useAudioEngine`, `useMediaSession`, `useKeyboardShortcuts`, `useNotifications`, `useVirtualRows` |
 | `e2e/` | Playwright specs: `unauthenticated.spec.ts`, `authenticated.spec.ts` |

@@ -1,6 +1,7 @@
 # API Reference
 
-> Audit date: 2026-07-17 · branch `main` @ `e3b5237`; updated 2026-10-13 for the vault.
+> Audit date: 2026-07-17 · branch `main` @ `e3b5237`; updated 2026-10-13 for the vault; cache and
+> download commands updated 2026-10-15.
 > Every public interface in the repository: Tauri/Rust commands and events, the `@musicvault/core`
 > TypeScript API, the web app's server surface, Android repositories, Supabase interactions and the
 > `vault` Edge Function. Schema details live in [DATABASE.md](DATABASE.md); vault specifics in
@@ -122,8 +123,10 @@ the core client (§2.5); Rust only moves bytes and keeps the cache.
 | `vault_forget_deleted` | `content_hashes: Vec<String>` | `Result<usize, String>` | Drops cached/pinned copies of tracks deleted from the vault |
 | `vault_downloads_list` | — | `Result<Vec<CacheEntryRow>, String>` | |
 | `vault_download_remove` | `file_id: String` | `Result<(), String>` | Removes from disk **and** the index |
+| `vault_download_cancel` | `file_ids: Vec<String>` | `Result<(), String>` | Stops in-flight downloads of these cache keys at the next chunk; keys with no download running are ignored ([vault/transfer.rs](../apps/desktop/src-tauri/src/vault/transfer.rs)). The stopped download fails with `cancelled` |
 | `vault_cache_stats` | — | `Result<CacheStats, String>` | |
-| `vault_cache_set_max` | `max_bytes: i64` | `Result<CacheStats, String>` | Persists the cap (`cache_max_bytes`) **and evicts down to it immediately** |
+| `vault_cache_set_max` | `max_bytes: i64` | `Result<CacheStats, String>` | Clamps to 0..10 GiB (0 = off), persists the cap (`cache_max_bytes`) **and evicts down to it immediately**, sparing the two most recent entries |
+| `vault_cache_clear` | — | `Result<CacheStats, String>` | Empties the auto tier except the two most recent entries; pinned downloads stay |
 
 ## 1.8 Shell & window — [commands/mod.rs](../apps/desktop/src-tauri/src/commands/mod.rs), [commands/window.rs](../apps/desktop/src-tauri/src/commands/window.rs)
 

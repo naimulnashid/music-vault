@@ -1,13 +1,14 @@
 # MusicVault — Project Overview
 
-> Audit date: 2026-07-17 · Repository state: branch `main` @ `e3b5237` · 45 commits (2026-07-14 → 2026-07-17)
+> Audit date: 2026-07-17 · Repository state: branch `main` @ `e3b5237` · 45 commits (2026-07-14 → 2026-07-17);
+> feature lists rechecked 2026-10-15 (star ratings removed 2026-10-13)
 > Every claim below was verified against the files cited during this audit.
 
 ## 1. What the project is
 
 MusicVault is a **personal music ecosystem for people who own their music files** — as
 opposed to a streaming service. It is a monorepo containing three first-party clients that
-share one account, one library, and one set of playlists, ratings, favorites and listening
+share one account, one library, and one set of playlists, favorites and listening
 history:
 
 | Client | Technology | Manifest |
@@ -203,7 +204,7 @@ removal of Drive, local-folder libraries and local mode. The library was rebuilt
 ### Implemented
 
 Library management, playback (three engines), the vault (upload, online editing, delete), two-tier caching,
-ratings, playlists, smart playlists, Statistics 2.0, cross-device sync, settings, downloads,
+favorites, playlists, smart playlists, Statistics 2.0, cross-device sync, settings, downloads,
 authentication and the UI shell are all present on the platforms detailed in
 [FEATURES.md](FEATURES.md), with the per-platform gaps enumerated in
 [FEATURE_PARITY.md](FEATURE_PARITY.md).

@@ -1,19 +1,19 @@
 # Testing
 
 > Audit date: 2026-07-17 · branch `main` @ `e3b5237`; counts and suites updated 2026-10-13 for
-> the vault. Suites: core vitest, the `vault` function's vitest, desktop/web vitest, Rust
+> the vault, counts recounted 2026-10-15. Suites: core vitest, the `vault` function's vitest, desktop/web vitest, Rust
 > `cargo test`, Android JVM, Playwright web e2e, and manual SQL smoke tests. CI wiring:
 > [BUILD_AND_RUN.md §9](BUILD_AND_RUN.md#9-cicd).
 
 ## Run everything
 
 ```sh
-npm run core:test                                    # vitest — 160 tests, 10 files
+npm run core:test                                    # vitest — 174 tests, 10 files
 npm run vault:test                                   # vitest — 23 tests, the vault function
 npm run desktop:test                                 # vitest — 4 tests (library projection)
 npm run web:test                                     # vitest — 4 tests (vault helpers)
-cd apps/desktop/src-tauri && cargo test              # Rust — 15 tests, 5 modules
-cd apps/android && ./gradlew.bat testDebugUnitTest   # Kotlin JVM — 82 cases, 9 files
+cd apps/desktop/src-tauri && cargo test              # Rust — 19 tests, 6 modules
+cd apps/android && ./gradlew.bat testDebugUnitTest   # Kotlin JVM — 83 cases, 9 files
 npm run web:e2e                                      # Playwright — 2 specs
 ```
 
@@ -21,11 +21,11 @@ npm run web:e2e                                      # Playwright — 2 specs
 
 | Suite | Runner | Files | Cases | Location |
 |---|---|---:|---:|---|
-| Core | vitest 3 | 10 | 160 | [packages/core/tests/](../packages/core/tests) |
+| Core | vitest 3 | 10 | 174 | [packages/core/tests/](../packages/core/tests) |
 | Vault function | vitest | 1 | 23 | [supabase/functions/vault/handler.test.ts](../supabase/functions/vault/handler.test.ts) |
 | Desktop / web | vitest | 1 + 1 | 4 + 4 | [vaultMerge.test.ts](../apps/desktop/src/lib/vaultMerge.test.ts), [vaultWeb.test.ts](../apps/web/src/lib/vaultWeb.test.ts) |
-| Rust | cargo | 5 modules | 15 | inline `#[cfg(test)]` in `src-tauri/src/` |
-| Android | JUnit 4 + Truth | 9 | 82 | [app/src/test/java/com/musicvault/](../apps/android/app/src/test/java/com/musicvault) |
+| Rust | cargo | 6 modules | 19 | inline `#[cfg(test)]` in `src-tauri/src/` |
+| Android | JUnit 4 + Truth | 9 | 83 | [app/src/test/java/com/musicvault/](../apps/android/app/src/test/java/com/musicvault) |
 | Web e2e | Playwright | 2 | — | [apps/web/e2e/](../apps/web/e2e) |
 | Supabase SQL | psql, manual | 3 | — | [rls_smoke.sql](../supabase/tests/rls_smoke.sql), [vault_smoke.sql](../supabase/tests/vault_smoke.sql), [track_edit_golden.mjs](../supabase/tests/track_edit_golden.mjs) |
 | Vault end to end | node, manual | 1 | — | [functions/vault/smoke.mjs](../supabase/functions/vault/smoke.mjs) — against the real bucket |
@@ -88,16 +88,16 @@ and the fixture. See [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md#changing-shared-log
 |---|---:|---|
 | [syncEngine.test.ts](../packages/core/tests/syncEngine.test.ts) | 28 | The conflict surface (below), including `track.edit` and paged pulls |
 | [upload.test.ts](../packages/core/tests/upload.test.ts) | 13 | Upload drafts, batch fields, cover rules, `uploadTrack` (new, known, revived, already stored) |
-| [trackFields.test.ts](../packages/core/tests/trackFields.test.ts) | 12 | Track edits + **golden fixture** (`track-edit.golden.json`) |
+| [trackFields.test.ts](../packages/core/tests/trackFields.test.ts) | 14 | Track edits + **golden fixture** (`track-edit.golden.json`) |
 | [vault.test.ts](../packages/core/tests/vault.test.ts) | 10 | Vault client, `SignedUrlCache`, `deletedVaultHashes` |
 | [lrc.test.ts](../packages/core/tests/lrc.test.ts) | 7 | LRC parsing |
 | [fractional.test.ts](../packages/core/tests/fractional.test.ts) | 6 | Fractional index keys |
 | [smartPlaylists.test.ts](../packages/core/tests/smartPlaylists.test.ts) | 6 | Built-in smart playlists |
 | [stats.test.ts](../packages/core/tests/stats.test.ts) | 6 | Stats engine + **golden fixture** |
 | [smartRules.test.ts](../packages/core/tests/smartRules.test.ts) | 5 | Rule engine + **golden fixture** |
-| [format.test.ts](../packages/core/tests/format.test.ts) | 4 | Formatting |
+| [format.test.ts](../packages/core/tests/format.test.ts) | 7 | Formatting |
 
-The table counts `it` blocks (97); vitest reports 160 because the golden-fixture tests expand
+The table counts `it` blocks (102); vitest reports 174 because the golden-fixture tests expand
 into one test per fixture case.
 
 ### The sync engine suite (765 lines) is the crown jewel
@@ -137,17 +137,18 @@ linked (unlike rules/stats); they are parallel implementations of the same scena
 
 ---
 
-## 3. Rust suite — 15 tests
+## 3. Rust suite — 19 tests
 
-Inline `#[cfg(test)]` modules in five files:
+Inline `#[cfg(test)]` modules in six files:
 
 | Module | Tests |
 |---|---|
-| [vault/cache.rs](../apps/desktop/src-tauri/src/vault/cache.rs) | `enforce_cap_evicts_least_recently_used_first_and_spares_pinned` · `resolve_bumps_recency_so_played_tracks_survive_eviction` · `resolve_cleans_up_index_rows_for_vanished_files` · `register_download_pinned_skips_cap_and_promote_moves_tiers` · `forgets_cached_copies_of_deleted_tracks` |
+| [vault/cache.rs](../apps/desktop/src-tauri/src/vault/cache.rs) | `enforce_cap_evicts_least_recently_used_first_and_spares_pinned` · `resolve_bumps_recency_so_played_tracks_survive_eviction` · `resolve_cleans_up_index_rows_for_vanished_files` · `register_download_pinned_skips_cap_and_promote_moves_tiers` · `forgets_cached_copies_of_deleted_tracks` · `cap_zero_keeps_only_the_playing_and_next_song` · `clear_auto_spares_pinned_and_recent` · `stored_cap_is_clamped_to_the_maximum` |
 | [vault/prepare.rs](../apps/desktop/src-tauri/src/vault/prepare.rs) | `covers_are_square_capped_and_named_by_their_sha256` · `small_covers_are_never_upscaled` · `the_same_image_always_gets_the_same_name` · `unreadable_images_are_rejected` · `hashes_match_independent_computation_and_formats_are_checked` |
 | [db/mod.rs](../apps/desktop/src-tauri/src/db/mod.rs) | `fresh_db_migrates_to_latest_without_drive_or_folder_tables` · `upgrading_from_v8_clears_the_old_library_and_keeps_settings` |
 | [audio/decoder.rs](../apps/desktop/src-tauri/src/audio/decoder.rs) | `decodes_hires_wav_at_native_rate` · `missing_file_reports_not_found` |
 | [audio/output.rs](../apps/desktop/src-tauri/src/audio/output.rs) | `plays_hires_tone_through_default_device` |
+| [scan/tags.rs](../apps/desktop/src-tauri/src/scan/tags.rs) | `release_dates_from_tags_match_core` |
 
 The cache tests (Phase 9a, `c889289`, plus the vault's `forgets_…`) each name an invariant rather
 than a function — pinned files survive eviction, playing a track refreshes its recency, a vanished
@@ -172,12 +173,12 @@ The DB tests write to `std::env::temp_dir()` keyed by process id
 
 ---
 
-## 4. Android suite — 82 cases
+## 4. Android suite — 83 cases
 
 | File | Cases | Covers |
 |---|---:|---|
 | [SyncEngineTest.kt](../apps/android/app/src/test/java/com/musicvault/data/sync/SyncEngineTest.kt) | 26 | Kotlin conflict suite (mirrors §2) |
-| [VaultMergeTest.kt](../apps/android/app/src/test/java/com/musicvault/data/vault/VaultMergeTest.kt) | 6 | The library projection (rows, pending edits, favorites, ratings, covers) |
+| [VaultMergeTest.kt](../apps/android/app/src/test/java/com/musicvault/data/vault/VaultMergeTest.kt) | 7 | The library projection (rows, pending edits, favorites, ratings, covers) |
 | [TrackEditGoldenTest.kt](../apps/android/app/src/test/java/com/musicvault/data/sync/TrackEditGoldenTest.kt) | 4 | **Golden fixture** (`track-edit.golden.json`) |
 | [QueueStateTest.kt](../apps/android/app/src/test/java/com/musicvault/playback/QueueStateTest.kt) | 14 | Queue/shuffle/repeat — Android-only logic |
 | [SmartPlaylistsTest.kt](../apps/android/app/src/test/java/com/musicvault/domain/SmartPlaylistsTest.kt) | 12 | Built-in smart playlists |

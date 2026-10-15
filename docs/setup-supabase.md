@@ -1,7 +1,7 @@
 # Supabase setup (one-time)
 
 MusicVault uses Supabase for the account, the library (every track's details,
-playlists, ratings, favorites, history) and cross-device sync. The apps need it.
+playlists, favorites, history) and cross-device sync. The apps need it.
 
 ## 1. Create the project
 

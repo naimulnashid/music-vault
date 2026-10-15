@@ -121,7 +121,9 @@ push once the repo is linked. User docs ship with the web app at `/help`.
       accent color picker + follow-system theme, ReplayGain playback stage
       (track/album) in the Rust engine, APE + WavPack decoders (vendored
       libwavpack, no extra toolchain), live folder watching (notify) and a
-      content-hash Duplicates view
+      content-hash Duplicates view. Later removed: folder watching and
+      Duplicates with the vault migration, the accent picker in the
+      2026-10-13 redesign (one violet accent everywhere)
 - [x] **Phase 9** — hardening & release: Rust cache-LRU tests + Playwright web
       e2e on top of the existing suites, sync-engine breadcrumb diagnostics on
       every client, virtualized track lists (50k-ready) + artwork thumbnail

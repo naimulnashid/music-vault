@@ -1,6 +1,7 @@
 # Developer Guide
 
-> Audit date: 2026-07-17 · branch `main` @ `e3b5237`; updated 2026-10-13 for the vault.
+> Audit date: 2026-07-17 · branch `main` @ `e3b5237`; updated 2026-10-13 for the vault; Android
+> navigation note updated 2026-10-15.
 > Conventions below are **observed from the code**, not prescribed by me — this repo has no
 > CONTRIBUTING.md, no Prettier/EditorConfig, and no ktlint/rustfmt config. The patterns are
 > nonetheless remarkably consistent, so follow what's there.
@@ -217,7 +218,7 @@ exist — a mistake surfaces as a runtime crash on real users' devices, not in C
   `MusicVaultApp.tsx`, add sidebar entry. Web: make heavy views lazy chunks — stats, recap,
   downloads, EQ and visualizer already are
   ([docs/architecture.md:156-157](../docs/architecture.md)).
-- Android: `ui/screens/`, ViewModel in `ui/`, route in `AppRoot.kt`/`VaultDrawer.kt`.
+- Android: `ui/screens/`, ViewModel in `ui/`, route and bottom tab in `AppRoot.kt`.
 - Long track lists must window: use `useVirtualRows` (desktop/web); Compose's lazy lists on Android.
 
 ---

@@ -2,7 +2,7 @@
 
 > Audit date: 2026-07-17 · branch `main` @ `e3b5237`; library, vault, caching, downloads and
 > auth sections updated 2026-10-13 for the vault, which replaced Google Drive and local folders;
-> caching and downloads rows updated 2026-10-15.
+> caching, downloads, statistics, settings and UI rows updated 2026-10-15.
 > Every feature from [FEATURES.md](FEATURES.md), scored per platform. Legend:
 > **✅ Full** · **⚠️ Partial / behaves differently** · **❌ Missing** · **🚧 Planned — not implemented**
 >
@@ -111,7 +111,7 @@ Full detail: [VAULT.md](VAULT.md).
 | Per-file download dedupe | ✅ | ✅ | ✅ | Desktop waits on the in-flight download ([vault/mod.rs](../apps/desktop/src-tauri/src/vault/mod.rs)); web's `inFlight` map ([audioCache.ts](../apps/web/src/lib/audioCache.ts)); Android's WorkManager unique work. |
 | Covers by key (full + thumbnail) | ✅ | ✅ | ✅ | Desktop `fetchVaultArt` ([lib/vault.ts](../apps/desktop/src/lib/vault.ts)) · [VaultArtwork.kt](../apps/android/app/src/main/java/com/musicvault/data/vault/VaultArtwork.kt) · web [artwork.ts](../apps/web/src/lib/artwork.ts). Covers show before the audio is downloaded on every client. |
 | "Download all" | ✅ | ✅ | ✅ | Desktop and web Downloads view (desktop 4 at a time, web 1, [downloadStore.ts](../apps/desktop/src/store/downloadStore.ts)); Android via auto-download. Collection Download buttons show done/left and cancel while running, and remove the downloads once complete (all clients, 2026-10-15). |
-| Download speed / aggregate UI | ✅ | ⚠️ | ❌ | Desktop [DownloadsView.tsx](../apps/desktop/src/components/DownloadsView.tsx); Android surfaces `WorkInfo` progress. |
+| Download speed / aggregate UI | ✅ | ⚠️ | ✅ | `DownloadsView.tsx` on desktop and web show live speed and a total; Android surfaces `WorkInfo` progress per song. |
 
 ---
 
@@ -172,6 +172,8 @@ shared fixture makes disagreement a test failure ([TESTING.md §1](TESTING.md#1-
 | Local play-event log | ✅ | ✅ | ✅ | SQLite `play_events` (v5) · Room `play_events` (v6) · IndexedDB `mv-stats`. All three survive sign-out by design. |
 | Event sync (`playEvent.add`) | ✅ | ✅ | ✅ | Append-only, deduped on shared event id. |
 | Summary / top lists / charts / heatmap / clock / streaks | ✅ | ✅ | ✅ | [core/stats.ts](../packages/core/src/stats.ts) ↔ [Stats.kt](../apps/android/app/src/main/java/com/musicvault/domain/Stats.kt), pinned by [stats.golden.json](../docs/fixtures/stats.golden.json). |
+| 6-month heatmap + full Listening History | ✅ | ✅ | ✅ | `Heatmap.tsx` ×2 · [HeatmapScreen.kt](../apps/android/app/src/main/java/com/musicvault/ui/screens/HeatmapScreen.kt). |
+| Chart hover tooltips | ✅ | — | ✅ | One shared tooltip ([ChartTooltip.tsx](../apps/desktop/src/components/ChartTooltip.tsx)); touch has no hover, and Android's heatmap squares are view-only. |
 | **Yearly recap (Wrapped-style)** | ✅ | ❌ | ✅ | Desktop [RecapView.tsx](../apps/desktop/src/components/RecapView.tsx) · web [RecapView.tsx](../apps/web/src/components/RecapView.tsx). **Android has the engine fully ported** — `Stats.Recap`, `computeRecap`, `recapYears` at [Stats.kt:380-458](../apps/android/app/src/main/java/com/musicvault/domain/Stats.kt), covered by [StatsGoldenTest.kt](../apps/android/app/src/test/java/com/musicvault/domain/StatsGoldenTest.kt) — **but nothing calls it**: verified by grep across [StatsScreen.kt](../apps/android/app/src/main/java/com/musicvault/ui/screens/StatsScreen.kt), [StatsViewModel.kt](../apps/android/app/src/main/java/com/musicvault/ui/StatsViewModel.kt) and [StatsRepository.kt](../apps/android/app/src/main/java/com/musicvault/data/repo/StatsRepository.kt) — zero references. **Impact**: Android users cannot see their yearly recap even though their device computes everything needed for it. Also the cheapest fix on this page: the hard part is done and tested. |
 | Aggregated history table | ❌ | ⚠️ | ❌ | ⚠️ **Android-only `play_history`** (`playCount`, `listenSeconds`, `lastPlayedAt`) alongside the event log ([Entities.kt](../apps/android/app/src/main/java/com/musicvault/data/db/Entities.kt)), driving `HistoryRepository`. It is **not synced** and contradicts the "no play-count column anywhere" rule ([0001_init.sql:208-212](../supabase/migrations/0001_init.sql)). **Impact**: Android's "Most Played"/"Recently Played" can be computed from a *different source* than desktop/web's event-derived lists, so the same account can rank tracks differently on Android. |
 
@@ -200,10 +202,9 @@ shared fixture makes disagreement a test failure ([TESTING.md §1](TESTING.md#1-
 | Storage | ✅ | ✅ | ✅ | Whole-object JSON in a key/value row (desktop) · DataStore per key (Android) · IndexedDB (web). |
 | Per-device scoping | ✅ | ✅ | ✅ | Supabase `(user_id, scope, key)` where scope = `'global'` or a device id ([0001_init.sql:234-245](../supabase/migrations/0001_init.sql)). |
 | Theme (dark/light) | ✅ | ✅ | ✅ | Synced. |
-| Accent presets | ✅ | ✅ | ✅ | Hex values shared at [core/types.ts:72-77](../packages/core/src/types.ts). |
-| **Custom hex accent** | ✅ | ❌ | ✅ | Documented fallback: "Clients that only understand presets fall back to their default accent when they receive a hex value" ([core/types.ts:64-69](../packages/core/src/types.ts)). **Impact**: pick `#ff6600` on desktop and your phone silently shows its default accent — the setting syncs but is discarded. |
-| AMOLED | ✅ | ✅ | ❌ | Device-local, never synced ([core/types.ts:98-99](../packages/core/src/types.ts)). Desktop `5cbe27f`, Android `d459f1e`. Web has no AMOLED mode. |
-| Follow system theme | ✅ | ✅ | ⚠️ | Device-local ([core/types.ts:100-101](../packages/core/src/types.ts)). |
+| Accent | ✅ | ✅ | ✅ | One accent, Vibrant Violet `#8B5CF6`, on every client since the 2026-10-13 redesign. The synced `accent` setting stays in the shape for older builds but is no longer applied (desktop [useTheme.ts](../apps/desktop/src/hooks/useTheme.ts)). |
+| AMOLED | ✅ | ✅ | ✅ | Device-local, never synced ([core/types.ts:98-99](../packages/core/src/types.ts)); a switch beside the theme control in each account menu. |
+| Follow system theme | ✅ | ✅ | ✅ | Device-local ([core/types.ts:100-101](../packages/core/src/types.ts)). |
 | **Material You dynamic color** | ❌ | ✅ | ❌ | Android-only (`setDynamicColor`, [SettingsRepository.kt:100](../apps/android/app/src/main/java/com/musicvault/data/prefs/SettingsRepository.kt); [Theme.kt](../apps/android/app/src/main/java/com/musicvault/ui/theme/Theme.kt)), commit `d459f1e`. Platform-appropriate — **not a gap**. |
 | `notificationsEnabled` | ✅ | ❌ | ✅ | See [OS integration](#os-integration): the setting syncs to Android and does nothing. |
 
@@ -216,7 +217,8 @@ shared fixture makes disagreement a test failure ([TESTING.md §1](TESTING.md#1-
 | Downloads view | ✅ | ✅ | ✅ | `DownloadsView.tsx` ×2 · [DownloadsScreen.kt](../apps/android/app/src/main/java/com/musicvault/ui/screens/DownloadsScreen.kt). |
 | Bulk download (song/album/artist/playlist) | ✅ | ✅ | ✅ | `DownloadAllButton.tsx` (desktop/web) · `enqueueAll` ([DownloadRepository.kt](../apps/android/app/src/main/java/com/musicvault/data/vault/DownloadRepository.kt)). |
 | **Survives app death** | ❌ | ✅ | ❌ | ⚠️ **Android is ahead here.** WorkManager ([DownloadWorker.kt](../apps/android/app/src/main/java/com/musicvault/data/vault/DownloadWorker.kt)) resumes queued downloads after the process dies; desktop and web downloads are in-process and are lost on quit/tab-close. **Impact**: closing the desktop app mid-album-download abandons it. |
-| Cancel a download | ⚠️ | ✅ | ⚠️ | Android has explicit `cancel(trackId)` ([DownloadRepository.kt](../apps/android/app/src/main/java/com/musicvault/data/vault/DownloadRepository.kt)). |
+| Cancel a download | ✅ | ✅ | ✅ | Desktop `vault_download_cancel` stops the transfer at the next chunk; web aborts the fetch; Android `cancel(trackId)` ([DownloadRepository.kt](../apps/android/app/src/main/java/com/musicvault/data/vault/DownloadRepository.kt)). |
+| Collection download progress, cancel, remove | ✅ | ✅ | ✅ | The Download button shows done/left, cancels while running and removes the downloads when complete ([FEATURES.md](FEATURES.md#downloads)). |
 | Remove a download | ✅ | ✅ | ✅ | Desktop `vault_download_remove` removes from disk **and** index. |
 
 ---
@@ -238,7 +240,10 @@ shared fixture makes disagreement a test failure ([TESTING.md §1](TESTING.md#1-
 
 | Feature | Desktop | Android | Web | Notes |
 |---|:---:|:---:|:---:|---|
-| Component set | ✅ | ✅ | ✅ | Desktop 34 / web 33 components with largely matching names; Android is an independent Compose implementation. |
+| Component set | ✅ | ✅ | ✅ | Desktop 47 / web 47 components (2026-10-15) with largely matching names; Android is an independent Compose implementation. |
+| Account menu under the avatar | ✅ | ✅ | ✅ | Same sections everywhere; Android's is a dropdown since 2026-10-15 ([AccountMenu.kt](../apps/android/app/src/main/java/com/musicvault/ui/AccountMenu.kt)). |
+| Playlist covers (2×2 mosaic) | ✅ | ✅ | ✅ | `Mosaic.tsx` ×2 · [Mosaic.kt](../apps/android/app/src/main/java/com/musicvault/ui/components/Mosaic.kt); smart playlists use the songs their rules match. |
+| Address bar follows the page | — | — | ✅ | Web only by nature ([lib/urlSync.ts](../apps/web/src/lib/urlSync.ts)). |
 | Sidebar / navigation | ✅ | ✅ | ✅ | `Sidebar.tsx` ×2 · [AppRoot.kt](../apps/android/app/src/main/java/com/musicvault/ui/AppRoot.kt) (bottom navigation since the 2026-10-13 redesign). Collapsible sections + header account menu added post-1.0 (`8ff276c`, `d441968`) to desktop and web only. |
 | State management | ✅ | ✅ | ✅ | 11 identical Zustand stores on desktop/web; Hilt ViewModels on Android. |
 | Error toasts | ✅ | ⚠️ | ✅ | `ErrorToast` + `errorBus.ts` (desktop/web); Android surfaces errors per-screen. |
@@ -255,7 +260,6 @@ support tickets, because nothing looks broken:
 | # | Feature | The divergence |
 |---|---|---|
 | 1 | **ReplayGain** | Setting syncs and displays everywhere; **only desktop applies it**. The user sees the control honored on their phone and hears nothing change. ([core/types.ts:96-97](../packages/core/src/types.ts)) |
-| 2 | **Custom accent** | Syncs as `#rrggbb`; Android silently substitutes its default. ([core/types.ts:64-69](../packages/core/src/types.ts)) |
 | 3 | **`notificationsEnabled`** | Syncs to Android, which has no such setting and shows its MediaSession notification regardless. |
 | 4 | **ReplayGain on upload** | Desktop and web read ReplayGain tags into the row; Android can't, so the same file uploaded from the phone has none — and the values are read-only afterwards. |
 | 5 | **"Most Played" / "Recently Played"** | Desktop and web derive them from play events; Android can derive them from its `play_history` aggregates. Same list, different source of truth. ([Entities.kt](../apps/android/app/src/main/java/com/musicvault/data/db/Entities.kt)) |
@@ -296,6 +300,5 @@ Ranked by user-visible value per unit of effort — see [ROADMAP.md](ROADMAP.md#
 1. **Android recap screen** — engine done, tested, unreachable. Pure UI. 🥇
 2. **ReplayGain application (Android, web)** — closes the most misleading synced-setting lie.
 3. **ReplayGain reading on Android uploads** — so a phone upload carries the same values.
-4. **Custom accents + `notificationsEnabled` (Android)** — small, removes two silent no-ops.
-5. **"Download all" (Android, web)** — the desktop pattern is there to copy.
-6. **Retire `play_history`** — removes divergence #5 at the root.
+4. **`notificationsEnabled` (Android)** — small, removes a silent no-op.
+5. **Retire `play_history`** — removes divergence #5 at the root.

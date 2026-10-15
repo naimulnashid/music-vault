@@ -4,7 +4,7 @@ Three clients, one account, one music library.
 
 ```
                 Supabase (PostgreSQL + Auth + Realtime + Edge Functions)
-                track details, playlists, ratings, favorites,
+                track details, playlists, favorites,
                 play events, settings, sync state; `vault` function
                      ▲            ▲            ▲
                      │            │            │
@@ -102,7 +102,8 @@ Drive: [drive-to-r2-migration.md](drive-to-r2-migration.md).
 ## Sync model
 
 - `play_events` are append-only — no conflicts by construction.
-- Favorites / ratings / settings: last-writer-wins on `updated_at`.
+- Favorites / settings: last-writer-wins on `updated_at`. (Ratings followed the same
+  rule until star ratings were removed on 2026-10-13; the table stays.)
 - Playlist ordering: fractional indexes, so concurrent reorders merge.
 - Every mutation gets a client-generated UUID → idempotent replay after
   offline periods. Outbox persists in the local DB and survives crashes.
@@ -140,9 +141,9 @@ are deterministic in tests and local-midnight-correct on devices.
   boots a remote-control UI from the same bundle; the main window hides but
   keeps running as the "brain" (stores, sync, SMTC, queue). State snapshots
   and commands flow over the `mini://*` Tauri events (`lib/miniBridge.ts`).
-- **Theming**: synced `theme` stays dark/light and `accent` may be a preset
-  name or a custom `#rrggbb` (web renders it too; Android falls back);
-  AMOLED pure-black and follow-OS-theme are device-local settings.
+- **Theming**: synced `theme` stays dark/light; every client uses one violet
+  accent since the 2026-10-13 redesign (the synced `accent` field is kept but
+  not applied); AMOLED pure-black and follow-OS-theme are device-local settings.
 - **ReplayGain**: `replayGainMode` (off/track/album) syncs; the desktop engine
   applies a per-stream linear gain inside `StreamState::pull`, so it is
   per-track-correct across gapless splices and crossfades. Gains are read
@@ -154,7 +155,8 @@ are deterministic in tests and local-midnight-correct on devices.
 ## Cache & downloads (two tiers)
 
 1. **Auto-cache** — filled by playing a track; LRU-evicted under a
-   configurable size cap.
+   size cap of Off to 10 GB per device, with a Clear cache button.
+   Skipped while auto-download keeps the whole vault pinned.
 2. **Pinned downloads** — explicit song/album/artist/playlist downloads;
    never auto-evicted.
 

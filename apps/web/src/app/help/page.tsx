@@ -69,9 +69,12 @@ export default function HelpPage() {
         <H2>Cloud tracks, downloads &amp; offline</H2>
         <P>
           Every track lives in your vault and downloads automatically on first play into a
-          size-capped cache. Use the download button on a track (or “Download
-          all” on a playlist) to <em>pin</em> it permanently for offline use. Cache size and
-          pinned downloads are managed in the Downloads view.
+          size-capped cache (Off up to 10 GB, with a Clear cache button). Use Download on a song,
+          album, artist or playlist to <em>pin</em> it for offline use: the button shows how many
+          songs are done while it runs, a click cancels, and once everything is here a click
+          removes the downloads. A tick marks a downloaded song. “Download all songs
+          automatically” in the Downloads view keeps your whole vault on the device (in a browser,
+          while Music Vault is open).
         </P>
 
         <H2>Playlists &amp; smart playlists</H2>
@@ -96,7 +99,7 @@ export default function HelpPage() {
         <ul className="list-disc pl-5 space-y-1 mb-3">
           <Li>Mini player: a small always-on-top window; the tray icon has transport controls.</Li>
           <Li>Media keys and the Windows media overlay work out of the box.</Li>
-          <Li>Themes: light/dark/AMOLED, follow-system, and a custom accent color.</Li>
+          <Li>Themes: light, dark or follow the system, plus a pure-black AMOLED mode.</Li>
           <Li>Sleep timer and synced lyrics (add an .lrc file when you upload a song).</Li>
         </ul>
 
