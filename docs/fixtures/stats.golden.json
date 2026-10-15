@@ -1,0 +1,861 @@
+{
+  "$comment": "Golden test cases for the stats engine. Consumed by packages/core/tests/stats.test.ts (TypeScript) and apps/android StatsGoldenTest (Kotlin). All timestamps are epoch ms; offsetMinutes fixes the local calendar; now is fixed for determinism. Presets are resolved with rangeForPreset(preset, now, zone) before aggregating. Do not change semantics in one engine without updating the other AND these fixtures.",
+  "offsetMinutes": 360,
+  "now": 1784181600000,
+  "tracks": [
+    {
+      "id": "t1",
+      "title": "Bohemian Rhapsody",
+      "artist": "Queen",
+      "album": "A Night at the Opera",
+      "genre": "Rock"
+    },
+    {
+      "id": "t2",
+      "title": "Take Five",
+      "artist": "The Dave Brubeck Quartet",
+      "album": "Time Out",
+      "genre": "Jazz"
+    },
+    {
+      "id": "t3",
+      "title": "Shape of You",
+      "artist": "Ed Sheeran",
+      "album": "Divide",
+      "genre": "Pop"
+    },
+    {
+      "id": "t4",
+      "title": "Don't Stop Me Now",
+      "artist": "Queen",
+      "album": "Jazz",
+      "genre": "Rock"
+    }
+  ],
+  "events": [
+    {
+      "id": "e01",
+      "trackId": "t1",
+      "playedAt": 1783653300000,
+      "durationPlayed": 354,
+      "completed": true
+    },
+    {
+      "id": "e02",
+      "trackId": "t1",
+      "playedAt": 1783699200000,
+      "durationPlayed": 200,
+      "completed": false
+    },
+    {
+      "id": "e03",
+      "trackId": "t2",
+      "playedAt": 1783735200000,
+      "durationPlayed": 324,
+      "completed": true
+    },
+    {
+      "id": "e04",
+      "trackId": "t3",
+      "playedAt": 1783792740000,
+      "durationPlayed": 100,
+      "completed": false
+    },
+    {
+      "id": "e05",
+      "trackId": "t3",
+      "playedAt": 1783792800000,
+      "durationPlayed": 233,
+      "completed": true
+    },
+    {
+      "id": "e06",
+      "trackId": "t4",
+      "playedAt": 1783859400000,
+      "durationPlayed": 210,
+      "completed": true
+    },
+    {
+      "id": "e07",
+      "trackId": "t1",
+      "playedAt": 1783922400000,
+      "durationPlayed": 354,
+      "completed": true
+    },
+    {
+      "id": "e08",
+      "trackId": "t2",
+      "playedAt": 1784079900000,
+      "durationPlayed": 150,
+      "completed": false
+    },
+    {
+      "id": "e09",
+      "trackId": "t4",
+      "playedAt": 1784176200000,
+      "durationPlayed": 210,
+      "completed": true
+    },
+    {
+      "id": "e10",
+      "trackId": "gone",
+      "playedAt": 1784178000000,
+      "durationPlayed": 60,
+      "completed": false
+    },
+    {
+      "id": "e11",
+      "trackId": "t1",
+      "playedAt": 1767202200000,
+      "durationPlayed": 354,
+      "completed": true
+    },
+    {
+      "id": "e12",
+      "trackId": "t2",
+      "playedAt": 1767204900000,
+      "durationPlayed": 324,
+      "completed": true
+    },
+    {
+      "id": "e13",
+      "trackId": "t3",
+      "playedAt": 1749132000000,
+      "durationPlayed": 233,
+      "completed": true
+    },
+    {
+      "id": "e14",
+      "trackId": "t3",
+      "playedAt": 1749222000000,
+      "durationPlayed": 233,
+      "completed": true
+    },
+    {
+      "id": "e15",
+      "trackId": "t3",
+      "playedAt": 1749312000000,
+      "durationPlayed": 100,
+      "completed": false
+    },
+    {
+      "id": "e16",
+      "trackId": "t1",
+      "playedAt": 1749313800000,
+      "durationPlayed": 354,
+      "completed": true
+    }
+  ],
+  "cases": [
+    {
+      "name": "summarize allTime",
+      "call": {
+        "fn": "summarize"
+      },
+      "expected": {
+        "plays": 16,
+        "completedPlays": 11,
+        "listenSeconds": 3793,
+        "uniqueTracks": 5,
+        "uniqueArtists": 4,
+        "uniqueAlbums": 5
+      }
+    },
+    {
+      "name": "summarize last7Days",
+      "call": {
+        "fn": "summarize",
+        "preset": "last7Days"
+      },
+      "expected": {
+        "plays": 10,
+        "completedPlays": 6,
+        "listenSeconds": 2195,
+        "uniqueTracks": 5,
+        "uniqueArtists": 4,
+        "uniqueAlbums": 5
+      }
+    },
+    {
+      "name": "rankTracks allTime by plays limit 10",
+      "call": {
+        "fn": "rankTracks",
+        "by": "plays",
+        "limit": 10
+      },
+      "expected": [
+        {
+          "trackId": "t1",
+          "title": "Bohemian Rhapsody",
+          "artist": "Queen",
+          "album": "A Night at the Opera",
+          "plays": 5,
+          "listenSeconds": 1616
+        },
+        {
+          "trackId": "t3",
+          "title": "Shape of You",
+          "artist": "Ed Sheeran",
+          "album": "Divide",
+          "plays": 5,
+          "listenSeconds": 899
+        },
+        {
+          "trackId": "t2",
+          "title": "Take Five",
+          "artist": "The Dave Brubeck Quartet",
+          "album": "Time Out",
+          "plays": 3,
+          "listenSeconds": 798
+        },
+        {
+          "trackId": "t4",
+          "title": "Don't Stop Me Now",
+          "artist": "Queen",
+          "album": "Jazz",
+          "plays": 2,
+          "listenSeconds": 420
+        },
+        {
+          "trackId": "gone",
+          "title": "Unknown Track",
+          "artist": "Unknown Artist",
+          "album": "Unknown Album",
+          "plays": 1,
+          "listenSeconds": 60
+        }
+      ]
+    },
+    {
+      "name": "rankTracks last7Days by time limit 3",
+      "call": {
+        "fn": "rankTracks",
+        "preset": "last7Days",
+        "by": "time",
+        "limit": 3
+      },
+      "expected": [
+        {
+          "trackId": "t1",
+          "title": "Bohemian Rhapsody",
+          "artist": "Queen",
+          "album": "A Night at the Opera",
+          "plays": 3,
+          "listenSeconds": 908
+        },
+        {
+          "trackId": "t2",
+          "title": "Take Five",
+          "artist": "The Dave Brubeck Quartet",
+          "album": "Time Out",
+          "plays": 2,
+          "listenSeconds": 474
+        },
+        {
+          "trackId": "t4",
+          "title": "Don't Stop Me Now",
+          "artist": "Queen",
+          "album": "Jazz",
+          "plays": 2,
+          "listenSeconds": 420
+        }
+      ]
+    },
+    {
+      "name": "rankGroups artist allTime by time limit 10",
+      "call": {
+        "fn": "rankGroups",
+        "field": "artist",
+        "by": "time",
+        "limit": 10
+      },
+      "expected": [
+        {
+          "name": "Queen",
+          "secondary": "",
+          "plays": 7,
+          "listenSeconds": 2036
+        },
+        {
+          "name": "Ed Sheeran",
+          "secondary": "",
+          "plays": 5,
+          "listenSeconds": 899
+        },
+        {
+          "name": "The Dave Brubeck Quartet",
+          "secondary": "",
+          "plays": 3,
+          "listenSeconds": 798
+        },
+        {
+          "name": "Unknown Artist",
+          "secondary": "",
+          "plays": 1,
+          "listenSeconds": 60
+        }
+      ]
+    },
+    {
+      "name": "rankGroups album allTime by plays limit 10",
+      "call": {
+        "fn": "rankGroups",
+        "field": "album",
+        "by": "plays",
+        "limit": 10
+      },
+      "expected": [
+        {
+          "name": "A Night at the Opera",
+          "secondary": "Queen",
+          "plays": 5,
+          "listenSeconds": 1616
+        },
+        {
+          "name": "Divide",
+          "secondary": "Ed Sheeran",
+          "plays": 5,
+          "listenSeconds": 899
+        },
+        {
+          "name": "Time Out",
+          "secondary": "The Dave Brubeck Quartet",
+          "plays": 3,
+          "listenSeconds": 798
+        },
+        {
+          "name": "Jazz",
+          "secondary": "Queen",
+          "plays": 2,
+          "listenSeconds": 420
+        },
+        {
+          "name": "Unknown Album",
+          "secondary": "Unknown Artist",
+          "plays": 1,
+          "listenSeconds": 60
+        }
+      ]
+    },
+    {
+      "name": "rankGroups genre allTime by time limit 10",
+      "call": {
+        "fn": "rankGroups",
+        "field": "genre",
+        "by": "time",
+        "limit": 10
+      },
+      "expected": [
+        {
+          "name": "Rock",
+          "secondary": "",
+          "plays": 7,
+          "listenSeconds": 2036
+        },
+        {
+          "name": "Pop",
+          "secondary": "",
+          "plays": 5,
+          "listenSeconds": 899
+        },
+        {
+          "name": "Jazz",
+          "secondary": "",
+          "plays": 3,
+          "listenSeconds": 798
+        },
+        {
+          "name": "Unknown Genre",
+          "secondary": "",
+          "plays": 1,
+          "listenSeconds": 60
+        }
+      ]
+    },
+    {
+      "name": "bucketize day last7Days",
+      "call": {
+        "fn": "bucketize",
+        "preset": "last7Days",
+        "unit": "day"
+      },
+      "expected": [
+        {
+          "key": "2026-07-10",
+          "plays": 2,
+          "listenSeconds": 554
+        },
+        {
+          "key": "2026-07-11",
+          "plays": 2,
+          "listenSeconds": 424
+        },
+        {
+          "key": "2026-07-12",
+          "plays": 2,
+          "listenSeconds": 443
+        },
+        {
+          "key": "2026-07-13",
+          "plays": 1,
+          "listenSeconds": 354
+        },
+        {
+          "key": "2026-07-15",
+          "plays": 1,
+          "listenSeconds": 150
+        },
+        {
+          "key": "2026-07-16",
+          "plays": 2,
+          "listenSeconds": 270
+        }
+      ]
+    },
+    {
+      "name": "bucketize month allTime",
+      "call": {
+        "fn": "bucketize",
+        "unit": "month"
+      },
+      "expected": [
+        {
+          "key": "2025-06",
+          "plays": 4,
+          "listenSeconds": 920
+        },
+        {
+          "key": "2025-12",
+          "plays": 1,
+          "listenSeconds": 354
+        },
+        {
+          "key": "2026-01",
+          "plays": 1,
+          "listenSeconds": 324
+        },
+        {
+          "key": "2026-07",
+          "plays": 10,
+          "listenSeconds": 2195
+        }
+      ]
+    },
+    {
+      "name": "bucketize year allTime",
+      "call": {
+        "fn": "bucketize",
+        "unit": "year"
+      },
+      "expected": [
+        {
+          "key": "2025",
+          "plays": 5,
+          "listenSeconds": 1274
+        },
+        {
+          "key": "2026",
+          "plays": 11,
+          "listenSeconds": 2519
+        }
+      ]
+    },
+    {
+      "name": "hourHistogram allTime",
+      "call": {
+        "fn": "hourHistogram"
+      },
+      "expected": [
+        {
+          "plays": 2,
+          "listenSeconds": 557
+        },
+        {
+          "plays": 0,
+          "listenSeconds": 0
+        },
+        {
+          "plays": 0,
+          "listenSeconds": 0
+        },
+        {
+          "plays": 0,
+          "listenSeconds": 0
+        },
+        {
+          "plays": 0,
+          "listenSeconds": 0
+        },
+        {
+          "plays": 0,
+          "listenSeconds": 0
+        },
+        {
+          "plays": 0,
+          "listenSeconds": 0
+        },
+        {
+          "plays": 1,
+          "listenSeconds": 150
+        },
+        {
+          "plays": 1,
+          "listenSeconds": 324
+        },
+        {
+          "plays": 1,
+          "listenSeconds": 354
+        },
+        {
+          "plays": 1,
+          "listenSeconds": 210
+        },
+        {
+          "plays": 1,
+          "listenSeconds": 60
+        },
+        {
+          "plays": 1,
+          "listenSeconds": 354
+        },
+        {
+          "plays": 0,
+          "listenSeconds": 0
+        },
+        {
+          "plays": 0,
+          "listenSeconds": 0
+        },
+        {
+          "plays": 0,
+          "listenSeconds": 0
+        },
+        {
+          "plays": 0,
+          "listenSeconds": 0
+        },
+        {
+          "plays": 0,
+          "listenSeconds": 0
+        },
+        {
+          "plays": 1,
+          "listenSeconds": 210
+        },
+        {
+          "plays": 0,
+          "listenSeconds": 0
+        },
+        {
+          "plays": 1,
+          "listenSeconds": 233
+        },
+        {
+          "plays": 1,
+          "listenSeconds": 233
+        },
+        {
+          "plays": 3,
+          "listenSeconds": 654
+        },
+        {
+          "plays": 2,
+          "listenSeconds": 454
+        }
+      ]
+    },
+    {
+      "name": "streaks at now",
+      "call": {
+        "fn": "streaks"
+      },
+      "expected": {
+        "current": 2,
+        "longest": 4,
+        "longestStart": "2026-07-10",
+        "longestEnd": "2026-07-13",
+        "activeDays": 11
+      }
+    },
+    {
+      "name": "recap 2025",
+      "call": {
+        "fn": "recap",
+        "year": 2025
+      },
+      "expected": {
+        "year": 2025,
+        "plays": 5,
+        "listenSeconds": 1274,
+        "uniqueTracks": 2,
+        "uniqueArtists": 2,
+        "uniqueAlbums": 2,
+        "activeDays": 4,
+        "topTracks": [
+          {
+            "trackId": "t1",
+            "title": "Bohemian Rhapsody",
+            "artist": "Queen",
+            "album": "A Night at the Opera",
+            "plays": 2,
+            "listenSeconds": 708
+          },
+          {
+            "trackId": "t3",
+            "title": "Shape of You",
+            "artist": "Ed Sheeran",
+            "album": "Divide",
+            "plays": 3,
+            "listenSeconds": 566
+          }
+        ],
+        "topArtists": [
+          {
+            "name": "Queen",
+            "secondary": "",
+            "plays": 2,
+            "listenSeconds": 708
+          },
+          {
+            "name": "Ed Sheeran",
+            "secondary": "",
+            "plays": 3,
+            "listenSeconds": 566
+          }
+        ],
+        "topAlbums": [
+          {
+            "name": "A Night at the Opera",
+            "secondary": "Queen",
+            "plays": 2,
+            "listenSeconds": 708
+          },
+          {
+            "name": "Divide",
+            "secondary": "Ed Sheeran",
+            "plays": 3,
+            "listenSeconds": 566
+          }
+        ],
+        "topGenres": [
+          {
+            "name": "Rock",
+            "secondary": "",
+            "plays": 2,
+            "listenSeconds": 708
+          },
+          {
+            "name": "Pop",
+            "secondary": "",
+            "plays": 3,
+            "listenSeconds": 566
+          }
+        ],
+        "peakDay": {
+          "key": "2025-06-07",
+          "plays": 2,
+          "listenSeconds": 454
+        },
+        "longestStreak": 3,
+        "mostActiveHour": 22,
+        "monthlySeconds": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          920,
+          0,
+          0,
+          0,
+          0,
+          0,
+          354
+        ]
+      }
+    },
+    {
+      "name": "recap 2026",
+      "call": {
+        "fn": "recap",
+        "year": 2026
+      },
+      "expected": {
+        "year": 2026,
+        "plays": 11,
+        "listenSeconds": 2519,
+        "uniqueTracks": 5,
+        "uniqueArtists": 4,
+        "uniqueAlbums": 5,
+        "activeDays": 7,
+        "topTracks": [
+          {
+            "trackId": "t1",
+            "title": "Bohemian Rhapsody",
+            "artist": "Queen",
+            "album": "A Night at the Opera",
+            "plays": 3,
+            "listenSeconds": 908
+          },
+          {
+            "trackId": "t2",
+            "title": "Take Five",
+            "artist": "The Dave Brubeck Quartet",
+            "album": "Time Out",
+            "plays": 3,
+            "listenSeconds": 798
+          },
+          {
+            "trackId": "t4",
+            "title": "Don't Stop Me Now",
+            "artist": "Queen",
+            "album": "Jazz",
+            "plays": 2,
+            "listenSeconds": 420
+          },
+          {
+            "trackId": "t3",
+            "title": "Shape of You",
+            "artist": "Ed Sheeran",
+            "album": "Divide",
+            "plays": 2,
+            "listenSeconds": 333
+          },
+          {
+            "trackId": "gone",
+            "title": "Unknown Track",
+            "artist": "Unknown Artist",
+            "album": "Unknown Album",
+            "plays": 1,
+            "listenSeconds": 60
+          }
+        ],
+        "topArtists": [
+          {
+            "name": "Queen",
+            "secondary": "",
+            "plays": 5,
+            "listenSeconds": 1328
+          },
+          {
+            "name": "The Dave Brubeck Quartet",
+            "secondary": "",
+            "plays": 3,
+            "listenSeconds": 798
+          },
+          {
+            "name": "Ed Sheeran",
+            "secondary": "",
+            "plays": 2,
+            "listenSeconds": 333
+          },
+          {
+            "name": "Unknown Artist",
+            "secondary": "",
+            "plays": 1,
+            "listenSeconds": 60
+          }
+        ],
+        "topAlbums": [
+          {
+            "name": "A Night at the Opera",
+            "secondary": "Queen",
+            "plays": 3,
+            "listenSeconds": 908
+          },
+          {
+            "name": "Time Out",
+            "secondary": "The Dave Brubeck Quartet",
+            "plays": 3,
+            "listenSeconds": 798
+          },
+          {
+            "name": "Jazz",
+            "secondary": "Queen",
+            "plays": 2,
+            "listenSeconds": 420
+          },
+          {
+            "name": "Divide",
+            "secondary": "Ed Sheeran",
+            "plays": 2,
+            "listenSeconds": 333
+          },
+          {
+            "name": "Unknown Album",
+            "secondary": "Unknown Artist",
+            "plays": 1,
+            "listenSeconds": 60
+          }
+        ],
+        "topGenres": [
+          {
+            "name": "Rock",
+            "secondary": "",
+            "plays": 5,
+            "listenSeconds": 1328
+          },
+          {
+            "name": "Jazz",
+            "secondary": "",
+            "plays": 3,
+            "listenSeconds": 798
+          },
+          {
+            "name": "Pop",
+            "secondary": "",
+            "plays": 2,
+            "listenSeconds": 333
+          }
+        ],
+        "peakDay": {
+          "key": "2026-07-10",
+          "plays": 2,
+          "listenSeconds": 554
+        },
+        "longestStreak": 4,
+        "mostActiveHour": 0,
+        "monthlySeconds": [
+          324,
+          0,
+          0,
+          0,
+          0,
+          0,
+          2195,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "recapYears",
+      "call": {
+        "fn": "recapYears"
+      },
+      "expected": [
+        2026,
+        2025
+      ]
+    },
+    {
+      "name": "rangeForPreset last30Days start",
+      "call": {
+        "fn": "rangeStart",
+        "preset": "last30Days"
+      },
+      "expected": 1781632800000
+    },
+    {
+      "name": "rangeForPreset thisYear start",
+      "call": {
+        "fn": "rangeStart",
+        "preset": "thisYear"
+      },
+      "expected": 1767204000000
+    }
+  ]
+}

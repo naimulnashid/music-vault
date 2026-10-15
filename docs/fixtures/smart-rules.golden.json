@@ -1,0 +1,376 @@
+{
+  "$comment": "Golden test cases for the smart-rules engine. Consumed by packages/core/tests/smartRules.test.ts (TypeScript) and apps/android SmartRulesGoldenTest (Kotlin). now is fixed for determinism; timestamps are epoch ms; duration is seconds. Rating was retired (2026-10-13): a rule naming it matches nothing and sorting by it falls back to id order. Do not change semantics in one engine without updating the other AND these fixtures.",
+  "now": 1752400000000,
+  "tracks": [
+    {
+      "id": "t1",
+      "title": "Bohemian Rhapsody",
+      "artist": "Queen",
+      "album": "A Night at the Opera",
+      "genre": "Rock",
+      "country": "United Kingdom",
+      "language": "English",
+      "year": 1975,
+      "duration": 354.5,
+      "playCount": 42,
+      "addedAt": 1743760000000,
+      "lastPlayedAt": 1752313600000,
+      "favorite": true
+    },
+    {
+      "id": "t2",
+      "title": "Take Five",
+      "artist": "The Dave Brubeck Quartet",
+      "album": "Time Out",
+      "genre": "Jazz",
+      "country": "United States",
+      "year": 1959,
+      "duration": 324,
+      "playCount": 20,
+      "addedAt": 1717840000000,
+      "lastPlayedAt": 1751536000000,
+      "favorite": false
+    },
+    {
+      "id": "t3",
+      "title": "Shape of You",
+      "artist": "Ed Sheeran",
+      "album": "Divide",
+      "genre": "Pop",
+      "country": "United Kingdom",
+      "language": "English",
+      "year": 2017,
+      "duration": 233.7,
+      "playCount": 5,
+      "addedAt": 1750672000000,
+      "lastPlayedAt": 1751968000000,
+      "favorite": false
+    },
+    {
+      "id": "t4",
+      "title": "Amar Shonar Bangla",
+      "artist": "Various",
+      "album": "Songs of Bengal",
+      "genre": "Folk",
+      "country": "Bangladesh",
+      "language": "Bengali",
+      "duration": 180,
+      "playCount": 0,
+      "addedAt": 1751968000000,
+      "favorite": false
+    },
+    {
+      "id": "t5",
+      "title": "Clair de Lune",
+      "artist": "Claude Debussy",
+      "album": "Suite Bergamasque",
+      "genre": "Classical",
+      "year": 1905,
+      "duration": 300.2,
+      "playCount": 15,
+      "addedAt": 1666000000000,
+      "lastPlayedAt": 1748512000000,
+      "favorite": true
+    },
+    {
+      "id": "t6",
+      "title": "Blinding Lights",
+      "artist": "The Weeknd",
+      "album": "After Hours",
+      "genre": "Pop",
+      "country": "Canada",
+      "language": "English",
+      "year": 2020,
+      "duration": 200,
+      "playCount": 33,
+      "addedAt": 1748080000000,
+      "lastPlayedAt": 1752227200000,
+      "favorite": true
+    },
+    {
+      "id": "t7",
+      "title": "Rock the Casbah",
+      "artist": "The Clash",
+      "album": "Combat Rock",
+      "genre": "Rock",
+      "country": "United Kingdom",
+      "year": 1982,
+      "duration": 222,
+      "playCount": 2,
+      "addedAt": 1735120000000,
+      "lastPlayedAt": 1743760000000,
+      "favorite": false
+    },
+    {
+      "id": "t8",
+      "title": "Untitled Demo",
+      "artist": "Unknown Artist",
+      "album": "Unknown Album",
+      "duration": 95.5,
+      "playCount": 0,
+      "addedAt": 1752227200000,
+      "favorite": false
+    }
+  ],
+  "cases": [
+    {
+      "name": "retired field: rating gte 4 matches nothing",
+      "rules": {
+        "version": 1,
+        "root": { "combinator": "and", "rules": [{ "field": "rating", "op": "gte", "value": 4 }] }
+      },
+      "expected": []
+    },
+    {
+      "name": "genre is (case-insensitive)",
+      "rules": {
+        "version": 1,
+        "root": { "combinator": "and", "rules": [{ "field": "genre", "op": "is", "value": "rock" }] }
+      },
+      "expected": ["t1", "t7"]
+    },
+    {
+      "name": "never played via playCount eq 0",
+      "rules": {
+        "version": 1,
+        "root": { "combinator": "and", "rules": [{ "field": "playCount", "op": "eq", "value": 0 }] }
+      },
+      "expected": ["t4", "t8"]
+    },
+    {
+      "name": "never played via lastPlayedAt notSet",
+      "rules": {
+        "version": 1,
+        "root": { "combinator": "and", "rules": [{ "field": "lastPlayedAt", "op": "notSet" }] }
+      },
+      "expected": ["t4", "t8"]
+    },
+    {
+      "name": "artist contains",
+      "rules": {
+        "version": 1,
+        "root": { "combinator": "and", "rules": [{ "field": "artist", "op": "contains", "value": "the" }] }
+      },
+      "expected": ["t2", "t6", "t7"]
+    },
+    {
+      "name": "year between 1970 and 1990 (missing year never matches)",
+      "rules": {
+        "version": 1,
+        "root": {
+          "combinator": "and",
+          "rules": [{ "field": "year", "op": "between", "value": 1970, "value2": 1990 }]
+        }
+      },
+      "expected": ["t1", "t7"]
+    },
+    {
+      "name": "year gt 1970 sorted desc",
+      "rules": {
+        "version": 1,
+        "root": { "combinator": "and", "rules": [{ "field": "year", "op": "gt", "value": 1970 }] },
+        "sortBy": "year",
+        "sortDir": "desc"
+      },
+      "expected": ["t6", "t3", "t7", "t1"]
+    },
+    {
+      "name": "last played in the last 7 days",
+      "rules": {
+        "version": 1,
+        "root": { "combinator": "and", "rules": [{ "field": "lastPlayedAt", "op": "inLast", "value": 7 }] }
+      },
+      "expected": ["t1", "t3", "t6"]
+    },
+    {
+      "name": "added before a timestamp",
+      "rules": {
+        "version": 1,
+        "root": {
+          "combinator": "and",
+          "rules": [{ "field": "addedAt", "op": "before", "value": 1726480000000 }]
+        }
+      },
+      "expected": ["t2", "t5"]
+    },
+    {
+      "name": "added in the last 7 days",
+      "rules": {
+        "version": 1,
+        "root": { "combinator": "and", "rules": [{ "field": "addedAt", "op": "inLast", "value": 7 }] }
+      },
+      "expected": ["t4", "t8"]
+    },
+    {
+      "name": "nested group: (pop OR rock) AND playCount gte 5",
+      "rules": {
+        "version": 1,
+        "root": {
+          "combinator": "and",
+          "rules": [
+            {
+              "combinator": "or",
+              "rules": [
+                { "field": "genre", "op": "is", "value": "Pop" },
+                { "field": "genre", "op": "is", "value": "Rock" }
+              ]
+            },
+            { "field": "playCount", "op": "gte", "value": 5 }
+          ]
+        }
+      },
+      "expected": ["t1", "t3", "t6"]
+    },
+    {
+      "name": "favorite isTrue",
+      "rules": {
+        "version": 1,
+        "root": { "combinator": "and", "rules": [{ "field": "favorite", "op": "isTrue" }] }
+      },
+      "expected": ["t1", "t5", "t6"]
+    },
+    {
+      "name": "country isSet",
+      "rules": {
+        "version": 1,
+        "root": { "combinator": "and", "rules": [{ "field": "country", "op": "isSet" }] }
+      },
+      "expected": ["t1", "t2", "t3", "t4", "t6", "t7"]
+    },
+    {
+      "name": "country is (case-insensitive), sorted by country then id",
+      "rules": {
+        "version": 1,
+        "root": {
+          "combinator": "or",
+          "rules": [
+            { "field": "country", "op": "is", "value": "united kingdom" },
+            { "field": "country", "op": "startsWith", "value": "Ban" }
+          ]
+        },
+        "sortBy": "country"
+      },
+      "expected": ["t4", "t1", "t3", "t7"]
+    },
+    {
+      "name": "a retired field (composer) counts as never set",
+      "rules": {
+        "version": 1,
+        "root": { "combinator": "or", "rules": [{ "field": "composer", "op": "isSet" }, { "field": "bpm", "op": "gt", "value": 0 }] }
+      },
+      "expected": []
+    },
+    {
+      "name": "sorting by a retired field (bpm) falls back to id order",
+      "rules": {
+        "version": 1,
+        "root": { "combinator": "and", "rules": [{ "field": "genre", "op": "is", "value": "pop" }] },
+        "sortBy": "bpm",
+        "sortDir": "desc"
+      },
+      "expected": ["t3", "t6"]
+    },
+    {
+      "name": "genre notSet",
+      "rules": {
+        "version": 1,
+        "root": { "combinator": "and", "rules": [{ "field": "genre", "op": "notSet" }] }
+      },
+      "expected": ["t8"]
+    },
+    {
+      "name": "retired field: rating eq 0 matches nothing",
+      "rules": {
+        "version": 1,
+        "root": { "combinator": "and", "rules": [{ "field": "rating", "op": "eq", "value": 0 }] }
+      },
+      "expected": []
+    },
+    {
+      "name": "sort by title asc with limit",
+      "rules": {
+        "version": 1,
+        "root": { "combinator": "and", "rules": [{ "field": "duration", "op": "gt", "value": 0 }] },
+        "sortBy": "title",
+        "sortDir": "asc",
+        "limit": 3
+      },
+      "expected": ["t4", "t6", "t1"]
+    },
+    {
+      "name": "retired field: sort by rating falls back to id order",
+      "rules": {
+        "version": 1,
+        "root": { "combinator": "and", "rules": [{ "field": "playCount", "op": "gt", "value": 0 }] },
+        "sortBy": "rating",
+        "sortDir": "desc"
+      },
+      "expected": ["t1", "t2", "t3", "t5", "t6", "t7"]
+    },
+    {
+      "name": "title startsWith",
+      "rules": {
+        "version": 1,
+        "root": { "combinator": "and", "rules": [{ "field": "title", "op": "startsWith", "value": "b" }] }
+      },
+      "expected": ["t1", "t6"]
+    },
+    {
+      "name": "genre isNot (missing genre counts as not matching the value)",
+      "rules": {
+        "version": 1,
+        "root": { "combinator": "and", "rules": [{ "field": "genre", "op": "isNot", "value": "pop" }] }
+      },
+      "expected": ["t1", "t2", "t4", "t5", "t7", "t8"]
+    },
+    {
+      "name": "artist notContains",
+      "rules": {
+        "version": 1,
+        "root": {
+          "combinator": "and",
+          "rules": [{ "field": "artist", "op": "notContains", "value": "the" }]
+        }
+      },
+      "expected": ["t1", "t3", "t4", "t5", "t8"]
+    },
+    {
+      "name": "duration lte 200 (inclusive)",
+      "rules": {
+        "version": 1,
+        "root": { "combinator": "and", "rules": [{ "field": "duration", "op": "lte", "value": 200 }] }
+      },
+      "expected": ["t4", "t6", "t8"]
+    },
+    {
+      "name": "empty group matches everything",
+      "rules": {
+        "version": 1,
+        "root": { "combinator": "and", "rules": [] }
+      },
+      "expected": ["t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8"]
+    },
+    {
+      "name": "top-level OR",
+      "rules": {
+        "version": 1,
+        "root": {
+          "combinator": "or",
+          "rules": [
+            { "field": "playCount", "op": "gt", "value": 30 },
+            { "field": "genre", "op": "is", "value": "Classical" }
+          ]
+        }
+      },
+      "expected": ["t1", "t5", "t6"]
+    },
+    {
+      "name": "year neq treats missing year as no match",
+      "rules": {
+        "version": 1,
+        "root": { "combinator": "and", "rules": [{ "field": "year", "op": "neq", "value": 2017 }] }
+      },
+      "expected": ["t1", "t2", "t5", "t6", "t7"]
+    }
+  ]
+}

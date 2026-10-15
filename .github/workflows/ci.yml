@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Core package + both TS frontends: lint, typecheck, tests, web build.
+  typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Core typecheck + tests
+        run: |
+          npm run core:typecheck
+          npm run core:test
+      - name: Vault function typecheck + tests
+        run: |
+          npm run vault:typecheck
+          npm run vault:test
+      - name: Desktop lint + typecheck
+        run: |
+          npm run desktop:lint
+          npm run desktop:typecheck
+          npm run desktop:test
+      - name: Web lint + typecheck + build
+        env:
+          # Dummy values so the build succeeds without project secrets; a
+          # real deployment gets these from Vercel env settings.
+          NEXT_PUBLIC_SUPABASE_URL: https://dummy-ci.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy-anon-key-for-ci
+        run: |
+          npm run web:lint
+          npm run web:typecheck
+          npm run web:test
+          npm run web:build
+
+  # Playwright smoke suite (route protection, login form, API 401s).
+  # Authenticated flows need E2E_EMAIL/E2E_PASSWORD and skip without them.
+  web-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+      - run: npm run web:e2e
+        env:
+          CI: "true"
+
+  # Rust engine, cache and DB tests. The frontend dist must exist first:
+  # tauri::generate_context! embeds it at compile time.
+  rust:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build -w music-vault-desktop
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+      - name: cargo test
+        working-directory: apps/desktop/src-tauri
+        # CI runners have no audio output device — skip the tone-playback test.
+        run: cargo test -- --skip plays_hires_tone_through_default_device
+
+  # Android unit tests (JVM only — no emulator on CI).
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew testDebugUnitTest --console=plain
+        working-directory: apps/android

@@ -1,0 +1,98 @@
+import { useMemo } from "react";
+import { motion } from "motion/react";
+import { useLibraryStore } from "../store/libraryStore";
+import { useUiStore } from "../store/uiStore";
+import { computeSmartGroups, formatDurationLong, smartDef, type SmartKey } from "@musicvault/core";
+import { TrackList } from "./TrackList";
+import { Hero, PlayShuffleButtons, ViewHeader } from "./ViewHeader";
+import { CardGrid, CardPlayButton, cardMotion } from "./AlbumCard";
+import { Mosaic } from "./Mosaic";
+import { ArtistAvatar } from "./ArtistAvatar";
+import { artKeyOf } from "./AlbumArt";
+import { DownloadAllButton } from "./DownloadAllButton";
+import { NotFound } from "./NotFound";
+
+/**
+ * "By Genre / Artist / Year / Language": a card per group; opening one shows
+ * its songs. Artists open their artist page instead.
+ */
+export function GroupedBrowseView({ smartKey }: { smartKey: SmartKey }) {
+  const tracks = useLibraryStore((s) => s.tracks);
+  const activeGroup = useUiStore((s) => s.activeGroup);
+  const showGroup = useUiStore((s) => s.showGroup);
+  const showArtist = useUiStore((s) => s.showArtist);
+  const def = smartDef(smartKey);
+
+  const groups = useMemo(() => computeSmartGroups(smartKey, tracks), [smartKey, tracks]);
+
+  if (activeGroup !== null) {
+    const group = groups.find((g) => g.name === activeGroup);
+    if (!group) return <NotFound what={def.label.replace(/^By /, "")} />;
+    const total = group.tracks.reduce((sum, t) => sum + t.duration, 0);
+    return (
+      <div className="h-full overflow-y-auto">
+        <Hero
+          kind={def.label.replace(/^By /, "")}
+          title={group.name}
+          artTrack={group.tracks.find((t) => artKeyOf(t))}
+          cover={<Mosaic tracks={group.tracks} className="w-48 h-48 md:w-56 md:h-56 rounded-xl" />}
+          meta={`${group.tracks.length} ${group.tracks.length === 1 ? "song" : "songs"} • ${formatDurationLong(total)}`}
+          actions={
+            <>
+              <PlayShuffleButtons tracks={group.tracks} />
+              <DownloadAllButton tracks={group.tracks} />
+            </>
+          }
+        />
+        <TrackList tracks={group.tracks} />
+      </div>
+    );
+  }
+
+  const isArtist = smartKey === "artist";
+
+  return (
+    <div className="h-full overflow-y-auto">
+      <ViewHeader title={def.label} subtitle={groups.length > 0 ? `${groups.length} ${isArtist ? "artists" : "groups"}` : undefined} />
+      <div className="px-6 md:px-8 pb-10">
+        {groups.length === 0 ? (
+          <p className="text-sm text-muted py-10 text-center">{def.emptyMessage}</p>
+        ) : (
+          <CardGrid min={isArtist ? 150 : 168}>
+            {groups.map((group, i) => (
+              <motion.button
+                key={group.name}
+                {...cardMotion(i)}
+                onClick={() => (isArtist ? showArtist(group.name) : showGroup(smartKey, group.name))}
+                className={`group min-w-0 ${isArtist ? "text-center" : "text-left"}`}
+              >
+                <div className={`relative overflow-hidden mb-3 ${isArtist ? "rounded-full" : "rounded-xl"}`}>
+                  {isArtist ? (
+                    <ArtistAvatar
+                      name={group.name}
+                      track={group.tracks.find((t) => artKeyOf(t))}
+                      className="w-full aspect-square transition-transform duration-500 group-hover:scale-[1.04]"
+                    />
+                  ) : (
+                    <>
+                      <Mosaic
+                        tracks={group.tracks}
+                        className="w-full aspect-square transition-transform duration-500 group-hover:scale-[1.04]"
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors duration-200" />
+                      <CardPlayButton tracks={group.tracks} />
+                    </>
+                  )}
+                </div>
+                <div className="text-sm font-semibold truncate">{group.name}</div>
+                <div className="text-xs text-muted truncate mt-0.5">
+                  {group.tracks.length} {group.tracks.length === 1 ? "song" : "songs"}
+                </div>
+              </motion.button>
+            ))}
+          </CardGrid>
+        )}
+      </div>
+    </div>
+  );
+}

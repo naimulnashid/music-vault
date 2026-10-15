@@ -1,0 +1,42 @@
+{
+  "name": "music-vault-web",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "oxlint src",
+    "typecheck": "tsc --noEmit",
+    "e2e": "playwright test",
+    "test": "vitest run src"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@fontsource-variable/figtree": "^5.3.0",
+    "@musicvault/core": "*",
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.58.0",
+    "hash-wasm": "^4.12.0",
+    "idb": "^8.0.3",
+    "lucide-react": "^1.23.0",
+    "motion": "13.4.6",
+    "music-metadata": "^11.13.0",
+    "next": "^16.1.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@tailwindcss/postcss": "^4.3.2",
+    "@types/node": "^24.13.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "oxlint": "^1.71.0",
+    "tailwindcss": "^4.3.2",
+    "typescript": "~6.0.2"
+  }
+}

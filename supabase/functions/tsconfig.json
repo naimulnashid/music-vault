@@ -1,0 +1,17 @@
+{
+  // Typechecks the Deno-free parts of the Edge Functions under Node's tsc.
+  // index.ts files import npm: specifiers and use the Deno global, so only
+  // the platform-independent modules and their tests are included.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "DOM"],
+    "strict": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true,
+    "types": []
+  },
+  "include": ["vault/handler.ts", "vault/keys.ts", "vault/*.test.ts"]
+}

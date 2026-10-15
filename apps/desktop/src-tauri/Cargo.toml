@@ -1,0 +1,74 @@
+[package]
+name = "music-vault"
+version = "1.0.0"
+description = "Music Vault — native desktop music player"
+edition = "2021"
+
+[lib]
+name = "music_vault_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+# Compiles the vendored libwavpack decode sources (vendor/wavpack).
+cc = "1"
+
+[dependencies]
+tauri = { version = "2", features = ["protocol-asset", "tray-icon"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-single-instance = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+anyhow = "1"
+symphonia = { version = "0.5", default-features = false, features = [
+  "mp3",
+  "flac",
+  "wav",
+  "pcm",
+  "ogg",
+  "vorbis",
+  "isomp4",
+  "aac",
+  "alac",
+] }
+cpal = "0.15"
+rubato = "0.16"
+rustfft = "6"
+biquad = "0.4"
+lofty = "0.22"
+souvlaki = "0.8"
+rusqlite = { version = "0.32", features = ["bundled"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
+sha2 = "0.10"
+futures-util = "0.3"
+tokio = { version = "1", features = ["sync", "time"] }
+walkdir = "2"
+rtrb = "0.3"
+crossbeam-channel = "0.5"
+blake3 = "1"
+# Artwork thumbnails (decode common cover formats, encode JPEG thumbs).
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp", "bmp", "gif"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = "0.2"
+ape-decoder = "0.3"
+
+[target.'cfg(windows)'.dependencies]
+# Taskbar jump list (ICustomDestinationList) — version matches the one
+# already in the dependency tree.
+windows = { version = "0.61", features = [
+  "Win32_Foundation",
+  "Win32_System_Com",
+  "Win32_System_Com_StructuredStorage",
+  "Win32_System_Variant",
+  "Win32_UI_Shell",
+  "Win32_UI_Shell_Common",
+  "Win32_UI_Shell_PropertiesSystem",
+] }
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

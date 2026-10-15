@@ -1,0 +1,260 @@
+{
+  "$comment": "Golden cases for field-level last-writer-wins track edits. Consumed by packages/core/tests/trackFields.test.ts (applyTrackEdit, TypeScript) and apps/android TrackEditGoldenTest (TrackEdit.apply, Kotlin); both mirror public.apply_track_edit (latest definition: supabase/migrations/0006_release_date_country.sql). `year` is not editable: writing release_date also sets year to its first four digits (null when cleared). For each case: start from `row` overridden by the case's `row`, apply `edits` in order. With `expected`, the result must equal the starting row overridden by `expected` (field_edited_at included as a whole object). With `error`, the (single) edit must fail with that code and change nothing. Timestamps compare as instants. Do not change semantics in one engine without the others AND these fixtures.",
+  "row": {
+    "user_id": "00000000-0000-4000-8000-00000000000a",
+    "title": "Original",
+    "artist": "Artist",
+    "album": "Album",
+    "genre": "Pop",
+    "language": null,
+    "country": null,
+    "release_date": "2001",
+    "year": 2001,
+    "lyrics_text": null,
+    "lyrics_synced": null,
+    "artwork_key": null,
+    "field_edited_at": {}
+  },
+  "cases": [
+    {
+      "name": "first edit of a field applies",
+      "edits": [{ "patch": { "title": "New" }, "editedAt": "2026-10-11T12:00:00.000Z" }],
+      "expected": { "title": "New", "field_edited_at": { "title": "2026-10-11T12:00:00.000Z" } }
+    },
+    {
+      "name": "older edit of the same field loses",
+      "row": { "title": "Kept", "field_edited_at": { "title": "2026-10-11T12:00:00.000Z" } },
+      "edits": [{ "patch": { "title": "Older" }, "editedAt": "2026-10-11T11:00:00.000Z" }],
+      "expected": {}
+    },
+    {
+      "name": "a tie goes to the incoming edit",
+      "row": { "title": "Before", "field_edited_at": { "title": "2026-10-11T12:00:00.000Z" } },
+      "edits": [{ "patch": { "title": "Tie" }, "editedAt": "2026-10-11T12:00:00.000Z" }],
+      "expected": { "title": "Tie" }
+    },
+    {
+      "name": "a server-formatted clock compares as an instant (older loses)",
+      "row": { "title": "Kept", "field_edited_at": { "title": "2026-10-11T12:00:00+00:00" } },
+      "edits": [{ "patch": { "title": "Older" }, "editedAt": "2026-10-11T11:59:59.999Z" }],
+      "expected": {}
+    },
+    {
+      "name": "a server-formatted clock compares as an instant (equal wins)",
+      "row": { "title": "Before", "field_edited_at": { "title": "2026-10-11T12:00:00+00:00" } },
+      "edits": [{ "patch": { "title": "Same instant" }, "editedAt": "2026-10-11T12:00:00.000Z" }],
+      "expected": { "title": "Same instant", "field_edited_at": { "title": "2026-10-11T12:00:00.000Z" } }
+    },
+    {
+      "name": "edits to different fields both survive, whatever their order",
+      "edits": [
+        { "patch": { "genre": "Rock" }, "editedAt": "2026-10-11T12:00:00.000Z" },
+        { "patch": { "language": "Bangla" }, "editedAt": "2026-10-11T11:00:00.000Z" }
+      ],
+      "expected": {
+        "genre": "Rock",
+        "language": "Bangla",
+        "field_edited_at": { "genre": "2026-10-11T12:00:00.000Z", "language": "2026-10-11T11:00:00.000Z" }
+      }
+    },
+    {
+      "name": "a mixed patch applies only the fields it wins",
+      "row": { "title": "Kept", "field_edited_at": { "title": "2026-10-11T12:00:00.000Z" } },
+      "edits": [{ "patch": { "title": "Lost", "country": "Bangladesh" }, "editedAt": "2026-10-11T11:00:00.000Z" }],
+      "expected": {
+        "country": "Bangladesh",
+        "field_edited_at": { "title": "2026-10-11T12:00:00.000Z", "country": "2026-10-11T11:00:00.000Z" }
+      }
+    },
+    {
+      "name": "out-of-order edits converge on the newest (newest first)",
+      "edits": [
+        { "patch": { "title": "C" }, "editedAt": "2026-10-11T13:00:00.000Z" },
+        { "patch": { "title": "A" }, "editedAt": "2026-10-11T11:00:00.000Z" },
+        { "patch": { "title": "B" }, "editedAt": "2026-10-11T12:00:00.000Z" }
+      ],
+      "expected": { "title": "C", "field_edited_at": { "title": "2026-10-11T13:00:00.000Z" } }
+    },
+    {
+      "name": "out-of-order edits converge on the newest (oldest first)",
+      "edits": [
+        { "patch": { "title": "A" }, "editedAt": "2026-10-11T11:00:00.000Z" },
+        { "patch": { "title": "B" }, "editedAt": "2026-10-11T12:00:00.000Z" },
+        { "patch": { "title": "C" }, "editedAt": "2026-10-11T13:00:00.000Z" }
+      ],
+      "expected": { "title": "C", "field_edited_at": { "title": "2026-10-11T13:00:00.000Z" } }
+    },
+    {
+      "name": "the title is trimmed",
+      "edits": [{ "patch": { "title": "  Spaced  " }, "editedAt": "2026-10-11T12:00:00.000Z" }],
+      "expected": { "title": "Spaced", "field_edited_at": { "title": "2026-10-11T12:00:00.000Z" } }
+    },
+    {
+      "name": "a blank title is rejected",
+      "edits": [{ "patch": { "title": "   " }, "editedAt": "2026-10-11T12:00:00.000Z" }],
+      "error": "empty_title"
+    },
+    {
+      "name": "a null artist or album stores an empty string",
+      "edits": [{ "patch": { "artist": null, "album": null }, "editedAt": "2026-10-11T12:00:00.000Z" }],
+      "expected": {
+        "artist": "",
+        "album": "",
+        "field_edited_at": { "artist": "2026-10-11T12:00:00.000Z", "album": "2026-10-11T12:00:00.000Z" }
+      }
+    },
+    {
+      "name": "optional fields clear with null",
+      "row": { "language": "Bangla", "country": "Bangladesh" },
+      "edits": [
+        { "patch": { "genre": null, "language": null, "country": null, "release_date": null }, "editedAt": "2026-10-11T12:00:00.000Z" }
+      ],
+      "expected": {
+        "genre": null,
+        "language": null,
+        "country": null,
+        "release_date": null,
+        "year": null,
+        "field_edited_at": {
+          "genre": "2026-10-11T12:00:00.000Z",
+          "language": "2026-10-11T12:00:00.000Z",
+          "country": "2026-10-11T12:00:00.000Z",
+          "release_date": "2026-10-11T12:00:00.000Z"
+        }
+      }
+    },
+    {
+      "name": "text fields and a full release date are set as given; year follows the date",
+      "edits": [
+        {
+          "patch": { "language": "Bangla", "country": "Bangladesh", "release_date": "1999-05-14" },
+          "editedAt": "2026-10-11T12:00:00.000Z"
+        }
+      ],
+      "expected": {
+        "language": "Bangla",
+        "country": "Bangladesh",
+        "release_date": "1999-05-14",
+        "year": 1999,
+        "field_edited_at": {
+          "language": "2026-10-11T12:00:00.000Z",
+          "country": "2026-10-11T12:00:00.000Z",
+          "release_date": "2026-10-11T12:00:00.000Z"
+        }
+      }
+    },
+    {
+      "name": "a year-and-month release date is accepted",
+      "edits": [{ "patch": { "release_date": "1987-11" }, "editedAt": "2026-10-11T12:00:00.000Z" }],
+      "expected": { "release_date": "1987-11", "year": 1987, "field_edited_at": { "release_date": "2026-10-11T12:00:00.000Z" } }
+    },
+    {
+      "name": "an older release date loses and leaves the year alone",
+      "row": { "release_date": "2005-01-01", "year": 2005, "field_edited_at": { "release_date": "2026-10-11T12:00:00.000Z" } },
+      "edits": [{ "patch": { "release_date": "1999" }, "editedAt": "2026-10-11T11:00:00.000Z" }],
+      "expected": {}
+    },
+    {
+      "name": "a malformed release date is rejected",
+      "edits": [{ "patch": { "release_date": "1999-13-01" }, "editedAt": "2026-10-11T12:00:00.000Z" }],
+      "error": "invalid_release_date"
+    },
+    {
+      "name": "a release date that isn't text is rejected",
+      "edits": [{ "patch": { "release_date": 1999 }, "editedAt": "2026-10-11T12:00:00.000Z" }],
+      "error": "invalid_release_date"
+    },
+    {
+      "name": "year is not edited directly",
+      "edits": [{ "patch": { "year": 1999 }, "editedAt": "2026-10-11T12:00:00.000Z" }],
+      "error": "not_editable"
+    },
+    {
+      "name": "retired tag fields are rejected",
+      "edits": [{ "patch": { "bpm": 120, "composer": "Someone" }, "editedAt": "2026-10-11T12:00:00.000Z" }],
+      "error": "not_editable"
+    },
+    {
+      "name": "lyrics are set",
+      "edits": [
+        {
+          "patch": { "lyrics_text": "first\nsecond", "lyrics_synced": [{ "time": 0, "text": "first" }, { "time": 12.5, "text": "second" }] },
+          "editedAt": "2026-10-11T12:00:00.000Z"
+        }
+      ],
+      "expected": {
+        "lyrics_text": "first\nsecond",
+        "lyrics_synced": [{ "time": 0, "text": "first" }, { "time": 12.5, "text": "second" }],
+        "field_edited_at": { "lyrics_text": "2026-10-11T12:00:00.000Z", "lyrics_synced": "2026-10-11T12:00:00.000Z" }
+      }
+    },
+    {
+      "name": "synced lyrics clear with null",
+      "row": { "lyrics_synced": [{ "time": 1, "text": "x" }] },
+      "edits": [{ "patch": { "lyrics_synced": null }, "editedAt": "2026-10-11T12:00:00.000Z" }],
+      "expected": { "lyrics_synced": null, "field_edited_at": { "lyrics_synced": "2026-10-11T12:00:00.000Z" } }
+    },
+    {
+      "name": "the owner's cover key is accepted",
+      "edits": [
+        {
+          "patch": { "artwork_key": "users/00000000-0000-4000-8000-00000000000a/art/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.jpg" },
+          "editedAt": "2026-10-11T12:00:00.000Z"
+        }
+      ],
+      "expected": {
+        "artwork_key": "users/00000000-0000-4000-8000-00000000000a/art/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.jpg",
+        "field_edited_at": { "artwork_key": "2026-10-11T12:00:00.000Z" }
+      }
+    },
+    {
+      "name": "a cover is removed with null",
+      "row": { "artwork_key": "users/00000000-0000-4000-8000-00000000000a/art/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.jpg" },
+      "edits": [{ "patch": { "artwork_key": null }, "editedAt": "2026-10-11T12:00:00.000Z" }],
+      "expected": { "artwork_key": null, "field_edited_at": { "artwork_key": "2026-10-11T12:00:00.000Z" } }
+    },
+    {
+      "name": "another user's cover key is rejected",
+      "edits": [
+        {
+          "patch": { "artwork_key": "users/00000000-0000-4000-8000-00000000000b/art/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.jpg" },
+          "editedAt": "2026-10-11T12:00:00.000Z"
+        }
+      ],
+      "error": "invalid_artwork_key"
+    },
+    {
+      "name": "a malformed cover key is rejected",
+      "edits": [
+        { "patch": { "artwork_key": "users/00000000-0000-4000-8000-00000000000a/art/cover.png" }, "editedAt": "2026-10-11T12:00:00.000Z" }
+      ],
+      "error": "invalid_artwork_key"
+    },
+    {
+      "name": "a read-only field is rejected",
+      "edits": [{ "patch": { "duration": 1 }, "editedAt": "2026-10-11T12:00:00.000Z" }],
+      "error": "not_editable"
+    },
+    {
+      "name": "an unknown field is rejected",
+      "edits": [{ "patch": { "mood": "happy" }, "editedAt": "2026-10-11T12:00:00.000Z" }],
+      "error": "not_editable"
+    },
+    {
+      "name": "a rejected patch changes nothing, not even its valid fields",
+      "edits": [{ "patch": { "title": "New", "codec": "mp3" }, "editedAt": "2026-10-11T12:00:00.000Z" }],
+      "error": "not_editable"
+    },
+    {
+      "name": "re-saving the same value still advances the field's clock",
+      "row": { "title": "Same", "field_edited_at": { "title": "2026-10-11T11:00:00.000Z" } },
+      "edits": [{ "patch": { "title": "Same" }, "editedAt": "2026-10-11T12:00:00.000Z" }],
+      "expected": { "field_edited_at": { "title": "2026-10-11T12:00:00.000Z" } }
+    },
+    {
+      "name": "an empty patch changes nothing",
+      "edits": [{ "patch": {}, "editedAt": "2026-10-11T12:00:00.000Z" }],
+      "expected": {}
+    }
+  ]
+}

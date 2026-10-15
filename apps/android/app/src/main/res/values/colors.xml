@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches the web app's dark background so cold start doesn't flash white. -->
+    <color name="window_background">#121214</color>
+    <color name="accent_purple">#A855F7</color>
+</resources>

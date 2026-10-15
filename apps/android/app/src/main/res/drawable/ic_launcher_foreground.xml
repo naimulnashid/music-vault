@@ -1,0 +1,23 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Notes traced from the desktop/web icon (512 px tile). The 512 tile maps onto the
+         72dp visible area of the adaptive icon, so the notes keep the same proportions. -->
+    <group
+        android:scaleX="0.140625"
+        android:scaleY="0.140625"
+        android:translateX="18"
+        android:translateY="18">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M202,129 L322,156.5 L322,330 L304,330 L304,179.75 L220,158.75 L220,300 L202,300 Z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M150.09,323.66 A36,33 -25.78 1,1 214.91,292.34 A36,33 -25.78 1,1 150.09,323.66 Z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M251.69,352.1 A37,33 -25.78 1,1 318.31,319.9 A37,33 -25.78 1,1 251.69,352.1 Z" />
+    </group>
+</vector>

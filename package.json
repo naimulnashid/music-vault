@@ -1,0 +1,28 @@
+{
+  "name": "music-vault",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "workspaces": [
+    "packages/core",
+    "apps/desktop",
+    "apps/web"
+  ],
+  "scripts": {
+    "core:test": "npm run test -w @musicvault/core",
+    "core:typecheck": "npm run typecheck -w @musicvault/core",
+    "desktop:dev": "npm run tauri dev -w music-vault-desktop",
+    "desktop:build": "npm run build -w music-vault-desktop",
+    "desktop:lint": "npm run lint -w music-vault-desktop",
+    "desktop:typecheck": "npm run typecheck -w music-vault-desktop",
+    "web:dev": "npm run dev -w music-vault-web",
+    "web:build": "npm run build -w music-vault-web",
+    "web:lint": "npm run lint -w music-vault-web",
+    "web:typecheck": "npm run typecheck -w music-vault-web",
+    "web:e2e": "npm run e2e -w music-vault-web",
+    "vault:test": "vitest run --root supabase/functions",
+    "vault:typecheck": "tsc -p supabase/functions",
+    "desktop:test": "npm run test -w music-vault-desktop",
+    "web:test": "npm run test -w music-vault-web"
+  }
+}

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Status-bar icon (monochrome): two beamed notes. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M9,17.5C9,19.43 7.43,21 5.5,21S2,19.43 2,17.5 3.57,14 5.5,14c0.53,0 1.03,0.12 1.5,0.33V5.2c0,-0.47 0.33,-0.88 0.79,-0.98l11,-2.4C19.41,1.69 20,2.16 20,2.8v12.7c0,1.93 -1.57,3.5 -3.5,3.5S13,17.43 13,15.5s1.57,-3.5 3.5,-3.5c0.53,0 1.03,0.12 1.5,0.33V7.04L9,9.01V17.5z" />
+</vector>
