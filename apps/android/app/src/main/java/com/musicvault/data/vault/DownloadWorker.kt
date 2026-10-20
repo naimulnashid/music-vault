@@ -60,15 +60,19 @@ class DownloadWorker @AssistedInject constructor(
             Result.success(workDataOf(KEY_FILE_ID to fileId))
         } catch (e: IOException) {
             Timber.w(e, "download of %s hit a network error; retrying", fileId)
-            if (runAttemptCount < MAX_RETRIES) Result.retry() else Result.failure()
+            if (runAttemptCount < MAX_RETRIES) Result.retry() else failure(fileId, e)
         } catch (e: VaultNetworkException) {
             Timber.w(e, "download of %s couldn't reach the vault; retrying", fileId)
-            if (runAttemptCount < MAX_RETRIES) Result.retry() else Result.failure()
+            if (runAttemptCount < MAX_RETRIES) Result.retry() else failure(fileId, e)
         } catch (e: Exception) {
             Timber.e(e, "download of %s failed", fileId)
-            Result.failure()
+            failure(fileId, e)
         }
     }
+
+    /** A failed job keeps its reason so the Downloads screen can show it with Retry. */
+    private fun failure(fileId: String, error: Throwable): Result =
+        Result.failure(workDataOf(KEY_FILE_ID to fileId, KEY_ERROR to DownloadErrors.reason(error)))
 
     override suspend fun getForegroundInfo(): ForegroundInfo =
         foregroundInfo(inputData.getString(KEY_FILE_ID) ?: "download", null)
@@ -104,6 +108,7 @@ class DownloadWorker @AssistedInject constructor(
         const val KEY_FILE_ID = "fileId"
         const val KEY_BYTES_READ = "bytesRead"
         const val KEY_BYTES_TOTAL = "bytesTotal"
+        const val KEY_ERROR = "error"
         private const val MAX_RETRIES = 5
         private const val CHANNEL_ID = "downloads"
         private const val NOTIFICATION_BASE = 40_000

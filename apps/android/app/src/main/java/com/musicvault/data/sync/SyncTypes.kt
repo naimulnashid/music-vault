@@ -275,7 +275,11 @@ class RemoteChanges {
             playlistItems.isNotEmpty() || settings.isNotEmpty() || queue != null || playEventsAdded > 0
 }
 
-enum class SyncPhase { IDLE, SYNCING, OFFLINE, ERROR }
+/**
+ * AUTH is Android-only for now: the session was rejected and a refresh failed,
+ * so the engine is paused until the user signs in again.
+ */
+enum class SyncPhase { IDLE, SYNCING, OFFLINE, ERROR, AUTH }
 
 data class SyncStatus(
     val phase: SyncPhase = SyncPhase.IDLE,

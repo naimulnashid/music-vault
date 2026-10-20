@@ -1,6 +1,7 @@
 package com.musicvault.ui.player
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -22,6 +22,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -34,7 +35,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -42,6 +47,7 @@ import com.musicvault.domain.model.Eq
 import com.musicvault.ui.theme.LocalVaultColors
 
 /** Port of EqualizerPanel.tsx: preset picker, 10 vertical sliders, gapless + crossfade. */
+@OptIn(ExperimentalMaterial3Api::class) // Slider with a custom thumb
 @Composable
 fun EqualizerSheet(playerViewModel: PlayerViewModel) {
     val colors = LocalVaultColors.current
@@ -97,34 +103,35 @@ fun EqualizerSheet(playerViewModel: PlayerViewModel) {
                     modifier = Modifier.weight(1f),
                 ) {
                     Text("${gain.toInt()}", color = colors.textMuted, fontSize = 10.sp)
-                    Box(
-                        contentAlignment = Alignment.Center,
+                    val interactionSource = remember { MutableInteractionSource() }
+                    val sliderColors = SliderDefaults.colors(
+                        thumbColor = colors.accent,
+                        activeTrackColor = colors.accent,
+                        inactiveTrackColor = colors.surface2,
+                    )
+                    Slider(
+                        value = gain,
+                        onValueChange = { value ->
+                            val bands = settings.eqBands.toMutableList()
+                            while (bands.size < Eq.FREQS.size) bands.add(0f)
+                            bands[index] = value
+                            playerViewModel.setEqBands(bands)
+                        },
+                        valueRange = -Eq.MAX_GAIN_DB..Eq.MAX_GAIN_DB,
+                        colors = sliderColors,
+                        interactionSource = interactionSource,
+                        // The default handle is 44dp across, wider than a band, so neighbours would touch.
+                        thumb = {
+                            SliderDefaults.Thumb(
+                                interactionSource = interactionSource,
+                                colors = sliderColors,
+                                thumbSize = DpSize(4.dp, 24.dp),
+                            )
+                        },
                         modifier = Modifier
                             .weight(1f)
-                            .width(28.dp),
-                    ) {
-                        Slider(
-                            value = gain,
-                            onValueChange = { value ->
-                                val bands = settings.eqBands.toMutableList()
-                                while (bands.size < Eq.FREQS.size) bands.add(0f)
-                                bands[index] = value
-                                playerViewModel.setEqBands(bands)
-                            },
-                            valueRange = -Eq.MAX_GAIN_DB..Eq.MAX_GAIN_DB,
-                            colors = SliderDefaults.colors(
-                                thumbColor = colors.accent,
-                                activeTrackColor = colors.accent,
-                                inactiveTrackColor = colors.surface2,
-                            ),
-                            modifier = Modifier
-                                .graphicsLayer {
-                                    rotationZ = 270f
-                                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 0.5f)
-                                }
-                                .width(170.dp),
-                        )
-                    }
+                            .vertical(),
+                    )
                     Text(formatFreq(freq), color = colors.textMuted, fontSize = 10.sp)
                 }
             }
@@ -187,5 +194,28 @@ fun EqualizerSheet(playerViewModel: PlayerViewModel) {
         }
     }
 }
+
+/**
+ * Turns a horizontal slider upright, minimum at the bottom. Rotating alone
+ * leaves the layout bounds horizontal, so the bands would overlap; this
+ * measures the slider with width and height swapped, then rotates it into
+ * the space it reported.
+ */
+private fun Modifier.vertical(): Modifier = this
+    .graphicsLayer {
+        rotationZ = 270f
+        transformOrigin = TransformOrigin(0f, 0f)
+    }
+    .layout { measurable, constraints ->
+        val placeable = measurable.measure(
+            Constraints(
+                minWidth = constraints.minHeight,
+                maxWidth = constraints.maxHeight,
+                minHeight = constraints.minWidth,
+                maxHeight = constraints.maxWidth,
+            ),
+        )
+        layout(placeable.height, placeable.width) { placeable.place(-placeable.width, 0) }
+    }
 
 private fun formatFreq(freq: Int): String = if (freq >= 1000) "${freq / 1000}k" else "$freq"

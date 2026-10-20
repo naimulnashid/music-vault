@@ -1,9 +1,8 @@
 /**
  * README screenshots from invented data:  npm run demo:shots -w music-vault-web
  *
- * 1. Builds the web app with NEXT_PUBLIC_MV_DEMO=1 and no Supabase settings
- *    into .next-demo/ (the real .next build is untouched), so the app loads the
- *    made-up library in src/lib/demo.ts instead of an account.
+ * 1. Builds the demo: the web app with the made-up library in src/lib/demo.ts
+ *    instead of an account (demo-server.mjs).
  * 2. Starts that build on port 3300, captures each page in the dark and the
  *    light theme with Playwright, and stops the server it started.
  * 3. Writes WebP files to docs/screenshots/ at the repo root.
@@ -12,52 +11,13 @@
  * reach. Chromium comes from Playwright's own download (`npx playwright
  * install chromium`); set MV_SHOTS_BROWSER to use another Chromium build.
  */
-import { spawn, spawnSync } from "node:child_process";
-import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { createRequire } from "node:module";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { mkdirSync, readdirSync, rmSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { chromium } from "playwright";
 import sharp from "sharp";
+import { BASE, buildDemo, startDemo, WEB } from "./demo-server.mjs";
 
-const WEB = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = resolve(WEB, "..", "..", "docs", "screenshots");
-const PORT = 3300;
-const BASE = `http://127.0.0.1:${PORT}`;
-const env = {
-  ...process.env,
-  NEXT_PUBLIC_MV_DEMO: "1",
-  NEXT_PUBLIC_SUPABASE_URL: "",
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: "",
-  NEXT_DIST_DIR: ".next-demo",
-};
-// Next's own entry run through this Node: no shell, so paths with spaces are fine.
-const nextJs = createRequire(import.meta.url).resolve("next/dist/bin/next");
-
-// A build in another distDir rewrites these two to point at it; put them back.
-const KEEP = ["next-env.d.ts", "tsconfig.json"].map((f) => join(WEB, f));
-
-function run(args) {
-  const saved = KEEP.map((f) => readFileSync(f));
-  try {
-    const r = spawnSync(process.execPath, [nextJs, ...args], { cwd: WEB, env, stdio: "inherit" });
-    if (r.status !== 0) throw new Error(`next ${args.join(" ")} failed`);
-  } finally {
-    KEEP.forEach((f, i) => writeFileSync(f, saved[i]));
-  }
-}
-
-async function waitForServer() {
-  for (let i = 0; i < 60; i++) {
-    try {
-      if ((await fetch(BASE)).ok) return;
-    } catch {
-      // not up yet
-    }
-    await new Promise((r) => setTimeout(r, 500));
-  }
-  throw new Error("demo server did not start");
-}
 
 const SHOTS = [
   { name: "library", path: "/", wait: "main h1" },
@@ -117,14 +77,9 @@ async function capture(browser) {
   await context.close();
 }
 
-run(["build"]);
-const server = spawn(process.execPath, [nextJs, "start", "-p", String(PORT), "-H", "127.0.0.1"], {
-  cwd: WEB,
-  env,
-  stdio: "ignore",
-});
+buildDemo();
+const stop = await startDemo();
 try {
-  await waitForServer();
   const browser = await chromium.launch({ executablePath: process.env.MV_SHOTS_BROWSER || undefined });
   try {
     await capture(browser);
@@ -132,7 +87,5 @@ try {
     await browser.close();
   }
 } finally {
-  // Only the server this script started.
-  if (process.platform === "win32") spawnSync("taskkill", ["/pid", String(server.pid), "/T", "/F"], { stdio: "ignore" });
-  else server.kill();
+  stop();
 }

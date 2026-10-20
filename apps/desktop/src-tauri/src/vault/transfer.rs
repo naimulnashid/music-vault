@@ -194,37 +194,50 @@ async fn download_inner(
     }
     let total = resp.content_length().map(|n| n as i64).unwrap_or(0);
     let mut file = std::fs::File::create(&temp).context("can't create download file")?;
-    let mut hasher = blake3::Hasher::new();
-    let mut downloaded: i64 = 0;
-    let mut last_emit = Instant::now();
-    let mut stream = resp.bytes_stream();
-    while let Some(chunk) = stream.next().await {
-        if state.cancelled.lock().expect("cancel lock").contains(key) {
-            drop(file);
-            let _ = std::fs::remove_file(&temp);
-            bail!(CANCELLED);
+    // Any failure from here on (stream, disk, hash, rename) must remove the
+    // .part: nothing indexes it, so nothing would ever evict it.
+    let streamed: Result<(i64, String)> = async {
+        let mut hasher = blake3::Hasher::new();
+        let mut downloaded: i64 = 0;
+        let mut last_emit = Instant::now();
+        let mut stream = resp.bytes_stream();
+        while let Some(chunk) = stream.next().await {
+            if state.cancelled.lock().expect("cancel lock").contains(key) {
+                bail!(CANCELLED);
+            }
+            let chunk = chunk.context("download stream failed")?;
+            hasher.update(&chunk);
+            file.write_all(&chunk)?;
+            downloaded += chunk.len() as i64;
+            if last_emit.elapsed().as_millis() >= 250 {
+                last_emit = Instant::now();
+                let _ = app.emit(
+                    "vault://download-progress",
+                    DownloadProgress { file_id: key.to_string(), downloaded, total },
+                );
+            }
         }
-        let chunk = chunk.context("download stream failed")?;
-        hasher.update(&chunk);
-        file.write_all(&chunk)?;
-        downloaded += chunk.len() as i64;
-        if last_emit.elapsed().as_millis() >= 250 {
-            last_emit = Instant::now();
-            let _ = app.emit(
-                "vault://download-progress",
-                DownloadProgress { file_id: key.to_string(), downloaded, total },
-            );
-        }
+        file.flush()?;
+        Ok((downloaded, hasher.finalize().to_hex().to_string()))
     }
-    file.flush()?;
+    .await;
     drop(file);
 
-    let actual = hasher.finalize().to_hex().to_string();
-    if actual != content_hash {
+    let downloaded = match streamed {
+        Ok((downloaded, actual)) if actual == content_hash => downloaded,
+        Ok(_) => {
+            let _ = std::fs::remove_file(&temp);
+            bail!("downloaded bytes don't match the track's content hash");
+        }
+        Err(e) => {
+            let _ = std::fs::remove_file(&temp);
+            return Err(e);
+        }
+    };
+    if let Err(e) = std::fs::rename(&temp, &target) {
         let _ = std::fs::remove_file(&temp);
-        bail!("downloaded bytes don't match the track's content hash");
+        return Err(e).context("can't finalize download");
     }
-    std::fs::rename(&temp, &target).context("can't finalize download")?;
     {
         let conn = db.0.lock().expect("db lock");
         cache::register_download(&conn, key, &target, downloaded, pin)?;
@@ -260,4 +273,39 @@ pub async fn fetch_art(app: &AppHandle, url: &str, file_name: &str) -> Result<St
     std::fs::write(&temp, &bytes)?;
     std::fs::rename(&temp, &target)?;
     Ok(file_name.to_string())
+}
+
+/** Deletes leftover `.part` files of interrupted downloads. Returns how many went. */
+pub fn remove_stale_partials(dirs: &[&std::path::Path]) -> usize {
+    let mut removed = 0;
+    for dir in dirs {
+        let Ok(entries) = std::fs::read_dir(dir) else { continue };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().is_some_and(|e| e == "part") && std::fs::remove_file(&path).is_ok() {
+                removed += 1;
+            }
+        }
+    }
+    if removed > 0 {
+        tracing::info!(removed, "removed partial downloads left by an earlier run");
+    }
+    removed
+}
+
+#[cfg(test)]
+mod partial_tests {
+    use super::remove_stale_partials;
+
+    #[test]
+    fn removes_only_partial_files() {
+        let dir = std::env::temp_dir().join(format!("mv-partials-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("aaa.flac.part"), b"half").unwrap();
+        std::fs::write(dir.join("bbb.flac"), b"whole").unwrap();
+        assert_eq!(remove_stale_partials(&[&dir]), 1);
+        assert!(!dir.join("aaa.flac.part").exists());
+        assert!(dir.join("bbb.flac").exists());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
 }

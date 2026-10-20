@@ -20,6 +20,10 @@ class RemoteTrackIndex @Inject constructor() {
     private val _tracks = MutableStateFlow<List<TrackRow>>(emptyList())
     val tracks: StateFlow<List<TrackRow>> = _tracks.asStateFlow()
 
+    /** Whether [tracks] has been read from the shadow since sign-in; an empty list alone can't tell. */
+    private val _loaded = MutableStateFlow(false)
+    val loaded: StateFlow<Boolean> = _loaded.asStateFlow()
+
     private val _pending = MutableStateFlow<List<PendingEdit>>(emptyList())
     val pending: StateFlow<List<PendingEdit>> = _pending.asStateFlow()
 
@@ -35,6 +39,7 @@ class RemoteTrackIndex @Inject constructor() {
 
     fun set(rows: List<TrackRow>) {
         _tracks.value = rows
+        _loaded.value = true
     }
 
     fun setShadowState(pending: List<PendingEdit>, favorites: Map<String, Boolean>, ratings: Map<String, Int>) {
@@ -58,6 +63,7 @@ class RemoteTrackIndex @Inject constructor() {
     }
 
     fun clear() {
+        _loaded.value = false
         _tracks.value = emptyList()
         _pending.value = emptyList()
         _favorites.value = emptyMap()

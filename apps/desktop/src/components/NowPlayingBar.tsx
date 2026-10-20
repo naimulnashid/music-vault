@@ -154,15 +154,15 @@ export function NowPlayingBar() {
         {/* Transport */}
         <div className="flex items-center justify-center gap-1 md:gap-2 md:flex-1">
           <span className="hidden lg:block w-12 text-right text-xs text-muted tabular-nums">{formatTime(currentTime)}</span>
-          <ShuffleButton className="hidden sm:inline-flex" iconClassName="w-5 h-5" />
-          <IconButton label="Previous" size="md" onClick={prev} disabled={disabled} className="hidden sm:inline-flex text-fg!">
+          <ShuffleButton className="max-sm:hidden" iconClassName="w-5 h-5" />
+          <IconButton label="Previous" size="md" onClick={prev} disabled={disabled} className="max-sm:hidden text-fg!">
             <SkipBack className="w-6 h-6 fill-current" />
           </IconButton>
           <PlayPauseButton size="md" className="w-12! h-12!" />
           <IconButton label="Next" size="md" onClick={next} disabled={disabled} className="text-fg!">
             <SkipForward className="w-6 h-6 fill-current" />
           </IconButton>
-          <RepeatButton className="hidden sm:inline-flex" iconClassName="w-5 h-5" />
+          <RepeatButton className="max-sm:hidden" iconClassName="w-5 h-5" />
           <span className="hidden lg:block w-12 text-xs text-muted tabular-nums">{formatTime(duration)}</span>
         </div>
 
@@ -174,7 +174,7 @@ export function NowPlayingBar() {
           </div>
           <IconButton
             label="Mini player"
-            className="hidden xl:inline-flex"
+            className="max-xl:hidden"
             onClick={() => void miniToggle().catch((err) => console.error("[mini] toggle failed:", err))}
           >
             <PictureInPicture2 className="w-5 h-5" />

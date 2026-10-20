@@ -67,8 +67,29 @@ class SyncEngineTest {
     private inner class FakeTransport(private val server: FakeServer) : SyncTransport {
         var offline = false
 
+        /** When set, favorite pushes fail with this non-network error (a rejected write). */
+        var favoriteError: String? = null
+
+        /** When set, every request is rejected as the server does a stale token (401). */
+        var authRejected = false
+
+        /** When false, [refreshAuth] fails as it does for a revoked refresh token. */
+        var refreshWorks = true
+        var refreshCalls = 0
+
+        /** Requests that reached the server, rejected or not. */
+        var requests = 0
+
         private fun guard() {
             if (offline) throw SyncNetworkException("fetch failed (offline)")
+            requests++
+            if (authRejected) throw SyncAuthException("JWT expired")
+        }
+
+        override suspend fun refreshAuth() {
+            refreshCalls++
+            if (!refreshWorks) throw IllegalStateException("Invalid Refresh Token")
+            authRejected = false
         }
 
         private fun <T> pulled(rows: List<T>, column: (T) -> String, since: String?): List<T> =
@@ -157,6 +178,7 @@ class SyncEngineTest {
 
         override suspend fun upsertFavorite(trackId: String, favorite: Boolean, editedAt: String) {
             guard()
+            favoriteError?.let { throw IllegalStateException(it) }
             server.favorites[trackId] = FavoriteRow(
                 trackId = trackId,
                 favorite = favorite,
@@ -392,6 +414,26 @@ class SyncEngineTest {
     }
 
     @Test
+    fun `a rejected push keeps the status in error after a successful pull`() = syncTest {
+        a.transport.favoriteError = "constraint violated"
+        a.engine.enqueue(SyncOpPayload.FavoriteSet(hashRef(1), favorite = true, editedAt = ts(10)))
+        a.engine.syncNow()
+        val failed = a.engine.getStatus()
+        assertThat(failed.phase).isEqualTo(SyncPhase.ERROR)
+        assertThat(failed.pendingOps).isEqualTo(1)
+        assertThat(failed.lastError).isEqualTo("constraint violated")
+        assertThat(failed.lastSyncAt).isNotNull()
+
+        a.transport.favoriteError = null
+        a.engine.syncNow()
+        val recovered = a.engine.getStatus()
+        assertThat(recovered.phase).isEqualTo(SyncPhase.IDLE)
+        assertThat(recovered.pendingOps).isEqualTo(0)
+        assertThat(recovered.lastError).isNull()
+        assertThat(server.favorites).hasSize(1)
+    }
+
+    @Test
     fun `offline - ops queue, survive, and flush on reconnect`() = syncTest {
         a.transport.offline = true
         a.engine.enqueue(SyncOpPayload.FavoriteSet(hashRef(1), favorite = true, editedAt = ts(10)))
@@ -403,6 +445,68 @@ class SyncEngineTest {
         a.transport.offline = false
         a.engine.syncNow()
         assertThat(a.engine.getStatus().phase).isEqualTo(SyncPhase.IDLE)
+        assertThat(server.favorites).hasSize(1)
+        assertThat(a.storage.outboxAll()).isEmpty()
+    }
+
+    // Auth recovery is Android-only so far; the TS suite has no counterpart yet.
+
+    @Test
+    fun `a rejected session refreshes once and the cycle succeeds`() = syncTest {
+        a.transport.authRejected = true
+        a.engine.enqueue(SyncOpPayload.FavoriteSet(hashRef(1), favorite = true, editedAt = ts(10)))
+        a.engine.syncNow()
+
+        assertThat(a.transport.refreshCalls).isEqualTo(1)
+        assertThat(a.engine.getStatus().phase).isEqualTo(SyncPhase.IDLE)
+        assertThat(a.engine.needsSession).isFalse()
+        assertThat(server.favorites).hasSize(1)
+        assertThat(a.storage.outboxAll()).isEmpty()
+    }
+
+    @Test
+    fun `a failed refresh keeps ops queued unbumped and waits for a new session`() = syncTest {
+        a.transport.authRejected = true
+        a.transport.refreshWorks = false
+        a.engine.enqueue(SyncOpPayload.FavoriteSet(hashRef(1), favorite = true, editedAt = ts(10)))
+        a.engine.syncNow()
+
+        val status = a.engine.getStatus()
+        assertThat(status.phase).isEqualTo(SyncPhase.AUTH)
+        assertThat(status.pendingOps).isEqualTo(1)
+        assertThat(a.transport.refreshCalls).isEqualTo(1)
+        assertThat(a.storage.outboxAll().single().attempts).isEqualTo(0)
+        assertThat(server.favorites).isEmpty()
+        assertThat(a.engine.needsSession).isTrue()
+
+        // Later kicks don't hammer the server with the dead token.
+        val requests = a.transport.requests
+        a.engine.syncNow()
+        assertThat(a.transport.requests).isEqualTo(requests)
+        assertThat(a.transport.refreshCalls).isEqualTo(1)
+
+        // Signed in again: the queued op goes out.
+        a.transport.authRejected = false
+        a.engine.resume()
+        a.engine.syncNow()
+        assertThat(a.engine.getStatus().phase).isEqualTo(SyncPhase.IDLE)
+        assertThat(server.favorites).hasSize(1)
+        assertThat(a.storage.outboxAll()).isEmpty()
+    }
+
+    @Test
+    fun `no flush or pull runs while paused for a missing session`() = syncTest {
+        a.engine.pause()
+        a.engine.enqueue(SyncOpPayload.FavoriteSet(hashRef(1), favorite = true, editedAt = ts(10)))
+        a.engine.syncNow()
+        a.engine.syncNow(fullPull = true)
+
+        assertThat(a.transport.requests).isEqualTo(0)
+        assertThat(a.storage.outboxAll()).hasSize(1)
+        assertThat(a.engine.getStatus().pendingOps).isEqualTo(1)
+
+        a.engine.resume()
+        a.engine.syncNow()
         assertThat(server.favorites).hasSize(1)
         assertThat(a.storage.outboxAll()).isEmpty()
     }

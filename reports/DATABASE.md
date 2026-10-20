@@ -31,6 +31,7 @@ No client keeps its own copy of the track list — each projects the synced `tra
 | 0003 | [0003_sync.sql](../supabase/migrations/0003_sync.sql) | 89 | 4 | Adds `edited_at` (client LWW clock) + soft-delete state, converts favorites/ratings from hard deletes, adds `play_events.created_at`, adds 8 tables to the Realtime publication |
 | 0004 | [0004_vault.sql](../supabase/migrations/0004_vault.sql) | 354 | vault M1 | Vault columns on `tracks` (`storage_key`, `uploaded_at`, `artwork_key`, `field_edited_at`, `deleted_at`, `merged_into`), the protected-column trigger, and `apply_track_edit`, `merge_tracks`, `resolve_upload_target`, `delete_track` |
 | 0005 | [0005_drop_drive.sql](../supabase/migrations/0005_drop_drive.sql) | 131 | vault M7 | Drops `drive_file_id` / `drive_md5` and their indexes; identity becomes the content hash alone; re-creates `merge_tracks` and `resolve_upload_target` without Drive |
+| 0007 | [0007_artwork_key_guard.sql](../supabase/migrations/0007_artwork_key_guard.sql) | 45 | audit SEC-001 | Applied 2026-10-20. Extends `tracks_protect_vault_columns` to reject a client INSERT or UPDATE that sets `artwork_key` to anything but the row owner's own full cover key |
 
 There is **no migration runner in the repo** — no Supabase CLI config, no `supabase/config.toml`.
 The migrations are applied by hand (the RLS test says "run in the Supabase SQL editor (or psql)"

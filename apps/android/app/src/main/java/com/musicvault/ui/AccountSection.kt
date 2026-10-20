@@ -52,6 +52,7 @@ fun AccountSection(authViewModel: AuthViewModel, onClose: () -> Unit) {
     val colors = LocalVaultColors.current
     val state by authViewModel.authState.collectAsStateWithLifecycle()
     var showDialog by remember { mutableStateOf(false) }
+    var reauth by remember { mutableStateOf(false) }
 
     when (val s = state) {
         AuthState.Disabled -> Row(
@@ -97,13 +98,13 @@ fun AccountSection(authViewModel: AuthViewModel, onClose: () -> Unit) {
                 Icon(
                     when (sync.phase) {
                         SyncPhase.OFFLINE -> Icons.Rounded.WifiOff
-                        SyncPhase.ERROR -> Icons.Rounded.WarningAmber
+                        SyncPhase.ERROR, SyncPhase.AUTH -> Icons.Rounded.WarningAmber
                         else -> Icons.Rounded.Sync
                     },
                     null,
                     tint = when (sync.phase) {
                         SyncPhase.SYNCING -> colors.accent
-                        SyncPhase.ERROR -> Color(0xFFFBBF24)
+                        SyncPhase.ERROR, SyncPhase.AUTH -> Color(0xFFFBBF24)
                         else -> colors.textMuted
                     },
                     modifier = Modifier.size(18.dp),
@@ -114,6 +115,7 @@ fun AccountSection(authViewModel: AuthViewModel, onClose: () -> Unit) {
                         SyncPhase.SYNCING -> "Syncing…"
                         SyncPhase.OFFLINE -> "Offline, changes queued"
                         SyncPhase.ERROR -> "Sync issue, will retry"
+                        SyncPhase.AUTH -> "Sign in again to sync"
                         SyncPhase.IDLE ->
                             if (sync.pendingOps > 0) "${sync.pendingOps} change${if (sync.pendingOps == 1) "" else "s"} queued" else "Everything synced"
                     },
@@ -123,8 +125,17 @@ fun AccountSection(authViewModel: AuthViewModel, onClose: () -> Unit) {
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
-                TextButton(onClick = { authViewModel.syncNow() }, enabled = sync.phase != SyncPhase.SYNCING) {
-                    Text("Sync now", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = colors.text)
+                if (sync.phase == SyncPhase.AUTH) {
+                    TextButton(onClick = {
+                        reauth = true
+                        showDialog = true
+                    }) {
+                        Text("Sign in", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = colors.text)
+                    }
+                } else {
+                    TextButton(onClick = { authViewModel.syncNow() }, enabled = sync.phase != SyncPhase.SYNCING) {
+                        Text("Sync now", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = colors.text)
+                    }
                 }
             }
         }
@@ -138,7 +149,10 @@ fun AccountSection(authViewModel: AuthViewModel, onClose: () -> Unit) {
                     .height(44.dp)
                     .clip(CircleShape)
                     .background(colors.accent)
-                    .clickable(enabled = state != AuthState.Loading) { showDialog = true },
+                    .clickable(enabled = state != AuthState.Loading) {
+                        reauth = false
+                        showDialog = true
+                    },
             ) {
                 Icon(Icons.AutoMirrored.Rounded.Login, null, tint = colors.accentFg, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.size(8.dp))
@@ -153,26 +167,31 @@ fun AccountSection(authViewModel: AuthViewModel, onClose: () -> Unit) {
     }
 
     if (showDialog) {
-        AuthDialog(authViewModel, onDismiss = {
+        val signedInEmail = (state as? AuthState.SignedIn)?.email
+        AuthDialog(authViewModel, reauthEmail = if (reauth) signedInEmail.orEmpty() else null, onDismiss = {
             showDialog = false
             onClose()
         })
     }
 }
 
+/**
+ * [reauthEmail] non-null: the session still exists but the server rejects it,
+ * so the dialog can't close on "signed in" and closes on a successful sign-in.
+ */
 @Composable
-private fun AuthDialog(authViewModel: AuthViewModel, onDismiss: () -> Unit) {
+private fun AuthDialog(authViewModel: AuthViewModel, reauthEmail: String?, onDismiss: () -> Unit) {
     val state by authViewModel.authState.collectAsStateWithLifecycle()
     val error by authViewModel.error.collectAsStateWithLifecycle()
     val notice by authViewModel.notice.collectAsStateWithLifecycle()
     val busy by authViewModel.busy.collectAsStateWithLifecycle()
 
     var signUpMode by remember { mutableStateOf(false) }
-    var email by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf(reauthEmail.orEmpty()) }
     var password by remember { mutableStateOf("") }
 
     // close once signed in
-    if (state is AuthState.SignedIn) {
+    if (reauthEmail == null && state is AuthState.SignedIn) {
         authViewModel.clearMessages()
         onDismiss()
         return
@@ -212,15 +231,17 @@ private fun AuthDialog(authViewModel: AuthViewModel, onDismiss: () -> Unit) {
                     Spacer(Modifier.size(8.dp))
                     Text(it, color = LocalVaultColors.current.accent, fontSize = 12.sp)
                 }
-                Spacer(Modifier.size(4.dp))
-                TextButton(onClick = {
-                    authViewModel.clearMessages()
-                    signUpMode = !signUpMode
-                }, enabled = !busy) {
-                    Text(
-                        if (signUpMode) "Already have an account? Sign in" else "No account? Create one",
-                        fontSize = 12.sp,
-                    )
+                if (reauthEmail == null) {
+                    Spacer(Modifier.size(4.dp))
+                    TextButton(onClick = {
+                        authViewModel.clearMessages()
+                        signUpMode = !signUpMode
+                    }, enabled = !busy) {
+                        Text(
+                            if (signUpMode) "Already have an account? Sign in" else "No account? Create one",
+                            fontSize = 12.sp,
+                        )
+                    }
                 }
             }
         },
@@ -228,7 +249,12 @@ private fun AuthDialog(authViewModel: AuthViewModel, onDismiss: () -> Unit) {
             TextButton(
                 onClick = {
                     if (signUpMode) authViewModel.signUp(email.trim(), password)
-                    else authViewModel.signIn(email.trim(), password)
+                    else authViewModel.signIn(email.trim(), password, onSuccess = {
+                        if (reauthEmail != null) {
+                            authViewModel.clearMessages()
+                            onDismiss()
+                        }
+                    })
                 },
                 enabled = valid && !busy,
             ) { Text(if (busy) "Please wait…" else if (signUpMode) "Sign up" else "Sign in") }

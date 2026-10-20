@@ -3,21 +3,27 @@ package com.musicvault.playback
 import android.content.Context
 import android.content.Intent
 import androidx.media3.common.Player
+import com.musicvault.data.cloud.CloudClient
 import com.musicvault.data.db.QueueDao
 import com.musicvault.data.prefs.SettingsRepository
 import com.musicvault.data.repo.HistoryRepository
 import com.musicvault.data.repo.LibraryRepository
 import com.musicvault.data.repo.StatsRepository
+import com.musicvault.data.sync.SyncBus
 import com.musicvault.di.ApplicationScope
 import com.musicvault.domain.model.RepeatMode
 import com.musicvault.domain.model.Settings
 import com.musicvault.domain.model.Track
 import dagger.hilt.android.qualifiers.ApplicationContext
+import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.Job
@@ -61,6 +67,10 @@ class PlaybackController @Inject constructor(
 
     private val mainScope = CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.Main)
 
+    private val _playbackErrors = MutableSharedFlow<String>(extraBufferCapacity = 4)
+    /** One message per song that couldn't be loaded, for the UI to show. */
+    val playbackErrors: SharedFlow<String> = _playbackErrors.asSharedFlow()
+
     private val _uiState = MutableStateFlow(PlaybackUiState())
     val uiState: StateFlow<PlaybackUiState> = _uiState
 
@@ -76,26 +86,51 @@ class PlaybackController @Inject constructor(
     private var settings = Settings()
     private var restored = false
 
-    /** One listening session of one track, for the play-event stream (Phase 7). */
-    private class PlaySession(val track: Track, val startedAtMs: Long) {
-        var seconds: Long = 0
-    }
+    private val sessionRestore = SessionRestore(
+        hydrated = libraryRepository.hydrated,
+        savedQueue = { queueDao.getQueue().map { it.trackId } },
+        lastPlayback = { settingsRepository.lastPlayback() },
+        tracksByIds = { libraryRepository.getTracksByIds(it) },
+    )
 
     private var playSession: PlaySession? = null
+    private val checkpoint = PlaySessionCheckpoint(context)
 
-    /** Closes the running session and records its play event. */
+    private fun startPlaySession(track: Track) {
+        playSession = PlaySession.start(track.id, SyncBus.refFromTrack(track), CloudClient.client?.auth?.currentUserOrNull()?.id, track.durationMs)
+        appScope.launch { historyRepository.recordPlay(track.id) }
+    }
+
+    /** Ends the running session (if any) and records its play event. */
     private fun closePlaySession() {
         val session = playSession ?: return
         playSession = null
-        appScope.launch { statsRepository.recordSession(session.track, session.startedAtMs, session.seconds) }
+        checkpoint.clear()
+        appScope.launch { record(session, recovered = false) }
     }
 
+    private suspend fun record(session: PlaySession, recovered: Boolean) = statsRepository.recordSession(
+        session.eventId, session.trackId, session.startedAtMs, session.seconds,
+        session.durationMs, session.ref, session.userId, recovered,
+    )
+
     init {
+        // A session left over from a killed process: record it now.
+        checkpoint.take()?.let { leftover -> appScope.launch { record(leftover, recovered = true) } }
+
         player.callback = object : VaultPlayer.Callback {
             override fun onTrackStarted(track: Track) {
                 closePlaySession()
-                playSession = PlaySession(track, System.currentTimeMillis())
-                appScope.launch { historyRepository.recordPlay(track.id) }
+                startPlaySession(track)
+            }
+
+            override fun onTrackFinished(track: Track) {
+                // The next play of the same song (repeat-one, a replay) is a new session.
+                closePlaySession()
+            }
+
+            override fun onPlaybackFailed(track: Track, error: androidx.media3.common.PlaybackException) {
+                _playbackErrors.tryEmit(PlaybackErrors.message(track.title, PlaybackErrors.isOffline(context, error)))
             }
 
             override fun onQueueChanged(trackIds: List<String>) {
@@ -150,7 +185,15 @@ class PlaybackController @Inject constructor(
                     val index = player.currentQueueIndex
                     val position = player.positionMsNow()
                     if (track != null) {
-                        playSession?.let { if (it.track.id == track.id) it.seconds += 1 }
+                        // The song ended (repeat-one, or replayed at the end of the queue)
+                        // and is playing again: that is a new play.
+                        if (playSession == null) startPlaySession(track)
+                        playSession?.let {
+                            if (it.trackId == track.id) {
+                                it.seconds += 1
+                                checkpoint.save(it)
+                            }
+                        }
                         appScope.launch {
                             historyRepository.addListenSeconds(track.id, 1)
                             settingsRepository.saveLastPlayback(index, position)
@@ -174,25 +217,20 @@ class PlaybackController @Inject constructor(
         )
     }
 
-    /** Restores queue + position from the previous session, paused (web loadLastPlayback). */
+    /** Restores queue + position from the previous session, paused, once the library has loaded. */
     private fun restoreLastSession() {
         appScope.launch {
             try {
-                val queueIds = queueDao.getQueue().map { it.trackId }
-                if (queueIds.isEmpty()) return@launch
-                val tracks = libraryRepository.getTracksByIds(queueIds)
-                if (tracks.isEmpty()) return@launch
-                val (savedIndex, savedPosition) = settingsRepository.lastPlayback()
-                // Some queued tracks may have been removed since; re-locate by id.
-                val savedId = queueIds.getOrNull(savedIndex)
-                val index = tracks.indexOfFirst { it.id == savedId }.takeIf { it >= 0 }
-                    ?: savedIndex.coerceIn(0, tracks.size - 1)
-                withContext(Dispatchers.Main) {
-                    player.restoreQueue(tracks, index, savedPosition)
-                    _positionMs.value = savedPosition
+                val plan = sessionRestore.plan() ?: return@launch
+                val applied = withContext(Dispatchers.Main) {
+                    // Whatever the user started while the library loaded wins.
+                    if (player.currentTrack != null || player.queueEntries.isNotEmpty()) return@withContext false
+                    player.restoreQueue(plan.tracks, plan.index, plan.positionMs)
+                    _positionMs.value = plan.positionMs
                     rebuildUiState()
+                    true
                 }
-                Timber.i("Restored queue of %d tracks at index %d", tracks.size, index)
+                if (applied) Timber.i("Restored queue of %d tracks at index %d", plan.tracks.size, plan.index)
             } catch (e: Exception) {
                 Timber.e(e, "Failed to restore last session")
             }
@@ -226,7 +264,10 @@ class PlaybackController @Inject constructor(
         player.addToQueue(tracks)
     }
     fun removeFromQueue(index: Int) = player.removeFromQueue(index)
-    fun clearQueue() = player.clearQueue()
+    fun clearQueue() {
+        closePlaySession()
+        player.clearQueue()
+    }
 
     fun seekTo(positionMs: Long) {
         player.seekToMs(positionMs)

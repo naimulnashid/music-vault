@@ -238,13 +238,31 @@ async function remove(caller: Caller, deps: VaultDeps, b: Body) {
   // The row is already a tombstone; an object left behind by a failed delete
   // here is unreachable (sign-get refuses unreferenced keys), so it only costs
   // storage — log it rather than fail the user's delete.
+  const log = deps.log ?? console.error;
+  // The key columns are writable by the row owner (artwork_key through a
+  // direct UPDATE), so a stored key is only trusted if it points at the
+  // caller's own prefix and the right kind of object; anything else could
+  // make this service-role delete reach another user's files.
   const doomed: string[] = [];
-  if (result.storageKey) doomed.push(result.storageKey);
-  if (result.artworkKey && !result.artworkStillUsed) doomed.push(result.artworkKey, thumbKeyOf(result.artworkKey));
+  if (result.storageKey) {
+    if (ownsKey(caller, result.storageKey, "audio")) doomed.push(result.storageKey);
+    else log(`refusing to delete foreign storage key ${result.storageKey}`, null);
+  }
+  if (result.artworkKey && !result.artworkStillUsed) {
+    if (ownsKey(caller, result.artworkKey, "art")) doomed.push(result.artworkKey, thumbKeyOf(result.artworkKey));
+    else log(`refusing to delete foreign artwork key ${result.artworkKey}`, null);
+  }
   const outcomes = await Promise.allSettled(doomed.map((key) => deps.store.remove(key)));
   outcomes.forEach((o, i) => {
-    if (o.status === "rejected") (deps.log ?? console.error)(`could not delete object ${doomed[i]}`, o.reason);
+    if (o.status === "rejected") log(`could not delete object ${doomed[i]}`, o.reason);
   });
 
   return { trackId: b.trackId, deleted: true };
+}
+
+/** A stored key the caller may delete: their own prefix, the expected kind, and for art the full cover (not a thumbnail). */
+function ownsKey(caller: Caller, key: string, kind: "audio" | "art"): boolean {
+  const parsed = parseKey(key);
+  if (!parsed || parsed.userId !== caller.userId || parsed.kind !== kind) return false;
+  return parsed.kind === "audio" || parsed.fullKey === key;
 }

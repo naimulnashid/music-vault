@@ -23,6 +23,7 @@ class PlayerViewModel @Inject constructor(
     val uiState: StateFlow<PlaybackUiState> = controller.uiState
     val positionMs: StateFlow<Long> = controller.positionMs
     val sleepRemainingMs: StateFlow<Long?> = controller.sleepRemainingMs
+    val playbackErrors: kotlinx.coroutines.flow.SharedFlow<String> = controller.playbackErrors
 
     val settings: StateFlow<Settings> = settingsRepository.settings
         .stateIn(viewModelScope, SharingStarted.Eagerly, Settings())

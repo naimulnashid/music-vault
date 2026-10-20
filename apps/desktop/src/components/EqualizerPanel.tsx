@@ -15,6 +15,14 @@ function formatFreq(freq: number): string {
   return freq >= 1000 ? `${freq / 1000}k` : `${freq}`;
 }
 
+function bandLabel(freq: number): string {
+  return freq >= 1000 ? `${freq / 1000} kHz gain` : `${freq} Hz gain`;
+}
+
+function formatGain(db: number): string {
+  return `${db > 0 ? "+" : ""}${db} dB`;
+}
+
 export function EqualizerPanel() {
   const eqPreset = useSettingsStore((s) => s.eqPreset);
   const eqBands = useSettingsStore((s) => s.eqBands);
@@ -42,6 +50,7 @@ export function EqualizerPanel() {
           <select
             value={eqPreset}
             onChange={(e) => setEqPreset(e.target.value)}
+            aria-label="Equalizer preset"
             className="mv-field"
           >
             {Object.keys(EQ_PRESETS).map((name) => (
@@ -63,6 +72,8 @@ export function EqualizerPanel() {
                 step={1}
                 value={eqBands[i] ?? 0}
                 onChange={(e) => updateBand(i, Number(e.target.value))}
+                aria-label={bandLabel(freq)}
+                aria-valuetext={formatGain(eqBands[i] ?? 0)}
                 className="flex-1 w-2"
                 style={{ writingMode: "vertical-lr", direction: "rtl" }}
               />

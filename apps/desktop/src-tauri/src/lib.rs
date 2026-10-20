@@ -77,6 +77,9 @@ pub fn run() {
             };
             std::fs::create_dir_all(&paths.audio_cache_dir)?;
             std::fs::create_dir_all(&paths.downloads_dir)?;
+            // No transfer runs before setup finishes, so any .part here was cut
+            // off by a crash or kill and is unreachable; clear it.
+            vault::transfer::remove_stale_partials(&[&paths.audio_cache_dir, &paths.downloads_dir]);
             app.manage(paths);
 
             let engine_started = std::time::Instant::now();

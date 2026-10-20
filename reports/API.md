@@ -340,7 +340,8 @@ Hilt `@Singleton`s injected into ViewModels. The reactive surface is Kotlin `Flo
 
 ### `LibraryRepository` — [data/repo/LibraryRepository.kt](../apps/android/app/src/main/java/com/musicvault/data/repo/LibraryRepository.kt)
 `tracks: Flow<List<Track>>` — `VaultMerge` over the synced rows, queued edits, favorites, ratings
-and covers; `playlists: Flow<List<Playlist>>`.
+and covers; `hydrated: Flow<Boolean>` (true once the rows are read for the signed-in account);
+`playlists: Flow<List<Playlist>>`.
 `getTrack(id)`, `getTracksByIds(ids)`, `toggleFavorite(id)`, `setRating(id, rating)`,
 `editTracks(…)` (enqueues `track.edit` ops), `deleteFromVault(ids)`,
 `setSmartRules(id, smartRulesJson)`, `createPlaylist(name): String`, `renamePlaylist(id, name)`,

@@ -5,6 +5,8 @@ import { artFileName, storageExt } from "./vaultMerge";
 import { usePlayerStore } from "../store/playerStore";
 import { useDownloadStore } from "../store/downloadStore";
 import type { Track } from "../types";
+import { emitAppError } from "./errorBus";
+import { playbackErrorMessage } from "./playbackError";
 
 /**
  * Desktop side of the vault: the shared API client, signed-URL cache, and the
@@ -27,6 +29,11 @@ export function signedUrls(): SignedUrlCache | null {
   if (!vault) return null;
   urls ??= new SignedUrlCache(vault);
   return urls;
+}
+
+/** Sign-out: signed links belong to the account that asked for them. */
+export function forgetSignedUrls(): void {
+  urls = null;
 }
 
 /** MIME type sent with an audio upload. */
@@ -75,13 +82,21 @@ const inFlight = new Set<string>();
 /**
  * Play resolution for vault tracks; writes the local path back into the queue.
  * With auto-download on, a played song is kept as a download instead of cached.
+ * `preload` (the song after this one) fails quietly; the toast comes if it is played.
  */
-export function resolveVaultTrack(track: Track): void {
+export function resolveVaultTrack(track: Track, { preload = false }: { preload?: boolean } = {}): void {
   if (track.path || inFlight.has(track.id)) return;
   inFlight.add(track.id);
   ensureVaultLocal(track, useDownloadStore.getState().autoDownload)
     .then((path) => usePlayerStore.getState().setTrackPath(track.id, path))
-    .catch((err) => console.error("[vault] resolve failed:", track.title, err))
+    .catch((err) => {
+      console.error("[vault] resolve failed:", track.title, err);
+      if (preload) return;
+      emitAppError(playbackErrorMessage(track.title, err));
+      // Nothing will start, so stop showing the song as playing.
+      const player = usePlayerStore.getState();
+      if (player.currentTrack?.id === track.id) player.setIsPlaying(false);
+    })
     .finally(() => inFlight.delete(track.id));
 }
 

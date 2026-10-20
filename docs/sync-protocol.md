@@ -108,7 +108,16 @@ practice refs resolve on the fast path.
    it without writing. Otherwise upsert with `edited_at = op.editedAt`.
 4. On success delete the op; on a network error stop the flush (offline —
    everything stays queued); on any other error bump `attempts` and continue
-   with the next op.
+   with the next op. A cycle in which any op failed this way ends with phase
+   `error` and that error as `lastError`, even when the pull succeeds; the
+   next cycle with no failures clears it.
+5. Android only, so far: a rejected session (HTTP 401, PGRST301, JWT expired,
+   or no session at all) is not an op failure. The cycle stops without
+   bumping `attempts`, refreshes the session once and runs again. If the
+   refresh fails or the retry is rejected too, the engine pauses with phase
+   `auth` until the app sees a new session. The app also pauses the engine
+   while supabase-kt reports `RefreshFailure`, so nothing goes out with only
+   the anon key. Core still treats these as ordinary op errors.
 
 The read-then-write in step 3 is not transactional; two devices flushing the
 same row in the same instant can still finish in either order. Accepted for
@@ -241,6 +250,7 @@ attach to it, and the two implementations mirror events, not byte-identical
 detail. Events: `cycle.start` / `cycle.end` (outcome, pending ops, duration),
 `flush.coalesced`, `flush.opFailed` (kind, attempts, error), `flush.conflictLost`
 (a local edit lost LWW), `pull.applied` (per-table counts), `enqueue.dropped`
-(identity-less ref) and `realtime.hint`. The engine keeps the last 200 in a
+(identity-less ref) and `realtime.hint`; Android adds `auth.rejected` and
+`auth.refreshed`. The engine keeps the last 200 in a
 ring buffer (`getBreadcrumbs()`); desktop also writes them to the rotating
 appdata log (target `sync`), Android to logcat (`MVSync`), web to the console.

@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
-import type { TrackRef } from "@musicvault/core";
 import { audioEngine } from "../lib/audioEngine";
 import { resolveTrackAudio } from "../lib/audioCache";
 import { emitAppError } from "../lib/errorBus";
+import { isOfflineError, playbackErrorMessage } from "../lib/playbackError";
 import { usePlayerStore } from "../store/playerStore";
 import { useSettingsStore } from "../store/settingsStore";
 import { useHistoryStore } from "../store/historyStore";
@@ -11,18 +11,46 @@ import { useDownloadStore } from "../store/downloadStore";
 import { useStatsStore } from "../store/statsStore";
 import { saveLastPlayback } from "../lib/lastPlayback";
 import { addPlayEvent } from "../lib/playEventLog";
-import { refFromTrack, syncEnqueue } from "../lib/syncBus";
+import { refFromTrack, syncEnqueue, syncEnqueueFor } from "../lib/syncBus";
+import { useAuthStore } from "../store/authStore";
+import { clearCheckpoint, countsAsPlay, isCompleted, newPlaySession, saveCheckpoint, takeCheckpoint, type PlaySession } from "../lib/playSession";
 import type { Track } from "../types";
 
-/** One listening session of one track, for the play-event stream. */
-interface PlaySession {
-  trackId: string;
-  /** Sync identity — null for identity-less tracks (local log only). */
-  ref: TrackRef | null;
-  duration: number;
-  startedAtMs: number;
-  seconds: number;
+/**
+ * Writes a finished session as a play event: the full event to the local log
+ * and, when the track has sync identity, to the cloud stream under the SAME
+ * event id, so the copy pulled back dedupes against the local row. Recording a
+ * session twice is harmless: both stores keep the first row for an id.
+ */
+const currentUserId = (): string | null => useAuthStore.getState().session?.user.id ?? null;
+
+function recordSession(session: PlaySession, recovered = false): void {
+  if (!countsAsPlay(session)) return;
+  const completed = isCompleted(session);
+  const event = {
+    id: session.eventId,
+    trackId: session.trackId,
+    playedAt: session.startedAtMs,
+    durationPlayed: session.seconds,
+    completed,
+  };
+  void addPlayEvent(event);
+  useStatsStore.getState().appendLocal(event);
+  if (!session.ref || !session.userId) return;
+  const op = {
+    kind: "playEvent.add" as const,
+    eventId: session.eventId,
+    track: session.ref,
+    playedAt: new Date(session.startedAtMs).toISOString(),
+    durationPlayed: session.seconds,
+    completed,
+  };
+  // A recovered session may predate this run's sync engine, so it waits for
+  // its own account's engine instead of being dropped.
+  if (recovered) syncEnqueueFor(session.userId, op);
+  else syncEnqueue(op);
 }
+
 
 const PRELOAD_LEAD_SECONDS = 15;
 
@@ -47,6 +75,14 @@ export function useAudioEngine() {
   // skips reloading it (which would restart audio and kill the transition).
   const loadedTrackId = useRef<string | null>(null);
   const preloadedId = useRef<string | null>(null);
+  const playSession = useRef<PlaySession | null>(null);
+  /** Ends the running listening session (if any) and records it. */
+  const finishSession = () => {
+    const session = playSession.current;
+    playSession.current = null;
+    clearCheckpoint();
+    if (session) recordSession(session);
+  };
   const preloadingId = useRef<string | null>(null);
   const transitionFor = useRef<string | null>(null);
   // While a crossfade ramp is running, the outgoing track is still audible on
@@ -65,11 +101,8 @@ export function useAudioEngine() {
           useDownloadStore.getState().autoDownload ? "pin" : "cache",
         );
       } catch (err) {
-        emitAppError(
-          err instanceof Error && err.message
-            ? `${track.title}: ${err.message}`
-            : `Can't play ${track.title} on this device.`,
-        );
+        // A preload: offline, the message waits until the song is actually played.
+        if (!isOfflineError(err)) emitAppError(playbackErrorMessage(track.title, err));
         return null;
       } finally {
         useDownloadStore.getState().reportProgress(track.id, null);
@@ -132,6 +165,7 @@ export function useAudioEngine() {
       // Only the song that is actually loaded can end; a stray "ended" after
       // we've already moved on must not skip another song.
       if (!player.currentTrack || loadedTrackId.current !== player.currentTrack.id) return;
+      finishSession();
       const settings = useSettingsStore.getState();
       const { queue } = player;
       const nextIndex = player.getNextIndex();
@@ -195,11 +229,7 @@ export function useAudioEngine() {
           useDownloadStore.getState().autoDownload ? "pin" : "cache",
         );
       } catch (err) {
-        emitAppError(
-          err instanceof Error && err.message
-            ? `${currentTrack.title}: ${err.message}`
-            : `Can't play ${currentTrack.title} on this device.`,
-        );
+        emitAppError(playbackErrorMessage(currentTrack.title, err));
       } finally {
         useDownloadStore.getState().reportProgress(currentTrack.id, null);
       }
@@ -225,47 +255,23 @@ export function useAudioEngine() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrack]);
 
-  // Record play history whenever the current track changes (manual or auto),
-  // and close out the previous track's play event. The full event always goes
-  // to the local IndexedDB log; when the track has sync identity it is also
-  // enqueued for the cloud stream under the SAME event id, so the copy pulled
-  // back into the shadow dedupes against the local row.
-  const playSession = useRef<PlaySession | null>(null);
+  // A session left over from a crash or a closed window: record it now.
   useEffect(() => {
-    const prev = playSession.current;
-    if (prev && prev.seconds >= 1) {
-      const eventId = crypto.randomUUID();
-      const completed = prev.duration > 0 && prev.seconds >= prev.duration * 0.9;
-      const event = {
-        id: eventId,
-        trackId: prev.trackId,
-        playedAt: prev.startedAtMs,
-        durationPlayed: prev.seconds,
-        completed,
-      };
-      void addPlayEvent(event);
-      useStatsStore.getState().appendLocal(event);
-      if (prev.ref) {
-        syncEnqueue({
-          kind: "playEvent.add",
-          eventId,
-          track: prev.ref,
-          playedAt: new Date(prev.startedAtMs).toISOString(),
-          durationPlayed: prev.seconds,
-          completed,
-        });
-      }
-    }
-    playSession.current = null;
+    const leftover = takeCheckpoint();
+    if (leftover) recordSession(leftover, true);
+    // Closing the page or window ends the session; the checkpoint covers it
+    // if the write doesn't finish in time.
+    window.addEventListener("pagehide", finishSession);
+    return () => window.removeEventListener("pagehide", finishSession);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // A new current track ends the previous track's session and starts its own.
+  useEffect(() => {
+    finishSession();
     if (currentTrack) {
       useHistoryStore.getState().recordPlay(currentTrack.id);
-      playSession.current = {
-        trackId: currentTrack.id,
-        ref: refFromTrack(currentTrack),
-        duration: currentTrack.duration,
-        startedAtMs: Date.now(),
-        seconds: 0,
-      };
+      playSession.current = newPlaySession(currentTrack, refFromTrack(currentTrack), currentUserId());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrack?.id]);
@@ -303,7 +309,14 @@ export function useAudioEngine() {
       const player = usePlayerStore.getState();
       if (!player.isPlaying || !player.currentTrack) return;
       useHistoryStore.getState().addListenSeconds(player.currentTrack.id, 1);
-      if (playSession.current) playSession.current.seconds += 1;
+      // The song ended (repeat-one, or replayed at the end of the queue) and is
+      // playing again: that is a new play.
+      if (!playSession.current) {
+        useHistoryStore.getState().recordPlay(player.currentTrack.id);
+        playSession.current = newPlaySession(player.currentTrack, refFromTrack(player.currentTrack), currentUserId());
+      }
+      playSession.current.seconds += 1;
+      saveCheckpoint(playSession.current);
       saveLastPlayback(player.currentTrack.id, player.currentTime);
     }, 1000);
     return () => clearInterval(interval);

@@ -11,6 +11,7 @@ import {
 } from "../lib/audioCache";
 import type { AudioEntry } from "../lib/db";
 import { emitAppError } from "../lib/errorBus";
+import { downloadFailureMessage, type DownloadFailure } from "../lib/downloadError";
 import { useLibraryStore } from "./libraryStore";
 import type { Track } from "../types";
 
@@ -93,6 +94,9 @@ function dequeue(ids: string[]) {
  * One download at a time on purpose: one big transfer beats saturating the
  * link with a dozen parallel ones.
  */
+/** Failures of the current run, reported together when the queue drains. */
+const failures: DownloadFailure[] = [];
+
 async function pump(): Promise<void> {
   if (running) return;
   const store = useDownloadStore.getState;
@@ -105,7 +109,8 @@ async function pump(): Promise<void> {
       await applyAudioFlags();
     } catch (err) {
       if (!abort.signal.aborted) {
-        emitAppError(err instanceof Error ? err.message : `Download failed: ${track.title}`);
+        console.error("[downloads] download failed:", track.title, err);
+        failures.push({ title: track.title, err });
       }
     } finally {
       store().reportProgress(track.id, null);
@@ -113,6 +118,8 @@ async function pump(): Promise<void> {
       dequeue([track.id]);
     }
   }
+  const message = downloadFailureMessage(failures.splice(0));
+  if (message) emitAppError(message);
   await store().refreshDownloads();
 }
 

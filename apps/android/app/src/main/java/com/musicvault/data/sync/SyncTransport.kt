@@ -61,10 +61,24 @@ interface SyncTransport {
      * tables for this user; returns an unsubscribe.
      */
     fun subscribe(onChange: () -> Unit): () -> Unit
+
+    /**
+     * Asks the auth layer for a fresh access token after a [SyncAuthException].
+     * Throws [SyncNetworkException] when offline; any other failure means the
+     * session can't be renewed without signing in again.
+     */
+    suspend fun refreshAuth()
 }
 
 /** Connectivity failure — the flush stops and everything stays queued. */
 class SyncNetworkException(message: String, cause: Throwable? = null) : Exception(message, cause)
+
+/**
+ * The server rejected the session (HTTP 401, PGRST301, JWT expired) or there
+ * is no session to send. Not the op's fault: it stays queued without an
+ * attempt bump while the engine refreshes or waits for a sign-in.
+ */
+class SyncAuthException(message: String, cause: Throwable? = null) : Exception(message, cause)
 
 // ---- Remote row shapes (Supabase column names) -------------------------------
 

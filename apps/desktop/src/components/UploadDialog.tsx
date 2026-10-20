@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useModalFocus } from "./ui/useModalFocus";
 import { AlertCircle, CheckCircle2, FilePlus2, Link2, Loader2, UploadCloud, X } from "lucide-react";
 import { formatTime } from "@musicvault/core";
 import { useUploadStore, type UploadItem } from "../store/uploadStore";
@@ -142,6 +144,10 @@ export function UploadDialog() {
   const { pickFiles, setShared, setSharedCover, close, start, clearFinished } = useUploadStore.getState();
   const [coverError, setCoverError] = useState<string | null>(null);
 
+  const panel = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useModalFocus(panel, isOpen, close);
+
   if (!isOpen) return null;
 
   const uploadable = items.filter((i) => i.status === "ready" || i.status === "failed");
@@ -149,16 +155,21 @@ export function UploadDialog() {
   const done = items.filter((i) => i.status === "done").length;
   const sharedCoverPath = sharedCover === undefined ? undefined : sharedCover ? stagedArtworkPath(sharedCover) : null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim backdrop-blur-sm p-4 animate-fade-in" onClick={close}>
       <div
+        ref={panel}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
         className="w-full max-w-3xl max-h-[88vh] flex flex-col rounded-2xl bg-surface border border-line shadow-[0_24px_80px_-16px_rgb(0_0_0/0.6)] animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         <FieldSuggestions />
         <div className="flex items-center gap-3 px-5 py-4 border-b border-line">
           <UploadCloud className="w-5 h-5 text-accent" />
-          <h2 className="text-lg font-bold flex-1">Upload to your vault</h2>
+          <h2 id={titleId} className="text-lg font-bold flex-1">Upload to your vault</h2>
           <button
             onClick={() => void pickFiles()}
             disabled={running}
@@ -166,7 +177,7 @@ export function UploadDialog() {
           >
             <FilePlus2 className="w-4 h-4" /> Add files
           </button>
-          <button onClick={close} title={running ? "Hide (uploads continue)" : "Close"} className="text-muted hover:text-fg">
+          <button aria-label={running ? "Hide (uploads continue)" : "Close"} onClick={close} title={running ? "Hide (uploads continue)" : "Close"} className="text-muted hover:text-fg">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -240,6 +251,7 @@ export function UploadDialog() {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

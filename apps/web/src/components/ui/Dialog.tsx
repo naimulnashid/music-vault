@@ -1,7 +1,8 @@
-import { useEffect, type ReactNode } from "react";
+import { useId, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
+import { useModalFocus } from "./useModalFocus";
 
 interface DialogProps {
   open: boolean;
@@ -16,14 +17,9 @@ interface DialogProps {
 
 /** Modal sheet: blurred backdrop, panel rises in with a spring. */
 export function Dialog({ open, onClose, title, widthClass = "max-w-md", children, dismissible = true }: DialogProps) {
-  useEffect(() => {
-    if (!open || !dismissible) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, dismissible, onClose]);
+  const panel = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useModalFocus(panel, open, dismissible ? onClose : undefined);
 
   return createPortal(
     <AnimatePresence>
@@ -41,8 +37,11 @@ export function Dialog({ open, onClose, title, widthClass = "max-w-md", children
             onClick={dismissible ? onClose : undefined}
           />
           <motion.div
+            ref={panel}
             role="dialog"
             aria-modal="true"
+            aria-labelledby={title !== undefined ? titleId : undefined}
+            tabIndex={-1}
             initial={{ opacity: 0, y: 16, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
@@ -51,7 +50,7 @@ export function Dialog({ open, onClose, title, widthClass = "max-w-md", children
           >
             {title !== undefined && (
               <div className="flex items-center gap-3 px-5 pt-5 pb-3 shrink-0">
-                <h2 className="flex-1 min-w-0 text-lg font-bold truncate">{title}</h2>
+                <h2 id={titleId} className="flex-1 min-w-0 text-lg font-bold truncate">{title}</h2>
                 {dismissible && (
                   <button
                     onClick={onClose}

@@ -118,10 +118,24 @@ export function downloadTrack(
   signal?: AbortSignal,
 ): Promise<Blob> {
   const existing = inFlight.get(track.id);
-  if (existing) return existing;
+  if (existing) {
+    // A pin asked for while the same song is still streaming into the cache:
+    // let that transfer finish, then keep it, instead of leaving it evictable.
+    if (tier !== "pin") return existing;
+    return existing.then(async (blob) => {
+      await promoteToPin(track.id);
+      return blob;
+    });
+  }
   const p = doDownload(track, tier, onProgress, signal).finally(() => inFlight.delete(track.id));
   inFlight.set(track.id, p);
   return p;
+}
+
+/** Turns a cached copy into a kept download (no-op when it is one already). */
+async function promoteToPin(trackId: string): Promise<void> {
+  const entry = await audioGet(trackId);
+  if (entry && entry.tier !== "pin") await audioPut({ ...entry, tier: "pin" });
 }
 
 async function doDownload(

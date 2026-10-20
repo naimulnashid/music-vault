@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.DownloadForOffline
 import androidx.compose.material3.Icon
@@ -68,6 +69,7 @@ fun DownloadsScreen(
     val colors = LocalVaultColors.current
     val downloads by viewModel.downloads.collectAsStateWithLifecycle()
     val active by viewModel.activeDownloads.collectAsStateWithLifecycle()
+    val failed by viewModel.failedDownloads.collectAsStateWithLifecycle()
     val wifiOnly by viewModel.wifiOnly.collectAsStateWithLifecycle()
     val chargingOnly by viewModel.chargingOnly.collectAsStateWithLifecycle()
     val autoDownload by viewModel.autoDownload.collectAsStateWithLifecycle()
@@ -174,6 +176,62 @@ fun DownloadsScreen(
                     }
                 }
 
+                AnimatedVisibility(
+                    visible = failed.isNotEmpty(),
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut(),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp, vertical = 4.dp)
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(colors.surface)
+                            .padding(16.dp),
+                    ) {
+                        Text(
+                            "Couldn't download ${failed.size} ${if (failed.size == 1) "song" else "songs"}",
+                            color = colors.text,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        failed.forEach { item ->
+                            val track = byId[item.fileId]
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(vertical = 6.dp),
+                            ) {
+                                AlbumArt(track?.artworkPath, modifier = Modifier.size(42.dp), shape = RoundedCornerShape(6.dp))
+                                Spacer(Modifier.width(12.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        track?.title ?: item.title,
+                                        color = colors.text,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    Text(
+                                        item.reason,
+                                        color = colors.textMuted,
+                                        fontSize = 12.sp,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                                IconButton(onClick = { viewModel.retryDownload(item.fileId) }, modifier = Modifier.size(36.dp)) {
+                                    Icon(Icons.Rounded.Refresh, "Retry download", tint = colors.text, modifier = Modifier.size(20.dp))
+                                }
+                                IconButton(onClick = { viewModel.dismissFailure(item) }, modifier = Modifier.size(36.dp)) {
+                                    Icon(Icons.Rounded.Close, "Dismiss", tint = colors.textMuted, modifier = Modifier.size(18.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Column(
                     modifier = Modifier
                         .padding(horizontal = 16.dp, vertical = 8.dp)
@@ -195,7 +253,7 @@ fun DownloadsScreen(
                     AutoCacheCard(cacheUsage, maxCacheBytes, viewModel::setMaxCacheBytes, viewModel::clearCache)
                 }
 
-                if (pinnedTracks.isEmpty() && active.isEmpty()) {
+                if (pinnedTracks.isEmpty() && active.isEmpty() && failed.isEmpty()) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier

@@ -23,7 +23,9 @@ import { useAuthStore } from "./authStore";
 import { useLibraryStore } from "./libraryStore";
 import { useSettingsStore } from "./settingsStore";
 import { usePlayerStore } from "./playerStore";
-import { refreshStatsIfLoaded } from "./statsStore";
+import { refreshStatsIfLoaded, resetStats } from "./statsStore";
+import { useDownloadStore } from "./downloadStore";
+import { forgetSignedUrls } from "../lib/vault";
 
 /** Debounce for pushing queue changes (they arrive in bursts while skipping). */
 const QUEUE_PUSH_MS = 3000;
@@ -73,7 +75,7 @@ function startEngine(session: Session, deviceId: string | null): void {
     onBreadcrumb: (crumb) => console.debug(`[sync] ${crumb.event}`, crumb.detail ?? ""),
   });
 
-  setSyncEnqueue((payload) => void engine?.enqueue(payload));
+  setSyncEnqueue((payload) => void engine?.enqueue(payload), session.user.id);
 
   onlineListener = () => engine?.notifyOnline();
   window.addEventListener("online", onlineListener);
@@ -120,6 +122,16 @@ function stopAndClear(): void {
   stopEngine();
   void s?.clearAll();
   useLibraryStore.setState({ tracks: [], cloudTracks: [], playlists: [], hydrated: false });
+  // The next account must not inherit this one's playback or loaded data: stop
+  // playback, drop the queue and resume point, signed links, queued downloads
+  // and synced stats. Device-owned data stays: local listening history,
+  // downloaded and cached audio files, and settings such as the theme. The
+  // player listener is already gone, so the empty queue is not pushed.
+  usePlayerStore.getState().clearQueue();
+  forgetSignedUrls();
+  const { queued, cancelDownloads } = useDownloadStore.getState();
+  if (queued.size > 0) void cancelDownloads([...queued]);
+  resetStats();
 }
 
 useAuthStore.subscribe((state, prev) => {

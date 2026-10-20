@@ -1,7 +1,7 @@
 {
   "name": "music-vault",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "workspaces": [
     "packages/core",
@@ -28,6 +28,8 @@
     "site:dev": "npm run dev -w music-vault-site",
     "site:build": "npm run build -w music-vault-site",
     "site:check": "npm run check -w music-vault-site",
-    "android:demo-shots": "node apps/android/scripts/demo-shots.mjs"
+    "android:demo-shots": "node apps/android/scripts/demo-shots.mjs",
+    "video:render": "npm run render --prefix video/remotion",
+    "android:demo-video": "node apps/android/scripts/demo-video.mjs"
   }
 }

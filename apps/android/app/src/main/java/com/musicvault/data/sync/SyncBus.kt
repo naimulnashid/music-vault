@@ -19,18 +19,44 @@ object SyncBus {
     var deviceId: String? = null
         private set
 
-    fun install(deviceId: String?, fn: (SyncOpPayload) -> Unit) {
+    @Volatile
+    private var enqueueUserId: String? = null
+
+    /** Ops that must reach one account's stream once its engine runs (see [enqueueFor]). */
+    private val waiting = mutableListOf<Pair<String, SyncOpPayload>>()
+
+    fun install(deviceId: String?, userId: String? = null, fn: (SyncOpPayload) -> Unit) {
         this.deviceId = deviceId
         enqueueFn = fn
+        enqueueUserId = userId
+        if (userId == null) return
+        // A different account signing in drops the waiting ops: they were not its own.
+        val ready = synchronized(waiting) {
+            waiting.filter { it.first == userId }.map { it.second }.also { waiting.clear() }
+        }
+        ready.forEach(fn)
     }
 
     fun uninstall() {
         enqueueFn = null
+        enqueueUserId = null
         deviceId = null
     }
 
     fun enqueue(payload: SyncOpPayload) {
         enqueueFn?.invoke(payload)
+    }
+
+    /**
+     * Enqueues for one account: now if its engine is running, else as soon as it
+     * starts. Used for a play session recovered at startup, before sync is up.
+     */
+    fun enqueueFor(userId: String, payload: SyncOpPayload) {
+        val fn = enqueueFn
+        when {
+            fn != null && enqueueUserId == userId -> fn(payload)
+            fn == null -> synchronized(waiting) { waiting += userId to payload }
+        }
     }
 
     fun nowIso(): String = Instant.now().toString()

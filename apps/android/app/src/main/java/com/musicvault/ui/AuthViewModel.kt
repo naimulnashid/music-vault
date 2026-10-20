@@ -57,9 +57,9 @@ class AuthViewModel @Inject constructor(
     private val _busy = MutableStateFlow(false)
     val busy: StateFlow<Boolean> = _busy.asStateFlow()
 
-    fun signIn(email: String, password: String) = run {
+    fun signIn(email: String, password: String, onSuccess: () -> Unit = {}) = run {
         _notice.value = null
-        launchAuth { authRepository.signIn(email, password) }
+        launchAuth(onSuccess) { authRepository.signIn(email, password) }
     }
 
     fun signUp(email: String, password: String) = launchAuth {
@@ -89,13 +89,14 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    private fun launchAuth(block: suspend () -> Unit) {
+    private fun launchAuth(onSuccess: () -> Unit = {}, block: suspend () -> Unit) {
         if (_busy.value) return
         viewModelScope.launch {
             _busy.value = true
             _error.value = null
             try {
                 block()
+                onSuccess()
             } catch (e: Exception) {
                 _error.value = e.message ?: "Something went wrong."
             } finally {

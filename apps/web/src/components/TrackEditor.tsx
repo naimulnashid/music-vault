@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useId, useRef, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { useModalFocus } from "./ui/useModalFocus";
 import { CloudOff, Loader2, X } from "lucide-react";
 import { formatTime, type EditableTrackField, type PreparedCover } from "@musicvault/core";
 import { useUiStore } from "../store/uiStore";
@@ -91,6 +93,10 @@ export function TrackEditor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ids]);
 
+  const panel = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useModalFocus(panel, Boolean(ids) && tracks.length > 0, busy ? undefined : close);
+
   if (!ids || tracks.length === 0) return null;
 
   const inVault = tracks.filter((t) => t.storageKey);
@@ -132,18 +138,23 @@ export function TrackEditor() {
     }
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim backdrop-blur-sm p-4 animate-fade-in" onClick={busy ? undefined : close}>
       <div
+        ref={panel}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
         className="w-full max-w-2xl max-h-[88vh] flex flex-col rounded-2xl bg-surface border border-line shadow-[0_24px_80px_-16px_rgb(0_0_0/0.6)] animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         <FieldSuggestions />
         <div className="flex items-center gap-3 px-5 py-4 border-b border-line">
-          <h2 className="text-lg font-bold flex-1 truncate">
+          <h2 id={titleId} className="text-lg font-bold flex-1 truncate">
             {single ? `Edit “${single.title}”` : `Edit ${tracks.length} tracks`}
           </h2>
-          <button onClick={close} disabled={busy} className="text-muted hover:text-fg">
+          <button aria-label="Close" onClick={close} disabled={busy} className="text-muted hover:text-fg">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -213,6 +224,7 @@ export function TrackEditor() {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.datasource.TransferListener
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
@@ -18,10 +19,11 @@ import javax.inject.Singleton
 
 /**
  * Play resolution for `vault://<hash>?key=<storage key>` media URIs: the
- * pinned download if there is one, else a pre-signed R2 URL streamed through
- * the auto-cache (Media3 CacheDataSource keyed by the content hash, so the
- * bytes are fetched once and survive re-signed URLs). Other URIs (file://)
- * pass straight through to the default source.
+ * pinned download if there is one, else the auto-cache (Media3
+ * CacheDataSource keyed by the content hash, so the bytes are fetched once
+ * and survive re-signed URLs), else the vault. The URL is signed only when
+ * the cache has to go upstream, so a cached song plays offline. Other URIs
+ * (file://) pass straight through to the default source.
  */
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class VaultDataSource(
@@ -30,7 +32,6 @@ class VaultDataSource(
     /** Straight from the vault, for when the auto-cache is off or auto-download keeps everything. */
     private val plainHttpSource: DataSource,
     private val cache: AudioCache,
-    private val vaultApi: VaultApi,
 ) : DataSource {
 
     private var active: DataSource? = null
@@ -42,22 +43,13 @@ class VaultDataSource(
             return localSource.open(dataSpec)
         }
         val hash = uri.host.orEmpty()
-        val key = uri.getQueryParameter("key") ?: throw IOException("vault track without a storage key")
         cache.pinnedVaultFile(hash)?.let { file ->
             active = localSource
             return localSource.open(dataSpec.buildUpon().setUri(Uri.fromFile(file)).build())
         }
-        // Signing is I/O; ExoPlayer opens sources on its loading thread, not main.
-        val url = runBlocking { vaultApi.signGetOne(key) }
-            ?: throw IOException("The vault refused this track (signed out, or it was deleted)")
         val source = if (cache.cacheEnabled) cachedHttpSource else plainHttpSource
         active = source
-        return source.open(
-            dataSpec.buildUpon()
-                .setUri(Uri.parse(url))
-                .setKey("vault:$hash") // stable across re-signed URLs
-                .build(),
-        )
+        return source.open(dataSpec.buildUpon().setKey(AudioCache.vaultKey(hash)).build())
     }
 
     override fun read(buffer: ByteArray, offset: Int, length: Int): Int =
@@ -88,17 +80,36 @@ class VaultDataSourceFactory @Inject constructor(
     private val http = OkHttpClient()
 
     override fun createDataSource(): DataSource {
+        // Both vault paths sign lazily: only when bytes really come from the network.
+        val signedHttp = ResolvingDataSource.Factory(OkHttpDataSource.Factory(http), VaultUrlResolver(vaultApi))
         val cachedHttp = CacheDataSource.Factory()
             .setCache(cache.simpleCache)
-            .setUpstreamDataSourceFactory(OkHttpDataSource.Factory(http))
+            .setUpstreamDataSourceFactory(signedHttp)
             .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
             .createDataSource()
         return VaultDataSource(
             localSource = DefaultDataSource.Factory(context).createDataSource(),
             cachedHttpSource = cachedHttp,
-            plainHttpSource = OkHttpDataSource.Factory(http).createDataSource(),
+            plainHttpSource = signedHttp.createDataSource(),
             cache = cache,
-            vaultApi = vaultApi,
         )
+    }
+}
+
+/** Swaps a `vault://` URI for a freshly signed R2 URL, on the loading thread (signing is I/O). */
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+private class VaultUrlResolver(private val vaultApi: VaultApi) : ResolvingDataSource.Resolver {
+    override fun resolveDataSpec(dataSpec: DataSpec): DataSpec {
+        val uri = dataSpec.uri
+        if (uri.scheme != VaultMerge.VAULT_SCHEME) return dataSpec
+        val key = uri.getQueryParameter("key") ?: throw IOException("vault track without a storage key")
+        val url = try {
+            runBlocking { vaultApi.signGetOne(key) }
+        } catch (e: IOException) {
+            throw e
+        } catch (e: Exception) {
+            throw IOException("Couldn't sign the vault URL", e)
+        } ?: throw IOException("The vault refused this track (signed out, or it was deleted)")
+        return dataSpec.withUri(Uri.parse(url))
     }
 }

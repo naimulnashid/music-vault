@@ -183,7 +183,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (index < 0 || index >= queue.length) return;
     const next = queue.filter((_, i) => i !== index);
     if (next.length === 0) {
-      set({ queue: [], currentIndex: -1, currentTrack: null, isPlaying: false, currentTime: 0 });
+      // Removing the last song must stop it, same as clearing the queue.
+      get().clearQueue();
       return;
     }
     if (index < currentIndex) {

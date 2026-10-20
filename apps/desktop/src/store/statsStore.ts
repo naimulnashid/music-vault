@@ -115,6 +115,11 @@ export const useStatsStore = create<StatsState>((set, get) => ({
 }));
 
 /** Called by the sync store after a pull that added play events. */
+/** Sign-out: drop the previous account's events; the next open reloads from what this device keeps. */
+export function resetStats(): void {
+  useStatsStore.setState({ events: [], metaById: new Map(), loaded: false });
+}
+
 export function refreshStatsIfLoaded(): void {
   if (useStatsStore.getState().loaded) void useStatsStore.getState().load();
 }

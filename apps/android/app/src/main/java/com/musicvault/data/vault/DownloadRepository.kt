@@ -1,5 +1,7 @@
 package com.musicvault.data.vault
 
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.flow.first
 import android.content.Context
 import androidx.work.Constraints
 import androidx.work.ExistingWorkPolicy
@@ -86,6 +88,14 @@ class DownloadRepository @Inject constructor(
             .forEach { enqueue(it, ExistingWorkPolicy.REPLACE) }
     }
 
+    /** Work ids of failed downloads the user dismissed from the Downloads screen. */
+    val dismissedFailures: Set<String>
+        get() = prefs.getStringSet(KEY_DISMISSED_FAILURES, emptySet()).orEmpty()
+
+    fun dismissFailure(workId: String) {
+        prefs.edit().putStringSet(KEY_DISMISSED_FAILURES, dismissedFailures + workId).apply()
+    }
+
     fun cancel(trackId: String) {
         workManager.cancelUniqueWork("$WORK_TAG-$trackId")
     }
@@ -116,6 +126,10 @@ class DownloadRepository @Inject constructor(
     suspend fun download(trackId: String, onProgress: suspend (Long, Long) -> Unit) {
         val contentHash = trackId.removePrefix(VaultMerge.VAULT_ID_PREFIX)
         if (downloadDao.get(trackId) != null && cache.pinnedVaultFile(contentHash) != null) return // already pinned
+        // WorkManager can run this before the library has loaded in a fresh process;
+        // judging "no longer in your vault" then would fail every queued download.
+        withTimeoutOrNull(LIBRARY_WAIT_MS) { remoteTrackIndex.loaded.first { it } }
+            ?: throw VaultNetworkException("The library hasn't loaded yet")
         val row = remoteTrackIndex.tracks.value.firstOrNull {
             it.contentHash == contentHash && it.deletedAt == null && it.storageKey != null
         } ?: throw VaultException(404, "not_found", "This track is no longer in your vault")
@@ -125,7 +139,13 @@ class DownloadRepository @Inject constructor(
 
         val dest = cache.vaultDownloadTarget(contentHash, storageKey.substringAfterLast('.', ""))
         val part = File(dest.path + ".part")
-        val actual = vaultApi.downloadTo(url, part) { read, total -> onProgress(read, if (total > 0) total else row.fileSize) }
+        val actual = try {
+            vaultApi.downloadTo(url, part) { read, total -> onProgress(read, if (total > 0) total else row.fileSize) }
+        } catch (e: Exception) {
+            // A retry starts from zero, and a final failure must not leave a file nothing tracks.
+            part.delete()
+            throw e
+        }
         if (actual != contentHash) {
             part.delete()
             throw VaultException(0, "integrity", "The downloaded audio doesn't match this track — discarded")
@@ -150,8 +170,10 @@ class DownloadRepository @Inject constructor(
 
     companion object {
         const val WORK_TAG = "vault-download"
+        private const val LIBRARY_WAIT_MS = 30_000L
         private const val KEY_WIFI_ONLY = "wifiOnly"
         private const val KEY_CHARGING_ONLY = "chargingOnly"
+        private const val KEY_DISMISSED_FAILURES = "dismissedFailures"
 
         /** Content hashes of tombstoned rows with no live row sharing the hash. */
         fun deletedHashes(rows: List<TrackRow>): Set<String> {

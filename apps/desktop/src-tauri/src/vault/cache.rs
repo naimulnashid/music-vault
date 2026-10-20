@@ -72,10 +72,20 @@ pub fn promote_to_pinned(conn: &Connection, file_id: &str, from: &str, downloads
     Ok(target_str)
 }
 
-/// Deletes a cached/downloaded file and its index row.
+/// Deletes a file, treating "already gone" as done. Any other failure (the file
+/// is open, access denied) leaves it on disk, so its row must stay too.
+fn delete_file(path: &str) -> std::io::Result<()> {
+    match std::fs::remove_file(path) {
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e),
+        _ => Ok(()),
+    }
+}
+
+/// Deletes a cached/downloaded file and its index row. When the file can't be
+/// deleted the row stays, so Downloads and the usage figures keep counting it.
 pub fn remove(conn: &Connection, file_id: &str) -> AppResult<()> {
     if let Some(entry) = queries::get_cache_entry(conn, file_id)? {
-        let _ = std::fs::remove_file(&entry.path);
+        delete_file(&entry.path)?;
         queries::delete_cache_entry(conn, file_id)?;
     }
     Ok(())
@@ -88,8 +98,11 @@ pub fn forget_deleted(conn: &Connection, content_hashes: &[String]) -> AppResult
     for hash in content_hashes {
         let key = super::cache_key(hash);
         if queries::get_cache_entry(conn, &key)?.is_some() {
-            remove(conn, &key)?;
-            removed += 1;
+            // A file in use stays (with its row) and is tried again next time.
+            match remove(conn, &key) {
+                Ok(()) => removed += 1,
+                Err(e) => tracing::warn!(key = %key, error = %e, "couldn't remove a deleted track's file"),
+            }
         }
     }
     Ok(removed)
@@ -117,7 +130,10 @@ pub fn enforce_cap(conn: &Connection) -> AppResult<()> {
         if auto_bytes <= cap {
             break;
         }
-        let _ = std::fs::remove_file(&entry.path);
+        // Keep the row while the file can't go (open elsewhere), so the usage stays true.
+        if delete_file(&entry.path).is_err() {
+            continue;
+        }
         queries::delete_cache_entry(conn, &entry.file_id)?;
         auto_bytes -= entry.size;
         tracing::info!(file_id = %entry.file_id, size = entry.size, "evicted from auto-cache");
@@ -184,6 +200,43 @@ mod tests {
         let path = write_file(dir, &format!("{file_id}.mp3"), size as usize);
         queries::upsert_cache_entry(conn, file_id, &path.to_string_lossy(), size, false, accessed_at).unwrap();
         path
+    }
+
+    #[test]
+    fn remove_keeps_the_row_when_the_file_cannot_be_deleted() {
+        let (db, dir) = test_db("stuck");
+        let conn = db.0.lock().unwrap();
+        // A directory can't be removed with remove_file: stands in for a locked file.
+        let stuck = dir.join("stuck.flac");
+        std::fs::create_dir_all(&stuck).unwrap();
+        queries::upsert_cache_entry(&conn, "vault:stuck", &stuck.to_string_lossy(), 5, true, 1).unwrap();
+        assert!(remove(&conn, "vault:stuck").is_err());
+        assert!(queries::get_cache_entry(&conn, "vault:stuck").unwrap().is_some());
+    }
+
+    #[test]
+    fn remove_drops_the_row_when_the_file_is_already_gone() {
+        let (db, dir) = test_db("gone");
+        let conn = db.0.lock().unwrap();
+        let missing = dir.join("missing.flac");
+        queries::upsert_cache_entry(&conn, "vault:gone", &missing.to_string_lossy(), 5, true, 1).unwrap();
+        remove(&conn, "vault:gone").unwrap();
+        assert!(queries::get_cache_entry(&conn, "vault:gone").unwrap().is_none());
+    }
+
+    #[test]
+    fn enforce_cap_skips_a_file_it_cannot_delete() {
+        let (db, dir) = test_db("capstuck");
+        let conn = db.0.lock().unwrap();
+        queries::set_setting(&conn, SETTING_CACHE_MAX, "0").unwrap();
+        let stuck = dir.join("old.mp3");
+        std::fs::create_dir_all(&stuck).unwrap();
+        queries::upsert_cache_entry(&conn, "old", &stuck.to_string_lossy(), 100, false, 1).unwrap();
+        for i in 0..KEEP_RECENT {
+            seed_auto(&conn, &dir, &format!("recent{i}"), 1, 10_000 + i as i64);
+        }
+        enforce_cap(&conn).unwrap();
+        assert!(queries::get_cache_entry(&conn, "old").unwrap().is_some());
     }
 
     #[test]

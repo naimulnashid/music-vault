@@ -198,13 +198,15 @@ export class SyncEngine {
     const startedAt = Date.now();
     const changes = emptyChanges();
     try {
-      await this.flush(changes);
+      // A rejected op stays queued; its error must outlive the pull that
+      // follows, or the status would claim everything synced.
+      const pushError = await this.flush(changes);
       await this.pull(fullPull, changes);
       this.status = {
-        phase: "idle",
+        phase: pushError ? "error" : "idle",
         pendingOps: (await this.storage.outboxAll()).length,
         lastSyncAt: this.now(),
-        lastError: null,
+        lastError: pushError,
       };
     } catch (err) {
       const offline = err instanceof SyncNetworkError;
@@ -247,9 +249,10 @@ export class SyncEngine {
 
   // ---- flush ----------------------------------------------------------------
 
-  private async flush(changes: RemoteChanges): Promise<void> {
+  /** Pushes the outbox; returns the last non-network push error of this flush, or null. */
+  private async flush(changes: RemoteChanges): Promise<string | null> {
     const entries = await this.storage.outboxAll();
-    if (entries.length === 0) return;
+    if (entries.length === 0) return null;
 
     // Coalesce: one op per LWW entity (newest editedAt wins), play events all.
     const byEntity = new Map<string, OutboxEntry>();
@@ -274,6 +277,7 @@ export class SyncEngine {
     const survivors = [...byEntity.values()].sort(
       (a, b) => a.op.createdAt.localeCompare(b.op.createdAt) || a.op.id.localeCompare(b.op.id),
     );
+    let pushError: string | null = null;
     for (const entry of survivors) {
       try {
         await this.pushOp(entry.op, changes);
@@ -290,9 +294,10 @@ export class SyncEngine {
           attempts: entry.attempts + 1,
           error: message,
         });
-        this.status = { ...this.status, lastError: message };
+        pushError = message;
       }
     }
+    return pushError;
   }
 
   /**

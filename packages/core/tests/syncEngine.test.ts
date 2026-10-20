@@ -69,6 +69,8 @@ class FakeServer {
 
 class FakeTransport implements SyncTransport {
   offline = false;
+  /** When set, favorite pushes fail with this non-network error (a rejected write). */
+  favoriteError: string | null = null;
   onChangeCbs: Array<() => void> = [];
 
   constructor(private readonly server: FakeServer) {}
@@ -186,6 +188,7 @@ class FakeTransport implements SyncTransport {
   }
   async upsertFavorite(row: { track_id: string; favorite: boolean; edited_at: string }) {
     this.guard();
+    if (this.favoriteError) throw new Error(this.favoriteError);
     const prev = this.server.favorites.get(row.track_id);
     this.server.favorites.set(row.track_id, {
       user_id: "user-1",
@@ -466,6 +469,19 @@ describe("SyncEngine", () => {
     expect(a.engine.getStatus().phase).toBe("idle");
     expect(server.favorites.size).toBe(1);
     expect(await a.storage.outboxAll()).toHaveLength(0);
+  });
+
+  it("a rejected push keeps the status in error after a successful pull", async () => {
+    a.transport.favoriteError = "constraint violated";
+    await a.engine.enqueue({ kind: "favorite.set", track: HASH_REF(1), favorite: true, editedAt: ts(10) });
+    await a.engine.syncNow();
+    expect(a.engine.getStatus()).toMatchObject({ phase: "error", pendingOps: 1, lastError: "constraint violated" });
+    expect(a.engine.getStatus().lastSyncAt).not.toBeNull();
+
+    a.transport.favoriteError = null;
+    await a.engine.syncNow();
+    expect(a.engine.getStatus()).toMatchObject({ phase: "idle", pendingOps: 0, lastError: null });
+    expect(server.favorites.size).toBe(1);
   });
 
   it("breadcrumbs trace drops, cycles, coalescing, offline and lost conflicts", async () => {

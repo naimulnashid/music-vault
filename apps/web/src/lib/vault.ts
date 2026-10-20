@@ -24,6 +24,11 @@ export function signedUrls(): SignedUrlCache | null {
   return urls;
 }
 
+/** Sign-out: signed links belong to the account that asked for them. */
+export function forgetSignedUrls(): void {
+  urls = null;
+}
+
 /** MIME type sent with an audio upload. */
 export function audioMime(ext: string): string {
   switch (ext) {

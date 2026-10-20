@@ -52,7 +52,7 @@ reads four secrets: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
 | `sign-get` | GET URLs (1 h) for up to 200 keys. Only the caller's own keys that a live track row references are signed; the rest come back as `denied`. Thumbnails resolve through their full cover. |
 | `sign-put` | PUT URL (15 min) for an audio file of one of the caller's track rows (`kind: audio`), or for a cover by its SHA-256 and variant (`kind: art`). Size limits are checked here. |
 | `commit` | After an audio upload: checks the object exists and matches the row's file size (a mismatch deletes it), then records `storage_key` and `uploaded_at` and clears `deleted_at` (a re-uploaded deleted track is revived). |
-| `delete` | "Delete from vault": calls `delete_track`, then removes the audio and the cover if no other track of the user uses it. A failed object delete is logged; the key is unreachable anyway. |
+| `delete` | "Delete from vault": calls `delete_track`, then removes the audio and the cover if no other track of the user uses it. A stored key outside the caller's own prefix, or of the wrong kind, is logged and never deleted. A failed object delete is logged; the key is unreachable anyway. |
 
 Clients: `createSupabaseVaultApi` + `SignedUrlCache` in
 [`packages/core/src/vault.ts`](../packages/core/src/vault.ts) (desktop and web), `VaultApi` over

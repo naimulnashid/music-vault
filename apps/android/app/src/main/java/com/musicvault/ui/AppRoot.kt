@@ -170,16 +170,25 @@ fun AppRoot() {
                     "downloads" -> Routes.DOWNLOADS
                     else -> Routes.TRACKS
                 } ?: Routes.TRACKS
-                navController.navigate(route) {
+                // The album shot shows it under Collections, where albums are browsed from.
+                val path = if (screen == "album" && route != Routes.TRACKS) listOf(Routes.COLLECTIONS, route) else listOf(route)
+                navController.navigate(path.first()) {
                     popUpTo(navController.graph.findStartDestination().id)
                     launchSingleTop = true
                 }
+                path.drop(1).forEach { navController.navigate(it) }
             }
         }
     }
 
-    // Download progress notifications need POST_NOTIFICATIONS on Android 13+.
     val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        playerViewModel.playbackErrors.collect { message ->
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+
+    // Download progress notifications need POST_NOTIFICATIONS on Android 13+.
     val notificationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     LaunchedEffect(Unit) {
         if (Build.VERSION.SDK_INT >= 33 &&
@@ -193,12 +202,23 @@ fun AppRoot() {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val isTopLevel = currentRoute == null || TABS.any { it.route == currentRoute }
+    // From the back stack, not the current page: an album belongs to whichever tab it was opened in.
+    val selectedTab = remember(backStackEntry) {
+        selectedTabRoute(TABS.map { it.route }, Routes.TRACKS) { route ->
+            runCatching { navController.getBackStackEntry(route) }.isSuccess
+        }
+    }
 
     val openTab: (String) -> Unit = { route ->
-        navController.navigate(route) {
-            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-            launchSingleTop = true
-            restoreState = true
+        if (route == selectedTab) {
+            // Reselecting the active tab goes back to its root.
+            navController.popBackStack(route, inclusive = false)
+        } else {
+            navController.navigate(route) {
+                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+            }
         }
     }
     val open: (String) -> Unit = { route ->
@@ -380,10 +400,7 @@ fun AppRoot() {
                     tonalElevation = 0.dp,
                 ) {
                     TABS.forEach { tab ->
-                        val selected = currentRoute == tab.route ||
-                            (tab.route == Routes.STATS && currentRoute == Routes.HEATMAP) ||
-                            (tab.route == Routes.COLLECTIONS && (currentRoute?.startsWith("playlist/") == true ||
-                                currentRoute?.startsWith("smart/") == true || currentRoute?.startsWith("album/") == true))
+                        val selected = tab.route == selectedTab
                         NavigationBarItem(
                             selected = selected,
                             onClick = { openTab(tab.route) },

@@ -1,5 +1,5 @@
 -- Vault schema smoke test — run in the Supabase SQL editor (or psql) AFTER
--- applying 0004_vault.sql. Two fake users exercise the protected columns,
+-- applying the migrations through 0006. Two fake users exercise the protected columns,
 -- apply_track_edit (field-level LWW), resolve_upload_target, merge_tracks
 -- and delete_track, including cross-user refusal. Everything rolls back.
 
@@ -45,17 +45,19 @@ begin
   if t.genre is distinct from 'Folk' then raise exception 'FAIL: an edit to a different field was lost'; end if;
 end $$;
 
--- A tie goes to the incoming edit; nulls clear; numbers parse.
+-- A tie goes to the incoming edit; nulls clear; a release date sets the year
+-- (0006: year is derived and no longer editable).
 select public.apply_track_edit('10000000-0000-0000-0000-000000000001',
-  '{"title": "Tie", "genre": null, "year": 1999, "language": "Bangla"}', '2026-10-11T12:00:00Z');
+  '{"title": "Tie", "genre": null, "release_date": "1999", "language": "Bangla"}', '2026-10-11T12:00:00Z');
 
 do $$
 declare t public.tracks;
 begin
   select * into t from public.tracks where id = '10000000-0000-0000-0000-000000000001';
   if t.title <> 'Tie' then raise exception 'FAIL: a tied edit should apply'; end if;
-  if t.genre is not null or t.year <> 1999 or t.language <> 'Bangla' then
-    raise exception 'FAIL: null/number/text edits not applied as expected';
+  if t.genre is not null or t.release_date is distinct from '1999' or t.year is distinct from 1999
+     or t.language <> 'Bangla' then
+    raise exception 'FAIL: null/release date/text edits not applied as expected';
   end if;
 end $$;
 

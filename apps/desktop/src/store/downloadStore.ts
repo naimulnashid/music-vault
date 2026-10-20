@@ -13,6 +13,8 @@ import {
   type CacheStats,
 } from "../lib/ipc";
 import { ensureVaultLocal } from "../lib/vault";
+import { emitAppError } from "../lib/errorBus";
+import { downloadFailureMessage, type DownloadFailure } from "../lib/downloadError";
 import { useLibraryStore } from "./libraryStore";
 import type { Track } from "../types";
 
@@ -88,6 +90,9 @@ function dequeue(keys: string[]) {
   });
 }
 
+/** Failures of the current run, reported together when the last worker finishes. */
+const failures: DownloadFailure[] = [];
+
 async function worker(): Promise<void> {
   workers++;
   try {
@@ -97,7 +102,10 @@ async function worker(): Promise<void> {
       try {
         await ensureVaultLocal(track, true);
       } catch (err) {
-        if (!String(err).includes("cancelled")) console.error("[downloads] download failed:", track.title, err);
+        if (!String(err).includes("cancelled")) {
+          console.error("[downloads] download failed:", track.title, err);
+          failures.push({ title: track.title, err });
+        }
       } finally {
         inFlight.delete(key);
         dequeue([key]);
@@ -105,7 +113,11 @@ async function worker(): Promise<void> {
     }
   } finally {
     workers--;
-    if (workers === 0) void useDownloadStore.getState().refreshDownloads();
+    if (workers === 0) {
+      const message = downloadFailureMessage(failures.splice(0));
+      if (message) emitAppError(message);
+      void useDownloadStore.getState().refreshDownloads();
+    }
   }
 }
 
@@ -210,12 +222,22 @@ export const useDownloadStore = create<DownloadStoreState>((set, get) => ({
   removeDownload: (fileId) => get().removeDownloads([fileId]),
 
   removeDownloads: async (fileIds) => {
+    let stuck = 0;
     for (const fileId of fileIds) {
       try {
         await vaultDownloadRemove(fileId);
       } catch (err) {
         console.error("[downloads] remove failed:", err);
+        stuck++;
       }
+    }
+    // The file stays listed (and counted) when it couldn't be deleted; say why.
+    if (stuck > 0) {
+      emitAppError(
+        stuck === 1
+          ? "Couldn't remove a download: the file is in use. Try again after it stops playing."
+          : `Couldn't remove ${stuck} downloads: the files are in use. Try again after they stop playing.`,
+      );
     }
     await get().refreshDownloads();
   },

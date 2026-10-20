@@ -102,8 +102,10 @@ Drive: [drive-to-r2-migration.md](drive-to-r2-migration.md).
 ## Sync model
 
 - `play_events` are append-only — no conflicts by construction.
-- Favorites / settings: last-writer-wins on `updated_at`. (Ratings followed the same
-  rule until star ratings were removed on 2026-10-13; the table stays.)
+- Favorites / settings: last-writer-wins on the client clock `edited_at`, not the
+  server's `updated_at` ([sync-protocol.md](sync-protocol.md#two-timestamps-per-row)).
+  (Ratings followed the same rule until star ratings were removed on 2026-10-13; the
+  table stays.)
 - Playlist ordering: fractional indexes, so concurrent reorders merge.
 - Every mutation gets a client-generated UUID → idempotent replay after
   offline periods. Outbox persists in the local DB and survives crashes.
@@ -180,7 +182,8 @@ the web in OPFS with IndexedDB bookkeeping.
   thumbnail made at upload, used by list rows and grids; heavy web views
   (stats, recap, downloads, EQ, visualizer) are lazy chunks.
 - **CI/CD**: `ci.yml` runs every suite per push/PR; `release.yml` builds the
-  NSIS installer + APK on tags/dispatch. Vercel handles web previews.
+  NSIS installer + APK only when started by hand (when and why:
+  [release.yml](../.github/workflows/release.yml)). Vercel handles web previews.
 
 ## Build phases
 

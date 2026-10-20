@@ -1,8 +1,10 @@
 package com.musicvault.data.sync
 
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.exceptions.HttpRequestException
 import io.github.jan.supabase.exceptions.RestException
+import io.github.jan.supabase.exceptions.UnauthorizedRestException
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
@@ -37,13 +39,40 @@ class SupabaseSyncTransport(
     private val scope: CoroutineScope,
 ) : SyncTransport {
 
-    /** Maps connectivity failures to [SyncNetworkException] (flush stops, ops stay queued). */
-    private suspend fun <T> guarded(block: suspend () -> T): T = try {
-        block()
-    } catch (e: HttpRequestException) {
-        throw SyncNetworkException(e.message ?: "network error", e)
-    } catch (e: IOException) {
-        throw SyncNetworkException(e.message ?: "network error", e)
+    /**
+     * Maps connectivity failures to [SyncNetworkException] and session
+     * rejections to [SyncAuthException] (flush stops, ops stay queued).
+     */
+    private suspend fun <T> guarded(block: suspend () -> T): T {
+        // Without a session supabase-kt falls back to the anon key, which RLS
+        // turns into empty pulls and rejected writes.
+        if (client.auth.currentSessionOrNull() == null) throw SyncAuthException("no session")
+        return try {
+            block()
+        } catch (e: HttpRequestException) {
+            throw SyncNetworkException(e.message ?: "network error", e)
+        } catch (e: IOException) {
+            throw SyncNetworkException(e.message ?: "network error", e)
+        } catch (e: RestException) {
+            if (e.isAuthFailure()) throw SyncAuthException(e.message ?: "unauthorized", e) else throw e
+        }
+    }
+
+    /** postgrest-kt keeps the message but drops PostgREST's code, so match both. */
+    private fun RestException.isAuthFailure(): Boolean =
+        this is UnauthorizedRestException || statusCode == 401 ||
+            listOfNotNull(error, description, message).any {
+                it.contains("PGRST301") || it.contains("JWT expired", ignoreCase = true)
+            }
+
+    override suspend fun refreshAuth() {
+        try {
+            client.auth.refreshCurrentSession()
+        } catch (e: HttpRequestException) {
+            throw SyncNetworkException(e.message ?: "network error", e)
+        } catch (e: IOException) {
+            throw SyncNetworkException(e.message ?: "network error", e)
+        }
     }
 
     /**

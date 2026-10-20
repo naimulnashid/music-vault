@@ -9,13 +9,31 @@ import type { Track } from "../types";
  */
 
 let enqueueFn: ((payload: SyncOpPayload) => void) | null = null;
+let enqueueUserId: string | null = null;
+/** Ops that must reach one account's stream once its engine runs (see syncEnqueueFor). */
+let waiting: Array<{ userId: string; payload: SyncOpPayload }> = [];
 
-export function setSyncEnqueue(fn: ((payload: SyncOpPayload) => void) | null): void {
+export function setSyncEnqueue(fn: ((payload: SyncOpPayload) => void) | null, userId: string | null = null): void {
   enqueueFn = fn;
+  enqueueUserId = fn ? userId : null;
+  if (!fn || !userId) return;
+  // A different account signing in drops the waiting ops: they were not its own.
+  const ready = waiting.filter((w) => w.userId === userId);
+  waiting = [];
+  ready.forEach((w) => fn(w.payload));
 }
 
 export function syncEnqueue(payload: SyncOpPayload): void {
   enqueueFn?.(payload);
+}
+
+/**
+ * Enqueues for one account: now if its engine is running, else as soon as it
+ * starts. Used for a play session recovered at startup, before sync is up.
+ */
+export function syncEnqueueFor(userId: string, payload: SyncOpPayload): void {
+  if (enqueueFn && enqueueUserId === userId) enqueueFn(payload);
+  else if (!enqueueFn) waiting.push({ userId, payload });
 }
 
 export function nowIso(): string {

@@ -31,6 +31,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -58,9 +60,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 
-/** Three bouncing bars marking the song that's playing (frozen while paused). */
+/** Three bouncing bars marking the song that's playing; a play icon while it's paused. */
 @Composable
 fun NowPlayingBars(playing: Boolean, color: Color, modifier: Modifier = Modifier, height: Dp = 14.dp) {
+    if (!playing) {
+        // Frozen bars still read as "playing" (a song that failed to load looked
+        // like it was on); the icon also says what tapping the current row does.
+        Icon(Icons.Rounded.PlayArrow, contentDescription = "Paused", tint = color, modifier = modifier.size(height + 6.dp))
+        return
+    }
     val transition = rememberInfiniteTransition(label = "bars")
     val phases = listOf(0, 300, 600).map { delay ->
         transition.animateFloat(
@@ -76,7 +84,7 @@ fun NowPlayingBars(playing: Boolean, color: Color, modifier: Modifier = Modifier
     Canvas(modifier = modifier.size(width = height, height = height)) {
         val barW = size.width / 5f
         phases.forEachIndexed { i, phase ->
-            val h = size.height * (if (playing) phase.value else 0.35f + i * 0.15f)
+            val h = size.height * phase.value
             drawRoundRect(
                 color = color,
                 topLeft = Offset(i * barW * 2, size.height - h),

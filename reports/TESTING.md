@@ -1,7 +1,7 @@
 # Testing
 
 > Audit date: 2026-07-17 · branch `main` @ `e3b5237`; counts and suites updated 2026-10-13 for
-> the vault, counts recounted 2026-10-15. Suites: core vitest, the `vault` function's vitest, desktop/web vitest, Rust
+> the vault, counts recounted 2026-10-15, Android recounted 2026-10-20. Suites: core vitest, the `vault` function's vitest, desktop/web vitest, Rust
 > `cargo test`, Android JVM, Playwright web e2e, and manual SQL smoke tests. CI wiring:
 > [BUILD_AND_RUN.md §9](BUILD_AND_RUN.md#9-cicd).
 
@@ -13,7 +13,7 @@ npm run vault:test                                   # vitest — 23 tests, the 
 npm run desktop:test                                 # vitest — 4 tests (library projection)
 npm run web:test                                     # vitest — 4 tests (vault helpers)
 cd apps/desktop/src-tauri && cargo test              # Rust — 19 tests, 6 modules
-cd apps/android && ./gradlew.bat testDebugUnitTest   # Kotlin JVM — 83 cases, 9 files
+cd apps/android && ./gradlew.bat testDebugUnitTest   # Kotlin JVM — 92 cases, 11 files
 npm run web:e2e                                      # Playwright — 2 specs
 ```
 
@@ -25,7 +25,7 @@ npm run web:e2e                                      # Playwright — 2 specs
 | Vault function | vitest | 1 | 23 | [supabase/functions/vault/handler.test.ts](../supabase/functions/vault/handler.test.ts) |
 | Desktop / web | vitest | 1 + 1 | 4 + 4 | [vaultMerge.test.ts](../apps/desktop/src/lib/vaultMerge.test.ts), [vaultWeb.test.ts](../apps/web/src/lib/vaultWeb.test.ts) |
 | Rust | cargo | 6 modules | 19 | inline `#[cfg(test)]` in `src-tauri/src/` |
-| Android | JUnit 4 + Truth | 9 | 83 | [app/src/test/java/com/musicvault/](../apps/android/app/src/test/java/com/musicvault) |
+| Android | JUnit 4 + Truth | 11 | 92 | [app/src/test/java/com/musicvault/](../apps/android/app/src/test/java/com/musicvault) |
 | Web e2e | Playwright | 2 | — | [apps/web/e2e/](../apps/web/e2e) |
 | Supabase SQL | psql, manual | 3 | — | [rls_smoke.sql](../supabase/tests/rls_smoke.sql), [vault_smoke.sql](../supabase/tests/vault_smoke.sql), [track_edit_golden.mjs](../supabase/tests/track_edit_golden.mjs) |
 | Vault end to end | node, manual | 1 | — | [functions/vault/smoke.mjs](../supabase/functions/vault/smoke.mjs) — against the real bucket |
@@ -173,7 +173,7 @@ The DB tests write to `std::env::temp_dir()` keyed by process id
 
 ---
 
-## 4. Android suite — 83 cases
+## 4. Android suite — 92 cases
 
 | File | Cases | Covers |
 |---|---:|---|
@@ -181,6 +181,8 @@ The DB tests write to `std::env::temp_dir()` keyed by process id
 | [VaultMergeTest.kt](../apps/android/app/src/test/java/com/musicvault/data/vault/VaultMergeTest.kt) | 7 | The library projection (rows, pending edits, favorites, ratings, covers) |
 | [TrackEditGoldenTest.kt](../apps/android/app/src/test/java/com/musicvault/data/sync/TrackEditGoldenTest.kt) | 4 | **Golden fixture** (`track-edit.golden.json`) |
 | [QueueStateTest.kt](../apps/android/app/src/test/java/com/musicvault/playback/QueueStateTest.kt) | 14 | Queue/shuffle/repeat — Android-only logic |
+| [SessionRestoreTest.kt](../apps/android/app/src/test/java/com/musicvault/playback/SessionRestoreTest.kt) | 5 | Restoring the last queue only once the library has loaded |
+| [TabSelectionTest.kt](../apps/android/app/src/test/java/com/musicvault/ui/TabSelectionTest.kt) | 4 | Which bottom-bar tab a back stack belongs to |
 | [SmartPlaylistsTest.kt](../apps/android/app/src/test/java/com/musicvault/domain/SmartPlaylistsTest.kt) | 12 | Built-in smart playlists |
 | [FractionalTest.kt](../apps/android/app/src/test/java/com/musicvault/data/sync/FractionalTest.kt) | 6 | Fractional keys (mirrors `fractional.test.ts`, same count) |
 | [StatsGoldenTest.kt](../apps/android/app/src/test/java/com/musicvault/domain/StatsGoldenTest.kt) | 5 | **Golden fixture** |

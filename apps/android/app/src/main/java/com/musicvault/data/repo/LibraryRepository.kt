@@ -57,6 +57,9 @@ class LibraryRepository @Inject constructor(
         VaultMerge.merge(o.rows, o.pending, o.favorites, o.ratings, o.art)
     }
 
+    /** True once the library has been loaded for the signed-in account. */
+    val hydrated: Flow<Boolean> = remoteTrackIndex.loaded
+
     /** The current library, for one-off lookups. */
     private suspend fun currentTracks(): List<Track> = tracks.first()
 

@@ -11,6 +11,7 @@ import com.musicvault.data.repo.LibraryRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
@@ -24,6 +25,14 @@ data class ActiveDownload(
     val title: String,
     /** 0..1, or null while the size is unknown. */
     val progress: Float?,
+)
+
+/** A download whose job gave up, kept on screen with its reason until retried or dismissed. */
+data class FailedDownload(
+    val workId: String,
+    val fileId: String,
+    val title: String,
+    val reason: String,
 )
 
 @HiltViewModel
@@ -62,6 +71,33 @@ class DownloadsViewModel @Inject constructor(
     val activeDownloads: StateFlow<List<ActiveDownload>> = downloadRepository.activeWork
         .map { infos -> infos.filter { !it.state.isFinished }.map { it.toActive() } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private val dismissedFailures = MutableStateFlow(downloadRepository.dismissedFailures)
+
+    val failedDownloads: StateFlow<List<FailedDownload>> =
+        combine(downloadRepository.activeWork, dismissedFailures) { infos, dismissed ->
+            infos.filter { it.state == WorkInfo.State.FAILED && it.id.toString() !in dismissed }.map { it.toFailed() }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun retryDownload(fileId: String) = downloadRepository.enqueue(fileId)
+
+    fun dismissFailure(item: FailedDownload) {
+        downloadRepository.dismissFailure(item.workId)
+        dismissedFailures.value = downloadRepository.dismissedFailures
+    }
+
+    private suspend fun WorkInfo.toFailed(): FailedDownload {
+        val fileId = outputData.getString(DownloadWorker.KEY_FILE_ID)
+            ?: tags.firstOrNull { it.startsWith("${DownloadRepository.WORK_TAG}-") }
+                ?.removePrefix("${DownloadRepository.WORK_TAG}-")
+            ?: ""
+        return FailedDownload(
+            workId = id.toString(),
+            fileId = fileId,
+            title = libraryRepository.getTrack(fileId)?.title ?: fileId,
+            reason = outputData.getString(DownloadWorker.KEY_ERROR) ?: "Download failed",
+        )
+    }
 
     private val _wifiOnly = MutableStateFlow(downloadRepository.wifiOnly)
     val wifiOnly: StateFlow<Boolean> = _wifiOnly.asStateFlow()

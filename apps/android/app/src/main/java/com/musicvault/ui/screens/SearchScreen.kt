@@ -98,6 +98,8 @@ fun SearchScreen(
             onToggleFavorite = libraryViewModel::toggleFavorite,
             onAddToPlaylist = libraryViewModel::addTrackToPlaylist,
             contentPadding = contentPadding,
+            // The header already says what an empty result means.
+            emptyMessage = null,
             header = {
                 Column {
                     if (q.isEmpty()) {

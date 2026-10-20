@@ -41,6 +41,24 @@ const ALBUMS: DemoAlbum[] = [
   { artist: "Ana Ferreira", album: "Casa Azul", genre: "Bossa Nova", language: "Portuguese", country: "Brazil", releaseDate: "2018-03-09", colors: ["#2dd4bf", "#1d4ed8"], titles: ["Casa Azul", "Manhã de Sal", "Varanda", "Samba Lento", "Céu de Abril"] },
 ];
 
+/**
+ * Made-up synced lyrics for the song the demo plays, so the Lyrics tab has
+ * something to follow. Timed from 1:12 because the demo resumes that song at
+ * 1:14 (loadDemo's restoreQueue), so the lines scroll as soon as it plays.
+ */
+const DEMO_LYRICS: Record<string, string> = {
+  "demo-1-0": [
+    "[01:12.00]Morning comes in on the tide",
+    "[01:15.50]Salt on the window, light on the floor",
+    "[01:19.00]Every hour folds into the next",
+    "[01:22.50]I keep the quiet ones for later",
+    "[01:26.00]Saltwater hours, slow and wide",
+    "[01:29.50]Carry me back to the shore",
+    "[01:33.00]Nothing to chase and nowhere to be",
+    "[01:36.50]Saltwater hours, you and me",
+  ].join("\n"),
+};
+
 /** Park–Miller: the same sequence on every run. */
 function seeded(seed: number) {
   let s = seed;
@@ -138,6 +156,7 @@ export async function loadDemo(): Promise<void> {
         addedAt: now - (ALBUMS.length - ai) * 9 * 86_400_000 - ti * 60_000,
         favorite: rand() < 0.25,
         storageKey: undefined,
+        lyricsText: DEMO_LYRICS[`demo-${ai}-${ti}`],
       });
     });
   });

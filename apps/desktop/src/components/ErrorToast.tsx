@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { onPlayerError } from "../lib/ipc";
+import { onAppError } from "../lib/errorBus";
 
 interface ToastState {
   message: string;
@@ -9,7 +10,8 @@ interface ToastState {
 }
 
 /** Transient bottom toast for engine errors (unreadable/missing files, device
- * failures). Errors also land in the log file; this is the visible surface. */
+ * failures) and app errors such as a song that couldn't be fetched. Engine
+ * errors also land in the log file; this is the visible surface. */
 export function ErrorToast() {
   const [toast, setToast] = useState<ToastState | null>(null);
 
@@ -17,19 +19,24 @@ export function ErrorToast() {
     let disposed = false;
     let unlisten: (() => void) | null = null;
     let timer: number | undefined;
-    void onPlayerError(({ message, path }) => {
-      const fileName = path?.split(/[/\\]/).pop();
-      setToast({ message, detail: fileName });
+    const show = (next: ToastState) => {
+      setToast(next);
       window.clearTimeout(timer);
       timer = window.setTimeout(() => setToast(null), 5000);
+    };
+    void onPlayerError(({ message, path }) => {
+      show({ message, detail: path?.split(/[/\\]/).pop() });
     }).then((un) => {
       if (disposed) un();
       else unlisten = un;
     });
+    // Errors from the app itself (a song that couldn't be fetched), not the engine.
+    const offApp = onAppError((message) => show({ message }));
     return () => {
       disposed = true;
       window.clearTimeout(timer);
       unlisten?.();
+      offApp();
     };
   }, []);
 

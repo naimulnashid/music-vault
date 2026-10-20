@@ -7,16 +7,20 @@ import com.musicvault.data.db.PlaylistEntity
 import com.musicvault.data.prefs.SettingsRepository
 import com.musicvault.data.vault.PendingEdit
 import com.musicvault.data.vault.DownloadRepository
+import com.musicvault.data.vault.VaultApi
 import com.musicvault.data.vault.VaultArtwork
 import com.musicvault.data.vault.VaultMerge
 import com.musicvault.di.ApplicationScope
+import com.musicvault.playback.PlaybackController
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -38,6 +42,8 @@ class SyncManager @Inject constructor(
     private val vaultArtwork: VaultArtwork,
     // Lazy: built on first use, not while the Application is being injected.
     private val downloadRepository: dagger.Lazy<DownloadRepository>,
+    private val playbackController: dagger.Lazy<PlaybackController>,
+    private val vaultApi: VaultApi,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
     private var engine: SyncEngine? = null
@@ -69,6 +75,12 @@ class SyncManager @Inject constructor(
                             stopEngine()
                             startEngine(userId)
                             wasSignedIn = true
+                        } else {
+                            // Same account with a fresh token (auto refresh or signing in again).
+                            engine?.takeIf { it.needsSession }?.let { e ->
+                                e.resume()
+                                scope.launch { e.syncNow() }
+                            }
                         }
                     }
                     is SessionStatus.NotAuthenticated -> {
@@ -78,10 +90,14 @@ class SyncManager @Inject constructor(
                             // and the playlists mirrored from the account.
                             storage.clearAll()
                             clearPlaylists()
+                            clearAccountPlayback()
                             wasSignedIn = false
                         }
                     }
-                    else -> {} // Initializing / RefreshFailure — keep whatever runs
+                    // No usable session: supabase-kt would send the anon key alone, so hold
+                    // the queue until Authenticated comes back (it retries the refresh itself).
+                    is SessionStatus.RefreshFailure -> engine?.pause()
+                    else -> {} // Initializing: nothing runs yet
                 }
             }
         }
@@ -95,8 +111,12 @@ class SyncManager @Inject constructor(
         if (knownUser != null && knownUser != userId) {
             storage.clearAll()
             clearPlaylists()
+            clearAccountPlayback()
         }
         storage.cursorSet(CURSOR_USER, userId)
+
+        // The library comes from the local shadow, so show it before any network round trip.
+        refreshRemoteTrackIndex()
 
         // Make sure the device row exists so ops can be attributed (idempotent).
         authRepository.registerDevice()
@@ -116,15 +136,24 @@ class SyncManager @Inject constructor(
         newEngine.init()
         engine = newEngine
         engineUserId = userId
-        refreshRemoteTrackIndex()
 
-        SyncBus.install(deviceId) { payload ->
+        SyncBus.install(deviceId, userId) { payload ->
             scope.launch { engine?.enqueue(payload) }
         }
 
         newEngine.start() // Realtime pull-sooner hints
         scope.launch { newEngine.syncNow(fullPull = true) } // startup safety-net pull
         Timber.i("sync engine started (device=%s)", deviceId)
+    }
+
+    /**
+     * The next account must not inherit this one's playback: stop it, drop the
+     * queue (and its saved copy) and the signed links. Device-owned data stays:
+     * local listening history, downloaded and cached files, and settings.
+     */
+    private suspend fun clearAccountPlayback() {
+        withContext(Dispatchers.Main) { playbackController.get().clearQueue() }
+        vaultApi.forgetSignedUrls()
     }
 
     private fun stopEngine() {

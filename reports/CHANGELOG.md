@@ -10,13 +10,34 @@
 > Entries are grouped by release and theme rather than one line per commit.
 > Format follows [Keep a Changelog](https://keepachangelog.com/) conventions.
 > Releases since: `v1.0.0` and `v1.1.0`, both 2026-10-15, published as source on the public repo
-> (see [Notes on this changelog](#notes-on-this-changelog)).
+> (see [Notes on this changelog](#notes-on-this-changelog)); `v1.2.0`, 2026-10-20, tagged in the
+> private repo, not exported yet.
 
 ---
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-20
+
+Everything since `v1.1.0`, including the fixes from the 2026-10-19 project and UX audits.
+Versions: 1.2.0 everywhere; Android `versionCode 3`.
+
 ### Added
+- Demo video: `npm run demo:video
+  -w music-vault-web` records the app footage from the demo build (the invented library, served
+  with `next start`) with the DevTools screencast, plus a log of every click, and `npm run
+  android:demo-video` records the phone shot from the Android demo app on an emulator. A
+  Remotion project in `video/remotion/` (its own package, not a workspace) edits them into the
+  cut: title card, six web shots with a drawn cursor, zooms on clicks and captions, the phone
+  shot with drawn touches, the How it works diagram and an end card, over CC0 music, plus a
+  15-second silent loop for the landing page (MP4 and WebM, 1280x720) that ends on its first frame. It
+  now plays in the landing page hero in place of the library screenshot, muted and looping, with
+  its first frame as the poster and no playback for visitors who ask for reduced motion. The Android
+  screenshot script shares the emulator helpers (`apps/android/scripts/emulator.mjs`). Steps in [video/README.md](../video/README.md), music credit in
+  [video/CREDITS.md](../video/CREDITS.md). Remotion has its own license: free for individuals
+  and for companies of up to 3 people. The demo's "Saltwater Hours" now has made-up synced
+  lyrics, and the README screenshot scripts share the demo build helper
+  (`scripts/demo-server.mjs`).
 - A landing page in `apps/site` (Astro, static output): what Music Vault is, the three apps,
   features, the screenshots from `docs/screenshots/`, how it works, privacy and its limits, the
   four setup steps and an FAQ. No client framework, no third-party requests, no analytics; a CSP
@@ -48,6 +69,89 @@
   to Issues.
 - Supabase setup guide: turn off new-user sign-ups once your own account exists, because any
   account on the project can upload into the R2 bucket.
+
+### Fixed
+- Web and desktop: removing the last song from the queue now stops playback, as clearing the
+  queue does, instead of leaving the removed song playing with no now-playing bar.
+- Sync (core and Android): a change the server rejects no longer looks synced. The cycle used to
+  clear the push error once the pull succeeded; it now ends in the error state ("Sync issue, will
+  retry") until a later cycle pushes everything.
+- Android sync recovers from an expired session instead of failing every request. A 401 (or
+  PostgREST's "JWT expired") is no longer treated as a rejected op: the engine refreshes the
+  session once and retries the cycle. If the refresh fails, the queue stays as it is (no retry
+  count added) and the account menu shows "Sign in again to sync" with a Sign in button. While
+  supabase-kt has no usable session it no longer sends requests with only the anon key; sync
+  waits and resumes once the session is back. Web and desktop are unchanged.
+- Web: phones showed two menu buttons in the top bar, and the player bar's shuffle, previous and
+  repeat buttons below 640 px, because the icon button's own `inline-flex` outranked `hidden`.
+  They now hide with `max-md:hidden` / `max-sm:hidden` (desktop: the mini player button below
+  1280 px). The sidebar button's label now says Expand sidebar while it is collapsed.
+- Web and desktop: the equalizer's band sliders have names ("31 Hz gain") and read their value
+  in dB ("+3 dB"), and the preset list is named "Equalizer preset", for screen readers.
+- `supabase/tests/vault_smoke.sql` edited `year`, which `apply_track_edit` rejects since 0006, so
+  it failed; it now sets `release_date` and checks the derived year.
+- docs/architecture.md: favorites and settings resolve on `edited_at` (not `updated_at`), and
+  `release.yml` runs only by hand (not on tags); both now link to the documents that own them.
+- Android search no longer shows "No songs here yet." under its own hint or no-results message.
+- Android: a song in the auto-cache plays offline again. Playback asked the vault for a signed URL
+  before looking in the cache, so without a connection a cached (not downloaded) song failed; the
+  URL is now signed only when the cache has to fetch from the vault.
+- Android: the last session's queue and position come back after a restart. The restore ran
+  before the library had loaded and found none of its songs; it now waits for the library, and
+  leaves alone a queue the user started meanwhile. The library also shows before the device
+  check-in with the server, so it appears right away offline.
+- Android equalizer: the ten band sliders no longer overlap. Each stands upright in its own column,
+  with a handle narrow enough not to touch its neighbours.
+- Android bottom bar: the highlighted tab follows the tab a page was opened in. An album opened
+  from Library search stays under Library (it used to light up Collections), and tapping the
+  active tab again goes back to its first page.
+- Song lists and queue (Android, web and desktop): the current song shows a play icon while
+  paused, instead of frozen bars that still looked like it was playing (for example after a song
+  failed to load offline). The bouncing bars stay for playback.
+- A song that can't be loaded now says so on every app: "<song>: Not available offline" when the
+  device is offline, otherwise the reason. Android used to show nothing, desktop only logged it;
+  preloading the next song stays quiet. Android: pressing play on a song that failed retries the
+  load instead of showing "playing" at 0:00 with no sound.
+- Listening history keeps every play (web, desktop and Android). The last song before closing the
+  app, a killed process or a crash used to be lost, and repeat-one counted many plays as one.
+  Each session now has a fixed event id and is saved every second while playing; it is recorded
+  when the song ends, the track changes, the queue is cleared or the window closes, and a leftover
+  is recorded at the next start (sent only to the account that played it). Recording a session
+  twice still gives one event.
+- Desktop: a download that fails part-way (dropped connection, disk error, bad hash) no longer
+  leaves its half-written `.part` file behind, and leftovers from a crash are cleared at startup.
+  Nothing tracked them, so they only took disk space.
+- A download that fails now says so. Desktop and web show one message per run ("Tidal: download
+  rejected (403)", or "Couldn't download 5 songs: Can't download while offline") instead of
+  nothing (desktop) or one toast per song (web). Android keeps failed downloads in Downloads with
+  the reason, Retry and Dismiss; it also removes the partial file of a failed download, and a
+  queued download no longer fails as "no longer in your vault" when it runs before the library
+  has loaded.
+- Desktop: a downloaded or cached file that can't be deleted (in use, access denied) now stays in
+  Downloads and in the space used, instead of vanishing from the list while staying on disk.
+  Removing one says why it couldn't; the cache limit and the cleanup of deleted songs skip it and
+  try again later.
+- Web: pressing Download while a song is still streaming into the cache now keeps it as a
+  download. It used to stay an evictable cache entry that could vanish before you went offline.
+- Web and desktop dialogs (Upload, Edit details and every standard dialog) work from the keyboard
+  and with screen readers: they are announced as named dialogs, focus moves into them (to the
+  first field), Tab and Shift+Tab stay inside, the page behind is inert, Escape closes them where
+  closing is allowed (Upload keeps uploading in the background), and focus returns to the button
+  that opened them. Upload and Edit details had none of this; the others only closed on Escape.
+
+### Security
+- Vault `delete` only removes objects whose stored key is the caller's own and of the right kind
+  (audio for `storage_key`, a full cover for `artwork_key`); any other key is logged and skipped.
+  A user could set their own row's `artwork_key` to another user's cover with a direct update, and
+  the service-role delete would then have removed that object. Live since the `vault` Edge
+  Function was redeployed on 2026-10-20.
+- Migration [0007_artwork_key_guard.sql](../supabase/migrations/0007_artwork_key_guard.sql)
+  makes the database reject a direct client write of an `artwork_key` that is not the row owner's
+  own full cover key. Applied to the live project on 2026-10-20.
+- Signing out (and, on Android, switching accounts) no longer leaves the previous account's
+  playback behind: the player stops and the queue, its saved resume point, cached signed links,
+  queued downloads and loaded statistics are cleared. What belongs to the device stays: local
+  listening history, downloaded and cached audio, and settings.
 
 ## [1.1.0] - 2026-10-15
 

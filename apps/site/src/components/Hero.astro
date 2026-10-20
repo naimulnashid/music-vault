@@ -1,7 +1,5 @@
 ---
 import Icon from './Icon.astro';
-import Shot from './Shot.astro';
-import { screenshot } from '../lib/screenshots';
 import { LINKS } from '../lib/site';
 ---
 
@@ -37,15 +35,23 @@ import { LINKS } from '../lib/site';
     </div>
 
     <figure class="hero-shot">
-      <Shot
-        class="frame"
-        shot={screenshot('library')}
-        alt="The Music Vault library: every song with its album and length, the sidebar with smart playlists and playlists, and the player bar along the bottom"
-        widths={[640, 960, 1280, 1600, 2000]}
-        sizes="(min-width: 1180px) 1180px, calc(100vw - 32px)"
-        eager
-      />
-      <figcaption>The library on Windows and the web. Every song and cover shown is invented.</figcaption>
+      {/* The demo video's loop (video/README.md makes it). The script below starts
+          it unless the visitor asks for reduced motion; without it the poster shows. */}
+      <video
+        class="frame hero-video"
+        muted
+        loop
+        playsinline
+        preload="metadata"
+        poster="/video/hero-loop-poster.webp"
+        width="1280"
+        height="720"
+        aria-label="Music Vault in use: searching the library, synced lyrics, the visualizer, the Android player and listening statistics"
+      >
+        <source src="/video/hero-loop.webm" type="video/webm" />
+        <source src="/video/hero-loop.mp4" type="video/mp4" />
+      </video>
+      <figcaption>Windows, the web and Android. Every song, cover and number shown is invented.</figcaption>
     </figure>
   </div>
 </section>
@@ -120,6 +126,13 @@ import { LINKS } from '../lib/site';
     color: var(--accent-text);
   }
 
+  .hero-video {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    background: #0d0d10;
+  }
+
   .hero-shot figcaption {
     margin-top: 16px;
     color: var(--muted);
@@ -127,3 +140,17 @@ import { LINKS } from '../lib/site';
     text-align: center;
   }
 </style>
+
+<script>
+  // Plays only for visitors who haven't asked for reduced motion, and follows
+  // that setting if it changes while the page is open.
+  const video = document.querySelector<HTMLVideoElement>('.hero-video');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+  const apply = () => {
+    if (!video) return;
+    if (reduce.matches) video.pause();
+    else void video.play().catch(() => {});
+  };
+  apply();
+  reduce.addEventListener('change', apply);
+</script>

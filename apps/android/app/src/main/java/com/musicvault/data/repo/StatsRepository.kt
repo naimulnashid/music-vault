@@ -6,18 +6,17 @@ import com.musicvault.data.db.SyncDao
 import com.musicvault.data.sync.PlayEventRow
 import com.musicvault.data.sync.SyncBus
 import com.musicvault.data.sync.SyncOpPayload
+import com.musicvault.data.sync.TrackRef
 import com.musicvault.data.sync.TrackRow
 import com.musicvault.domain.Stats
 import com.musicvault.domain.StatsEvent
 import com.musicvault.domain.StatsTrackMeta
-import com.musicvault.domain.model.Track
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.serialization.json.Json
 import timber.log.Timber
 import java.time.Instant
 import java.time.OffsetDateTime
-import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -98,27 +97,41 @@ class StatsRepository @Inject constructor(
      * local log; tracks with sync identity also enqueue playEvent.add under
      * the SAME event id so the copy pulled back into the shadow dedupes.
      */
-    suspend fun recordSession(track: Track, startedAtMs: Long, seconds: Long) {
+    /**
+     * Records one listening session as a play event: the local log always, the
+     * cloud stream when the track has sync identity and an account started it.
+     * [eventId] is fixed when the session starts, so recording it twice (on
+     * stop, then again from the checkpoint) keeps one row in each store.
+     */
+    suspend fun recordSession(
+        eventId: String,
+        trackId: String,
+        startedAtMs: Long,
+        seconds: Long,
+        durationMs: Long,
+        ref: TrackRef?,
+        userId: String?,
+        recovered: Boolean = false,
+    ) {
         if (seconds < 1) return
-        val durationSec = track.durationMs / 1000.0
+        val durationSec = durationMs / 1000.0
         val completed = durationSec > 0 && seconds >= durationSec * 0.9
-        val eventId = UUID.randomUUID().toString()
         try {
-            playEventDao.add(PlayEventEntity(eventId, track.id, startedAtMs, seconds.toDouble(), completed))
+            playEventDao.add(PlayEventEntity(eventId, trackId, startedAtMs, seconds.toDouble(), completed))
         } catch (e: Exception) {
             Timber.e(e, "Failed to record play event")
         }
-        SyncBus.refFromTrack(track)?.let { ref ->
-            SyncBus.enqueue(
-                SyncOpPayload.PlayEventAdd(
-                    eventId = eventId,
-                    track = ref,
-                    playedAt = Instant.ofEpochMilli(startedAtMs).toString(),
-                    durationPlayed = seconds.toDouble(),
-                    completed = completed,
-                )
-            )
-        }
+        if (ref == null || userId == null) return
+        val op = SyncOpPayload.PlayEventAdd(
+            eventId = eventId,
+            track = ref,
+            playedAt = Instant.ofEpochMilli(startedAtMs).toString(),
+            durationPlayed = seconds.toDouble(),
+            completed = completed,
+        )
+        // A recovered session may predate this run's sync engine, so it waits for
+        // its own account's engine instead of being dropped.
+        if (recovered) SyncBus.enqueueFor(userId, op) else SyncBus.enqueue(op)
     }
 
     private fun parseIsoMs(iso: String): Long =

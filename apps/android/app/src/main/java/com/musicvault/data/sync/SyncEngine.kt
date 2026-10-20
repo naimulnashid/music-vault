@@ -56,6 +56,8 @@ class SyncEngine(
     private var realtimeUnsub: (() -> Unit)? = null
     private var realtimeJob: Job? = null
     private var disposed = false
+    /** Set while there is no usable session; cycles are skipped so nothing goes out with only the anon key. */
+    @Volatile private var paused = false
 
     /** Loads the track shadow into the identity maps. Call once before use. */
     suspend fun init() {
@@ -96,6 +98,19 @@ class SyncEngine(
         realtimeUnsub = null
     }
 
+    /** Holds every cycle (flush and pull); enqueued ops just wait in the outbox. */
+    fun pause() {
+        paused = true
+    }
+
+    /** Lifts [pause] (or an auth failure's pause). The caller kicks the next cycle. */
+    fun resume() {
+        paused = false
+    }
+
+    /** True while paused or after the session was rejected: a fresh session should resume and sync. */
+    val needsSession: Boolean get() = paused || status.phase == SyncPhase.AUTH
+
     /** Queues a mutation and kicks a sync cycle. Refs without identity are dropped. */
     suspend fun enqueue(payload: SyncOpPayload) {
         if (!payload.isSyncable()) {
@@ -116,8 +131,8 @@ class SyncEngine(
 
     /** Runs flush + pull. Cycles are serialized — they never overlap. */
     suspend fun syncNow(fullPull: Boolean = false) {
-        if (disposed) return
-        cycleMutex.withLock { runCycle(fullPull) }
+        if (disposed || paused) return
+        cycleMutex.withLock { if (!paused) runCycle(fullPull) }
     }
 
     /** Connectivity restored — retry whatever is queued. */
@@ -141,13 +156,29 @@ class SyncEngine(
         val startedAt = System.currentTimeMillis()
         val changes = RemoteChanges()
         try {
-            flush(changes)
-            pull(fullPull, changes)
-            status = SyncStatus(
-                phase = SyncPhase.IDLE,
+            try {
+                exchange(fullPull, changes)
+            } catch (err: SyncAuthException) {
+                // Usually a token that expired while the process was frozen (an
+                // emulator snapshot, a long doze) without the auth layer noticing.
+                crumb("auth.rejected", mapOf("error" to err.message))
+                try {
+                    transport.refreshAuth()
+                } catch (refreshErr: SyncNetworkException) {
+                    throw refreshErr
+                } catch (refreshErr: Exception) {
+                    throw SyncAuthException(refreshErr.message ?: refreshErr.toString(), refreshErr)
+                }
+                crumb("auth.refreshed")
+                exchange(fullPull, changes) // once: a second rejection lands below
+            }
+        } catch (err: SyncAuthException) {
+            // Retrying would only repeat the 401; wait for a new session instead.
+            paused = true
+            status = status.copy(
+                phase = SyncPhase.AUTH,
                 pendingOps = storage.outboxAll().size,
-                lastSyncAt = options.now(),
-                lastError = null,
+                lastError = err.message ?: err.toString(),
             )
         } catch (err: Exception) {
             val offline = err is SyncNetworkException
@@ -185,11 +216,26 @@ class SyncEngine(
         if (changes.hasAny()) options.onChanges(changes)
     }
 
+    /** One flush + pull; sets the status on success. */
+    private suspend fun exchange(fullPull: Boolean, changes: RemoteChanges) {
+        // A rejected op stays queued; its error must outlive the pull that
+        // follows, or the status would claim everything synced.
+        val pushError = flush(changes)
+        pull(fullPull, changes)
+        status = SyncStatus(
+            phase = if (pushError != null) SyncPhase.ERROR else SyncPhase.IDLE,
+            pendingOps = storage.outboxAll().size,
+            lastSyncAt = options.now(),
+            lastError = pushError,
+        )
+    }
+
     // ---- flush ----------------------------------------------------------------
 
-    private suspend fun flush(changes: RemoteChanges) {
+    /** Pushes the outbox; returns the last non-network push error of this flush, or null. */
+    private suspend fun flush(changes: RemoteChanges): String? {
         val entries = storage.outboxAll()
-        if (entries.isEmpty()) return
+        if (entries.isEmpty()) return null
 
         // Coalesce: one op per LWW entity (newest editedAt wins), play events all.
         val byEntity = LinkedHashMap<String, OutboxEntry>()
@@ -212,12 +258,15 @@ class SyncEngine(
         }
 
         val survivors = byEntity.values.sortedWith(compareBy({ it.op.createdAt }, { it.op.id }))
+        var pushError: String? = null
         for (entry in survivors) {
             try {
                 pushOp(entry.op, changes)
                 storage.outboxDelete(listOf(entry.op.id))
             } catch (err: SyncNetworkException) {
                 throw err // offline: stop, keep everything
+            } catch (err: SyncAuthException) {
+                throw err // the session, not this op, was rejected: stop, no attempt bump
             } catch (err: Exception) {
                 storage.outboxBumpAttempts(listOf(entry.op.id))
                 // Non-network failure (constraint, bad payload): keep the op for a
@@ -232,9 +281,10 @@ class SyncEngine(
                         "error" to message,
                     ),
                 )
-                status = status.copy(lastError = message)
+                pushError = message
             }
         }
+        return pushError
     }
 
     /**

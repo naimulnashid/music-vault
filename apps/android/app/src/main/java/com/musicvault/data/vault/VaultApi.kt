@@ -127,6 +127,9 @@ class VaultApi @Inject constructor() {
 
     suspend fun signGetOne(key: String): String? = signGet(listOf(key))[key]
 
+    /** Sign-out: signed links belong to the account that asked for them. */
+    fun forgetSignedUrls() = synchronized(signedCache) { signedCache.clear() }
+
     suspend fun signPutAudio(trackId: String, ext: String): SignedPut = invoke(
         buildJsonObject {
             put("action", "sign-put")

@@ -54,6 +54,12 @@ class VaultPlayer(
 
         /** Fires whenever the queue contents change. */
         fun onQueueChanged(trackIds: List<String>)
+
+        /** Fires when the current song plays to its end, before the queue moves on or repeats it. */
+        fun onTrackFinished(track: Track) {}
+
+        /** Fires when the current song can't be loaded (preload failures stay silent). */
+        fun onPlaybackFailed(track: Track, error: PlaybackException) {}
     }
 
     var callback: Callback? = null
@@ -317,8 +323,11 @@ class VaultPlayer(
         override fun onPlayerError(error: PlaybackException) {
             Timber.e(error, "Player %d error on %s", playerIndex, queue.currentTrack?.fileName)
             if (playerIndex == activeIndex) {
+                // A paused restore that fails stays quiet; pressing play retries and reports.
+                val wanted = playWhenReadyFlag
                 playWhenReadyFlag = false
                 invalidateState()
+                if (wanted) queue.currentTrack?.let { callback?.onPlaybackFailed(it, error) }
             }
         }
     }
@@ -359,6 +368,9 @@ class VaultPlayer(
         playWhenReadyFlag = playWhenReady
         if (queue.isEmpty) return
         if (playWhenReady) {
+            // After a failed load the player sits idle with the error and play() alone
+            // would show "playing" at 0:00 forever; preparing again retries the load.
+            if (activePlayer.playerError != null) activePlayer.prepare()
             activePlayer.play()
         } else {
             finalizeFade()
@@ -452,6 +464,7 @@ class VaultPlayer(
     }
 
     private fun onActiveEnded() {
+        queue.currentTrack?.let { callback?.onTrackFinished(it) }
         if (repeat == RepeatMode.ONE) {
             activePlayer.seekTo(0)
             activePlayer.play()

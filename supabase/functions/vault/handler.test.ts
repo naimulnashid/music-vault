@@ -280,6 +280,44 @@ describe("delete", () => {
     expect((await call(ALICE, { action: "delete", trackId: "10000000-0000-4000-8000-00000000ffff" })).status).toBe(404);
   });
 
+  it("never deletes a cover under another user's prefix", async () => {
+    const bobCover = artKey(BOB, ART_SHA, "full");
+    const bobThumb = artKey(BOB, ART_SHA, "thumb");
+    world.objects.set(bobCover, 1);
+    world.objects.set(bobThumb, 1);
+    world.rows.get(TRACK)!.artwork_key = bobCover;
+    const res = await call(ALICE, { action: "delete", trackId: TRACK });
+    expect(res.body).toEqual({ trackId: TRACK, deleted: true });
+    expect(world.objects.has(bobCover)).toBe(true);
+    expect(world.objects.has(bobThumb)).toBe(true);
+    expect(world.objects.has(audio)).toBe(false);
+    expect(world.logged).toEqual([`refusing to delete foreign artwork key ${bobCover}`]);
+  });
+
+  it("never deletes an audio key stored as the artwork key", async () => {
+    const other = audioKey(ALICE, "b".repeat(64), "flac");
+    world.objects.set(other, 1);
+    world.rows.get(TRACK)!.artwork_key = other;
+    await call(ALICE, { action: "delete", trackId: TRACK });
+    expect(world.objects.has(other)).toBe(true);
+    expect(world.logged).toEqual([`refusing to delete foreign artwork key ${other}`]);
+  });
+
+  it("never deletes a storage key that is not the caller's audio", async () => {
+    world.rows.get(TRACK)!.storage_key = cover;
+    world.rows.get(TRACK)!.artwork_key = null;
+    await call(ALICE, { action: "delete", trackId: TRACK });
+    expect(world.objects.has(cover)).toBe(true);
+    expect(world.logged).toEqual([`refusing to delete foreign storage key ${cover}`]);
+  });
+
+  it("deletes the caller's own cover and thumbnail without logging", async () => {
+    await call(ALICE, { action: "delete", trackId: TRACK });
+    expect(world.objects.has(cover)).toBe(false);
+    expect(world.objects.has(thumb)).toBe(false);
+    expect(world.logged).toEqual([]);
+  });
+
   it("still succeeds when R2 cleanup fails, and logs it", async () => {
     const deps = world.deps(ALICE);
     deps.store.remove = async () => {

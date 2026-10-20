@@ -21,6 +21,7 @@ export function TopBar() {
   const canGoBack = useUiStore((s) => s.canGoBack);
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
   const toggleSidebarCollapsed = useUiStore((s) => s.toggleSidebarCollapsed);
+  const sidebarCollapsed = useUiStore((s) => s.sidebarCollapsed);
   const signedIn = useAuthStore((s) => s.status === "signedIn");
   const uploading = useUploadStore((s) => s.running);
   const openUpload = useUploadStore((s) => s.openWith);
@@ -57,7 +58,13 @@ export function TopBar() {
         <IconButton label="Menu" size="md" onClick={toggleSidebar} className="md:hidden">
           <MenuIcon className="w-5 h-5" />
         </IconButton>
-        <IconButton label="Collapse sidebar" size="md" onClick={toggleSidebarCollapsed} className="hidden md:inline-flex">
+        {/* max-md:hidden, not hidden md:inline-flex: IconButton's own inline-flex outranks a bare hidden. */}
+        <IconButton
+          label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          size="md"
+          onClick={toggleSidebarCollapsed}
+          className="max-md:hidden"
+        >
           <MenuIcon className="w-5 h-5" />
         </IconButton>
         <Logo className="hidden sm:flex ml-1" />
