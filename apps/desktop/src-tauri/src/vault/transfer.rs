@@ -4,6 +4,7 @@
 
 use std::io::{Read, Write};
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -68,20 +69,42 @@ pub async fn cancel(app: &AppHandle, keys: &[String]) {
     }
 }
 
+/// Error message of an upload whose file no longer matches the hash it was
+/// added with; the upload screen shows it as is.
+pub const FILE_CHANGED: &str = "This file changed after it was added (it was saved again). Remove it and add it again.";
+
 /// Streams a local file to a pre-signed PUT URL, emitting
 /// `vault://upload-progress` about four times a second.
-pub async fn put_file(app: &AppHandle, url: &str, path: &Path, upload_id: &str, content_type: &str) -> Result<()> {
+///
+/// With `expected_blake3` (audio), the bytes are hashed as they go and the last
+/// chunk is withheld if they don't match: the hash names the object and is the
+/// track's identity, so a file re-saved since it was added (a tag edit can keep
+/// the size) would otherwise be stored under the wrong hash and fail every
+/// download. Withholding it aborts the PUT, so R2 keeps nothing.
+pub async fn put_file(
+    app: &AppHandle,
+    url: &str,
+    path: &Path,
+    upload_id: &str,
+    content_type: &str,
+    expected_blake3: Option<&str>,
+) -> Result<()> {
     let state = app.state::<VaultState>();
     let total = std::fs::metadata(path).with_context(|| format!("can't read {}", path.display()))?.len();
     let file = std::fs::File::open(path)?;
 
     let emit_app = app.clone();
     let id = upload_id.to_string();
+    let expected = expected_blake3.map(str::to_owned);
+    let changed = Arc::new(AtomicBool::new(false));
+    let changed_in_stream = changed.clone();
     let body = futures_util::stream::unfold(
-        (file, 0u64, Instant::now(), false),
-        move |(mut file, sent, last, done)| {
+        (file, 0u64, Instant::now(), false, blake3::Hasher::new()),
+        move |(mut file, sent, last, done, mut hasher)| {
             let app = emit_app.clone();
             let id = id.clone();
+            let expected = expected.clone();
+            let changed = changed_in_stream.clone();
             async move {
                 if done {
                     return None;
@@ -92,15 +115,23 @@ pub async fn put_file(app: &AppHandle, url: &str, path: &Path, upload_id: &str, 
                     Ok(n) => {
                         buf.truncate(n);
                         let sent = sent + n as u64;
+                        if let Some(expected) = &expected {
+                            hasher.update(&buf);
+                            if !upload_bytes_match(&hasher, sent, total, expected) {
+                                changed.store(true, Ordering::SeqCst);
+                                let err = std::io::Error::other(FILE_CHANGED);
+                                return Some((Err(err), (file, sent, last, true, hasher)));
+                            }
+                        }
                         let last = if last.elapsed().as_millis() >= 250 || sent == total {
                             let _ = app.emit("vault://upload-progress", UploadProgress { upload_id: id, sent, total });
                             Instant::now()
                         } else {
                             last
                         };
-                        Some((Ok::<Vec<u8>, std::io::Error>(buf), (file, sent, last, false)))
+                        Some((Ok::<Vec<u8>, std::io::Error>(buf), (file, sent, last, false, hasher)))
                     }
-                    Err(e) => Some((Err(e), (file, sent, last, true))),
+                    Err(e) => Some((Err(e), (file, sent, last, true, hasher))),
                 }
             }
         },
@@ -113,14 +144,26 @@ pub async fn put_file(app: &AppHandle, url: &str, path: &Path, upload_id: &str, 
         .header(reqwest::header::CONTENT_TYPE, content_type)
         .body(reqwest::Body::wrap_stream(body))
         .send()
-        .await
-        .context("upload failed")?;
+        .await;
+    if changed.load(Ordering::SeqCst) {
+        bail!(FILE_CHANGED);
+    }
+    let resp = resp.context("upload failed")?;
     if !resp.status().is_success() {
         let status = resp.status();
         let text = resp.text().await.unwrap_or_default();
         bail!("upload rejected ({status}): {}", text.chars().take(300).collect::<String>());
     }
     Ok(())
+}
+
+/// Whether an upload's bytes so far still fit the file it was added as: false once
+/// more than `total` bytes arrive, or when the complete file doesn't hash to `expected`.
+fn upload_bytes_match(hasher: &blake3::Hasher, sent: u64, total: u64, expected: &str) -> bool {
+    if sent > total {
+        return false;
+    }
+    sent < total || hasher.finalize().to_hex().as_str() == expected
 }
 
 /// The cached copy of a vault track, if present (bumps its LRU recency).
@@ -307,5 +350,38 @@ mod partial_tests {
         assert!(!dir.join("aaa.flac.part").exists());
         assert!(dir.join("bbb.flac").exists());
         std::fs::remove_dir_all(&dir).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod upload_check_tests {
+    use super::upload_bytes_match;
+
+    fn hashed(chunks: &[&[u8]]) -> blake3::Hasher {
+        let mut h = blake3::Hasher::new();
+        for c in chunks {
+            h.update(c);
+        }
+        h
+    }
+
+    #[test]
+    fn the_file_it_was_added_as_passes() {
+        let expected = blake3::hash(b"hello world").to_hex().to_string();
+        assert!(upload_bytes_match(&hashed(&[b"hello ", b"world"]), 11, 11, &expected));
+    }
+
+    #[test]
+    fn a_resaved_file_of_the_same_size_fails_at_the_end() {
+        let expected = blake3::hash(b"hello world").to_hex().to_string();
+        let resaved = hashed(&[b"hello ", b"WORLD"]);
+        assert!(upload_bytes_match(&hashed(&[b"hello "]), 6, 11, &expected), "can't judge mid-file");
+        assert!(!upload_bytes_match(&resaved, 11, 11, &expected));
+    }
+
+    #[test]
+    fn a_file_that_grew_fails() {
+        let expected = blake3::hash(b"hello").to_hex().to_string();
+        assert!(!upload_bytes_match(&hashed(&[b"hello!"]), 6, 5, &expected));
     }
 }

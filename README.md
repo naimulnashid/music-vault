@@ -200,6 +200,10 @@ real secrets. Copy a template, fill in your own values, and keep the result out 
 | Android app | `apps/android/local.properties`, or environment variables | `supabase.url` / `SUPABASE_URL`, `supabase.anonKey` / `SUPABASE_ANON_KEY` |
 | `vault` function | Supabase secrets | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` |
 
+The Windows app's content security policy only lets it talk to `*.supabase.co`. If your Supabase
+project is on a custom domain or self-hosted, add its `https://` and `wss://` origins to
+`connect-src` in [tauri.conf.json](apps/desktop/src-tauri/tauri.conf.json) before building.
+
 ```properties
 # apps/android/local.properties
 supabase.url=https://your-project-ref.supabase.co

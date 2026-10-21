@@ -77,8 +77,9 @@ pub async fn vault_put_file(
     path: String,
     upload_id: String,
     content_type: String,
+    expected_blake3: Option<String>,
 ) -> Result<(), String> {
-    transfer::put_file(&app, &url, &PathBuf::from(path), &upload_id, &content_type)
+    transfer::put_file(&app, &url, &PathBuf::from(path), &upload_id, &content_type, expected_blake3.as_deref())
         .await
         .map_err(|e| e.to_string())
 }

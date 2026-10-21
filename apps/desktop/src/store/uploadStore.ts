@@ -164,7 +164,7 @@ function deps(userId: string, item: UploadItem): UploadDeps {
       syncEnqueue({ kind: "track.edit", track: { remoteId: trackId }, patch, editedAt: nowIso() });
     },
     putAudio: (url, draft) =>
-      vaultPutFile(url, (draft.source as DesktopSource).path, item.id, audioMime(draft.source.ext)),
+      vaultPutFile(url, (draft.source as DesktopSource).path, item.id, audioMime(draft.source.ext), draft.source.contentHash),
     putCover: (url, cover, variant) => {
       const dto = cover.handle as PreparedCoverDto;
       return vaultPutFile(url, variant === "full" ? dto.fullPath : dto.thumbPath, `${item.id}:cover`, "image/jpeg");

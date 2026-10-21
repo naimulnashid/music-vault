@@ -238,19 +238,28 @@ class UploadManager @Inject constructor(
 
     /** Square-crops and resizes an image into the vault's cover format. */
     fun prepareCover(bytes: ByteArray): PreparedCover {
-        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        // Decode no bigger than the cover needs: a phone photo at full size is ~100 MB of
+        // bitmap before the crop and scale even start.
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        val options = BitmapFactory.Options().apply {
+            inSampleSize = coverSampleSize(bounds.outWidth, bounds.outHeight, COVER_EDGE)
+        }
+        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
             ?: throw IllegalArgumentException("That image couldn't be read — try a JPEG or PNG.")
         val size = minOf(bitmap.width, bitmap.height)
         val square = Bitmap.createBitmap(bitmap, (bitmap.width - size) / 2, (bitmap.height - size) / 2, size, size)
+        if (square !== bitmap) bitmap.recycle()
         fun jpeg(edge: Int): ByteArray {
             val scaled = if (edge == size) square else Bitmap.createScaledBitmap(square, edge, edge, true)
             return ByteArrayOutputStream().use { out ->
                 scaled.compress(Bitmap.CompressFormat.JPEG, 88, out)
                 out.toByteArray()
-            }
+            }.also { if (scaled !== square) scaled.recycle() }
         }
-        val full = jpeg(minOf(size, 1200))
+        val full = jpeg(minOf(size, COVER_EDGE))
         val thumb = jpeg(minOf(size, 256))
+        square.recycle()
         val sha = MessageDigest.getInstance("SHA-256").digest(full).joinToString("") { "%02x".format(it) }
         val fullFile = File(staging, "$sha.jpg").apply { writeBytes(full) }
         val thumbFile = File(staging, "$sha.thumb.jpg").apply { writeBytes(thumb) }
@@ -397,4 +406,17 @@ class UploadManager @Inject constructor(
         runCatching { source.file.delete() }
         return if (existing != null) "Uploaded — history kept" else "Uploaded"
     }
+}
+
+/** Longest edge a stored cover keeps. */
+private const val COVER_EDGE = 1200
+
+/**
+ * The largest power-of-two subsample (BitmapFactory's inSampleSize) that still
+ * leaves the image's short edge at least [target] px, so the cover loses no detail.
+ */
+internal fun coverSampleSize(width: Int, height: Int, target: Int): Int {
+    var sample = 1
+    while (minOf(width, height) / (sample * 2) >= target) sample *= 2
+    return sample
 }

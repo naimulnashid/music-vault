@@ -11,11 +11,37 @@
 > Format follows [Keep a Changelog](https://keepachangelog.com/) conventions.
 > Releases since: `v1.0.0` and `v1.1.0`, both 2026-10-15, published as source on the public repo
 > (see [Notes on this changelog](#notes-on-this-changelog)); `v1.2.0`, 2026-10-20, published the
-> same way; `v1.3.0`, 2026-10-21, tagged in the private repo, not exported yet.
+> same way; `v1.3.0`, 2026-10-21, published the same way; `v1.3.1`, 2026-10-21, tagged in the
+> private repo, not exported yet.
 
 ---
 
 ## [Unreleased]
+
+## [1.3.1] - 2026-10-21
+
+The last audit hardening (a desktop content security policy, large covers on Android) and a
+desktop upload fix. Versions: 1.3.1 everywhere; Android `versionCode 5`.
+
+### Security
+- Windows app: a content security policy replaces none. The window may only run its own scripts
+  and styles, load images from itself and the local artwork cache, and connect to Tauri and
+  `*.supabase.co` (HTTPS and realtime); plugins and form posts are blocked. Checked in the
+  installed app: library, artwork, sync (push, pull and realtime), playback, full player,
+  visualizer, Upload with its file picker, Statistics, Downloads and Edit details all work.
+
+### Fixed
+- Windows app: a song file saved again after it was added to the upload list (for example a tag
+  edit, which can keep a FLAC's size) is no longer uploaded under its old content hash. Such a
+  song was stored but could never be downloaded ("downloaded bytes don't match"); the upload now
+  hashes the bytes as it sends them and stops before the last chunk if they changed, so nothing
+  is stored, and says to add the file again. Android and the web already upload exactly the bytes
+  they hashed.
+- Android: choosing a large photo as a cover no longer loads it at full size. It is decoded at a
+  reduced size that still leaves the cover's 1,200 px edge sharp, and the in-between bitmaps are
+  freed as soon as they're used. With an invented 8,000 x 6,000 px image on the emulator, the
+  app's native memory stayed near its starting level (sampled every half second) instead of
+  reaching 367 MB.
 
 ## [1.3.0] - 2026-10-21
 
