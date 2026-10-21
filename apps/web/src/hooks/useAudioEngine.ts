@@ -317,7 +317,7 @@ export function useAudioEngine() {
       }
       playSession.current.seconds += 1;
       saveCheckpoint(playSession.current);
-      saveLastPlayback(player.currentTrack.id, player.currentTime);
+      saveLastPlayback(player.currentTrack.id, player.currentTime, true);
     }, 1000);
     return () => clearInterval(interval);
   }, []);

@@ -59,6 +59,8 @@ class PlaybackController @Inject constructor(
     private val statsRepository: StatsRepository,
     private val libraryRepository: LibraryRepository,
     private val queueDao: QueueDao,
+    // Lazy: SyncManager depends on this controller too.
+    private val syncManager: dagger.Lazy<com.musicvault.data.sync.SyncManager>,
     vaultDataSourceFactory: VaultDataSourceFactory,
 ) {
     val player: VaultPlayer = VaultPlayer(context, vaultDataSourceFactory) { ids ->
@@ -85,6 +87,14 @@ class PlaybackController @Inject constructor(
 
     private var settings = Settings()
     private var restored = false
+
+    // Queue handoff: the queue state last pushed or restored (restores never push), the
+    // state and playing flag at the last rebuild, and the pending push. Rebuilds come many
+    // times a second while playing, so only a change since the last one (re)starts a push.
+    private var pushBaseline = QueueKey.EMPTY
+    private var lastSeenKey = QueueKey.EMPTY
+    private var wasPlaying = false
+    private var pushJob: Job? = null
 
     private val sessionRestore = SessionRestore(
         hydrated = libraryRepository.hydrated,
@@ -204,7 +214,47 @@ class PlaybackController @Inject constructor(
         }
     }
 
+    private fun currentQueueKey() = QueueKey(player.queueEntries.map { it.track.id }, player.currentQueueIndex)
+
+    /** Restores and sign-out clears are not edits: their result becomes the baseline. */
+    private fun adoptQueueAsBaseline() {
+        pushJob?.cancel()
+        pushBaseline = currentQueueKey()
+        lastSeenKey = pushBaseline
+        wasPlaying = player.isPlaying
+    }
+
+    /** Schedules a push for queue edits and pauses (web syncStore's player subscription). */
+    private fun syncQueueState() {
+        val key = currentQueueKey()
+        val delayMs = QueueHandoff.pushDelay(lastSeenKey, key, wasPlaying, player.isPlaying)
+        val edited = key != lastSeenKey
+        lastSeenKey = key
+        wasPlaying = player.isPlaying
+        if (delayMs == null) return
+        if (edited) appScope.launch { settingsRepository.markQueueActivity() }
+        pushJob?.cancel()
+        pushJob = mainScope.launch {
+            delay(delayMs)
+            pushQueue()
+        }
+    }
+
+    private fun pushQueue() {
+        val payload = QueueHandoff.payload(
+            tracks = player.queueEntries.map { it.track },
+            currentIndex = player.currentQueueIndex,
+            positionMs = player.positionMsNow(),
+            shuffle = player.shuffleEnabled,
+            repeat = player.repeatModeDomain,
+            editedAt = SyncBus.nowIso(),
+        ) ?: return
+        SyncBus.enqueue(payload)
+        pushBaseline = currentQueueKey()
+    }
+
     private fun rebuildUiState() {
+        syncQueueState()
         _uiState.value = PlaybackUiState(
             queue = player.queueEntries,
             currentIndex = player.currentQueueIndex,
@@ -217,24 +267,65 @@ class PlaybackController @Inject constructor(
         )
     }
 
-    /** Restores queue + position from the previous session, paused, once the library has loaded. */
+    /**
+     * Restores queue + position from the previous session, paused, once the library has
+     * loaded; then a newer queue left on another device takes over if nothing has been
+     * touched meanwhile.
+     */
     private fun restoreLastSession() {
         appScope.launch {
+            // Read first: restores never stamp it, so it is this phone's own last use.
+            val localActivity = settingsRepository.lastQueueActivityAt()
             try {
-                val plan = sessionRestore.plan() ?: return@launch
-                val applied = withContext(Dispatchers.Main) {
-                    // Whatever the user started while the library loaded wins.
-                    if (player.currentTrack != null || player.queueEntries.isNotEmpty()) return@withContext false
-                    player.restoreQueue(plan.tracks, plan.index, plan.positionMs)
-                    _positionMs.value = plan.positionMs
-                    rebuildUiState()
-                    true
+                val plan = sessionRestore.plan()
+                if (plan != null) {
+                    val applied = withContext(Dispatchers.Main) {
+                        // Whatever the user started while the library loaded wins.
+                        if (player.currentTrack != null || player.queueEntries.isNotEmpty()) return@withContext false
+                        player.restoreQueue(plan.tracks, plan.index, plan.positionMs)
+                        _positionMs.value = plan.positionMs
+                        adoptQueueAsBaseline()
+                        rebuildUiState()
+                        true
+                    }
+                    if (applied) Timber.i("Restored queue of %d tracks at index %d", plan.tracks.size, plan.index)
                 }
-                if (applied) Timber.i("Restored queue of %d tracks at index %d", plan.tracks.size, plan.index)
             } catch (e: Exception) {
                 Timber.e(e, "Failed to restore last session")
             }
+            try {
+                takeOverFromOtherDevice(localActivity)
+            } catch (e: Exception) {
+                Timber.e(e, "Queue handoff failed")
+            }
         }
+    }
+
+    /** Newest wins: another device's queue replaces this one if it was written later. */
+    private suspend fun takeOverFromOtherDevice(localActivityMs: Long?) {
+        val remote = syncManager.get().startupQueue() ?: return
+        libraryRepository.hydrated.first { it }
+        val library = libraryRepository.tracks.first()
+        val byHash = library.filter { it.contentHash != null }.associateBy { it.contentHash }
+        val byRemoteId = library.filter { it.remoteId != null }.associateBy { it.remoteId }
+        val taken = withContext(Dispatchers.Main) {
+            // Anything started or edited since startup wins over the handoff.
+            if (player.isPlaying || currentQueueKey() != pushBaseline) return@withContext false
+            val hasLocal = player.queueEntries.isNotEmpty()
+            if (!QueueHandoff.useRemote(remote, SyncBus.deviceId, hasLocal, localActivityMs)) return@withContext false
+            val (tracks, index) = QueueHandoff.resolve(remote) { id ->
+                id.contentHash?.let { byHash[it] } ?: byRemoteId[id.remoteId]
+            } ?: return@withContext false
+            val positionMs = (remote.positionSeconds * 1000).toLong()
+            player.restoreQueue(tracks, index, positionMs)
+            _positionMs.value = positionMs
+            adoptQueueAsBaseline()
+            rebuildUiState()
+            Timber.i("Took over the queue from another device: %d tracks at index %d", tracks.size, index)
+            true
+        }
+        // The phone now holds that queue, so its next restore isn't older than the server's copy.
+        if (taken) settingsRepository.markQueueActivity()
     }
 
     // region Transport (delegates keep web playerStore semantics)
@@ -264,9 +355,11 @@ class PlaybackController @Inject constructor(
         player.addToQueue(tracks)
     }
     fun removeFromQueue(index: Int) = player.removeFromQueue(index)
-    fun clearQueue() {
+    /** [sync] false (sign-out, account switch): not an edit, so no cleared queue goes out. */
+    fun clearQueue(sync: Boolean = true) {
         closePlaySession()
         player.clearQueue()
+        if (!sync) adoptQueueAsBaseline()
     }
 
     fun seekTo(positionMs: Long) {

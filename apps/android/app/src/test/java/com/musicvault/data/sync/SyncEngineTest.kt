@@ -732,6 +732,24 @@ class SyncEngineTest {
     }
 
     @Test
+    fun `the queue snapshot still has the server queue after a pull that reported nothing`() = syncTest {
+        a.engine.enqueue(
+            SyncOpPayload.QueueSet(listOf(hashRef(1), hashRef(2)), 1, 42.5, false, "off", ts(10)),
+        )
+        a.engine.syncNow()
+        b.engine.syncNow()
+        b.changes.clear()
+
+        b.engine.syncNow() // unchanged row: no QueueChange this time
+        assertThat(b.changes.mapNotNull { it.queue }).isEmpty()
+        val snapshot = b.engine.queueSnapshot()
+        assertThat(snapshot!!.tracks.map { it.contentHash }).containsExactly("hash-1", "hash-2").inOrder()
+        assertThat(snapshot.currentIndex).isEqualTo(1)
+        assertThat(snapshot.deviceId).isEqualTo("A")
+        assertThat(snapshot.editedAt).isEqualTo(ts(10))
+    }
+
+    @Test
     fun `play events are append-only and replay-idempotent`() = syncTest {
         val event = SyncOpPayload.PlayEventAdd(
             eventId = "evt-1",

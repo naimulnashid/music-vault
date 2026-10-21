@@ -26,6 +26,11 @@ interface PlayerState {
   restoreTrack: (track: Track, time: number) => void;
   /** Loads a whole queue paused (cross-device handoff / session restore). */
   restoreQueue: (tracks: Track[], index: number, time: number) => void;
+  /**
+   * The queue as set by the last restore (startup or handoff), so sync can tell a restore
+   * from an edit: a restore is never pushed back out as this device's queue.
+   */
+  restoredQueue: Track[] | null;
   togglePlay: () => void;
   next: () => void;
   prev: () => void;
@@ -53,6 +58,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   currentTime: 0,
   duration: 0,
   currentTrack: null,
+  restoredQueue: null,
   resolvingId: null,
 
   playQueue: (tracks, startIndex) => {
@@ -71,19 +77,26 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   // Loads a track paused at a saved position (last playback resume) without
   // recording a new play or autoplaying.
   restoreTrack: (track, time) => {
-    set({ queue: [track], currentIndex: 0, currentTrack: track, isPlaying: false, currentTime: time, duration: 0 });
+    const queue = [track];
+    set({ queue, restoredQueue: queue, currentIndex: 0, currentTrack: track, isPlaying: false, currentTime: time, duration: 0 });
   },
 
   restoreQueue: (tracks, index, time) => {
     if (tracks.length === 0) return;
+    const loaded = get().currentTrack;
+    // The same song is already loaded (a startup restore, then a handoff to it): the engine
+    // won't reload a song it has, so move it to the new position.
+    const sameSong = loaded !== null && loaded.id === tracks[index]?.id;
     set({
       queue: tracks,
+      restoredQueue: tracks,
       currentIndex: index,
       currentTrack: tracks[index] ?? null,
       isPlaying: false,
       currentTime: time,
       duration: 0,
     });
+    if (sameSong) audioEngine.seek(time);
   },
 
   togglePlay: () => {

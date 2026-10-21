@@ -84,7 +84,8 @@ function App() {
     if (tracks.length === 0) return;
     restoredRef.current = true;
     const saved = loadLastPlayback();
-    if (!saved) return;
+    // A queue handed off from another device may already be loaded.
+    if (!saved || usePlayerStore.getState().queue.length > 0) return;
     const track = tracks.find((t) => t.id === saved.trackId);
     if (track) usePlayerStore.getState().restoreTrack(track, saved.time);
   }, [trackCount]);

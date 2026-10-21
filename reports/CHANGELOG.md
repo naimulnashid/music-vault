@@ -11,12 +11,39 @@
 > Format follows [Keep a Changelog](https://keepachangelog.com/) conventions.
 > Releases since: `v1.0.0` and `v1.1.0`, both 2026-10-15, published as source on the public repo
 > (see [Notes on this changelog](#notes-on-this-changelog)); `v1.2.0`, 2026-10-20, published the
-> same way; `v1.3.0`, 2026-10-21, published the same way; `v1.3.1`, 2026-10-21, tagged in the
-> private repo, not exported yet.
+> same way; `v1.3.0` and `v1.3.1`, both 2026-10-21, published the same way; `v1.4.0`, 2026-10-21,
+> tagged in the private repo, not exported yet.
 
 ---
 
 ## [Unreleased]
+
+## [1.4.0] - 2026-10-21
+
+The queue follows you between all three apps (the last audit item, BUG-006), plus the web and
+desktop fixes that made it work and one full sync per launch. Versions: 1.4.0 everywhere; Android
+`versionCode 6`.
+
+### Added
+- The queue follows you between all three apps. Android now sends its queue (3 s after a change,
+  half a second after a pause) and, at startup, takes over the queue another device left if that
+  was written after the phone last played; otherwise it keeps its own. Web and desktop use the
+  same newest-wins rule, paused at the same song and position, and never interrupt anything
+  started since launch. Checked between the emulator and the Windows app in both directions.
+
+### Fixed
+- Web and desktop run one full sync at launch instead of two. Sync started as soon as the session
+  appeared and again a moment later when the device registration landed, so every launch pulled
+  the whole account twice and the first cycle's play events carried no device. Sync now waits for
+  the registration attempt (successful or not, so it still starts offline), a session that
+  recovers on its own reuses the device id, and stopping sync cancels a pending queue push so it
+  can't fire into the next session.
+- Web and desktop never actually picked up another device's queue after a restart: their own
+  startup restore of the last song blocked it, and a startup pull that found the queue unchanged
+  didn't offer it. They also sent that restore back out as their own queue a few seconds after
+  launch (and again whenever a song's file path was filled in), so a stale song looked like the
+  newest queue to other devices. Restores are no longer sent, and the handoff reads the latest
+  server queue the engine already has.
 
 ## [1.3.1] - 2026-10-21
 

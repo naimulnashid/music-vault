@@ -237,23 +237,38 @@ the next edit or a manual Sync now.
 ## Queue handoff
 
 `queue_state` is one LWW row per user: ordered `TrackRef`-resolved
-`track_ids`, `current_index`, `position_seconds`, `shuffle`, `repeat`,
-pushed debounced while playing. A client pulling a newer row than its own
-last write surfaces it as a "continue from other device" state; it never
-interrupts active local playback.
+`track_ids`, `current_index`, `position_seconds`, `shuffle`, `repeat`.
+Every client pushes it 3 s after the queue or the current song changes and
+0.5 s after a pause, never for position alone. A restore (its own saved
+session or a handed-off queue) is not an edit and is never pushed: a pushed
+restore would make a stale queue look like the newest one.
+
+**At startup, newest wins** (`handoffWins` in core, `QueueHandoff.useRemote`
+on Android). Once the startup sync is done, a client reads the latest server
+row from its shadow (`queueSnapshot()`; pulls only report a row that changed
+since the last one seen) and loads it paused at its song and position when:
+
+- it was written by another device (not an echo of this one's own push);
+- this device has nothing loaded, or only what its own startup restore put
+  there, untouched and not playing;
+- it was written after this device last *played* (web/desktop: `playedAt` in
+  the saved last playback; Android: `lastQueueActivityAt`, which queue edits
+  also move). A restore never moves that time. With no recorded time the local
+  queue stays.
+
+It never interrupts anything the user started or changed since startup, and
+it doesn't run again until the next start.
 
 Clearing the queue is an ordinary `queue.set` with an empty `tracks` array —
 `track_ids: []` means "there is nothing to hand off", not "no state". A client
 must push it like any other queue edit, otherwise the last non-empty row keeps
 offering a queue the user already dismissed. Because a clear only ever *removes*
-a handoff offer, receiving one needs no special handling: restore is already
-gated on the local queue being empty, so an empty row resolves to zero tracks
-and no restore happens. Note the distinction a pusher must preserve: a queue
+a handoff offer, receiving one needs no special handling: a row with no tracks
+never wins the startup handoff, so no restore happens. Note the distinction a pusher must preserve: a queue
 whose tracks have no identity resolves to zero `TrackRef`s but is not a cleared
 queue, and must not be pushed as one.
 
-Web and desktop implement both sides. Android doesn't yet: it keeps its queue in
-Room for restarts but neither pushes `queue.set` nor restores a handed-off queue.
+All three apps implement both sides.
 
 ## Local state on a device
 

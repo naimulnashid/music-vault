@@ -127,8 +127,8 @@ On Android: an album and Downloads.
 
 **Sync**
 - Favorites, playlists, edits, settings and play history sync between your devices.
-- Windows and the web share the queue: opening one with nothing playing picks up the queue the
-  other left. Android keeps its queue on the phone for now.
+- The queue follows you: pause on one device, open another, and it picks up the same song at the
+  same spot, paused, if that queue is newer than the last thing it played.
 - Edits made offline wait in a queue and go up when you reconnect; the newest edit wins.
 
 ## How it works

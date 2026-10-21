@@ -24,6 +24,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -67,6 +68,18 @@ class SyncManager @Inject constructor(
     val queueHandoff: StateFlow<QueueChange?> = _queueHandoff.asStateFlow()
 
     fun consumeQueueHandoff(): QueueChange? = _queueHandoff.value.also { _queueHandoff.value = null }
+
+    /** Set once the engine's startup cycle has finished (or failed, e.g. offline). */
+    private val firstCycleDone = MutableStateFlow(false)
+
+    /**
+     * The account's server queue as of the startup sync, for the playback handoff; null
+     * when signed out or the first cycle doesn't finish in time.
+     */
+    suspend fun startupQueue(): QueueChange? {
+        kotlinx.coroutines.withTimeoutOrNull(STARTUP_QUEUE_WAIT_MS) { firstCycleDone.first { it } } ?: return null
+        return engine?.queueSnapshot()
+    }
 
     /** Call once from Application.onCreate. Safe no-op without Supabase config. */
     fun start() {
@@ -149,7 +162,10 @@ class SyncManager @Inject constructor(
         }
 
         newEngine.start() // Realtime pull-sooner hints
-        scope.launch { newEngine.syncNow(fullPull = true) } // startup safety-net pull
+        scope.launch {
+            newEngine.syncNow(fullPull = true) // startup safety-net pull
+            firstCycleDone.value = true
+        }
         Timber.i("sync engine started (device=%s)", deviceId)
     }
 
@@ -159,7 +175,8 @@ class SyncManager @Inject constructor(
      * local listening history, downloaded and cached files, and settings.
      */
     private suspend fun clearAccountPlayback() {
-        withContext(Dispatchers.Main) { playbackController.get().clearQueue() }
+        // Not a queue edit: the next account must not receive an empty queue from it.
+        withContext(Dispatchers.Main) { playbackController.get().clearQueue(sync = false) }
         vaultApi.forgetSignedUrls()
     }
 
@@ -188,6 +205,7 @@ class SyncManager @Inject constructor(
     }
 
     private fun stopEngine() {
+        firstCycleDone.value = false
         SyncBus.uninstall()
         engine?.stop()
         engine = null
@@ -310,5 +328,8 @@ class SyncManager @Inject constructor(
 
     private companion object {
         const val CURSOR_USER = "user"
+
+        /** Longest the playback handoff waits for the startup sync before keeping the local queue. */
+        const val STARTUP_QUEUE_WAIT_MS = 20_000L
     }
 }

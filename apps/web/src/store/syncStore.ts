@@ -2,6 +2,7 @@ import { create } from "zustand";
 import {
   SupabaseTransport,
   SyncEngine,
+  handoffWins,
   type PlaylistRow,
   type QueueChange,
   type RemoteChanges,
@@ -18,6 +19,7 @@ import { IdbSyncStorage } from "../lib/syncStorage";
 import { pendingTrackEdits, projectRows } from "../lib/trackMap";
 import { removeAudio } from "../lib/audioCache";
 import { nowIso, refFromTrack, setSyncEnqueue } from "../lib/syncBus";
+import { loadLastPlayback } from "../lib/lastPlayback";
 import type { Playlist, Track } from "../types";
 import { useAuthStore } from "./authStore";
 import { useLibraryStore } from "./libraryStore";
@@ -43,8 +45,6 @@ let engineKey: string | null = null;
 let queuePushTimer: ReturnType<typeof setTimeout> | null = null;
 let unsubscribePlayer: (() => void) | null = null;
 let onlineListener: (() => void) | null = null;
-/** True until the first pull has been applied — gates the queue handoff restore. */
-let firstApply = true;
 
 export const useSyncStore = create<SyncStoreState>(() => ({
   status: null,
@@ -76,7 +76,6 @@ function startEngine(session: Session, deviceId: string | null): void {
   if (engineKey === key) return; // already running for this identity
   stopEngine();
   engineKey = key;
-  firstApply = true;
 
   storage = new IdbSyncStorage();
   engine = new SyncEngine(new SupabaseTransport(supabase, session.user.id), storage, {
@@ -99,7 +98,12 @@ function startEngine(session: Session, deviceId: string | null): void {
   window.addEventListener("online", onlineListener);
 
   unsubscribePlayer = usePlayerStore.subscribe((state, prev) => {
-    if (state.queue !== prev.queue || state.currentIndex !== prev.currentIndex) {
+    // A restore (startup or handoff) isn't this device's edit: pushing it would make a
+    // stale queue look like the newest one to other devices.
+    if (state.queue !== prev.queue && state.queue === state.restoredQueue) return;
+    // Compared by song ids: filling in a local path or resolver state rebuilds the array
+    // without changing the queue.
+    if ((state.queue !== prev.queue || state.currentIndex !== prev.currentIndex) && queueKey(state) !== queueKey(prev)) {
       scheduleQueuePush();
     } else if (prev.isPlaying && !state.isPlaying) {
       // Pause: push promptly so another device can pick up right here.
@@ -115,6 +119,7 @@ function startEngine(session: Session, deviceId: string | null): void {
       await hydrateFromShadow();
       engine!.start();
       await engine!.syncNow(true); // startup full pull heals any cursor gap
+      await maybeRestoreQueue();
     } catch (err) {
       console.error("[sync] startup failed:", err);
     }
@@ -129,6 +134,9 @@ function stopEngine(): void {
   unsubscribePlayer = null;
   if (onlineListener) window.removeEventListener("online", onlineListener);
   onlineListener = null;
+  // A push scheduled for this engine must not fire into the next one.
+  if (queuePushTimer) clearTimeout(queuePushTimer);
+  queuePushTimer = null;
   engine?.stop();
   engine = null;
   storage = null;
@@ -173,8 +181,9 @@ function stopAndClear(): void {
 }
 
 useAuthStore.subscribe((state, prev) => {
-  if (state.status === "signedIn" && state.session) {
-    // (Re)start when the session appears or the device registration lands.
+  // Not before the device registration has been tried: starting without the id and
+  // again once it lands ran two full pulls per launch.
+  if (state.status === "signedIn" && state.session && state.deviceReady) {
     startEngine(state.session, state.deviceId);
   } else if (prev.status === "signedIn" && state.status === "signedOut") {
     // Only the user's own Sign out wipes unsynced edits.
@@ -353,12 +362,8 @@ async function applyChanges(changes: RemoteChanges): Promise<void> {
   for (const { scope, key, value } of changes.settings) {
     settings.applyRemoteSetting(scope, key, value);
   }
-  if (changes.queue) {
-    useSyncStore.setState({ remoteQueue: changes.queue });
-    maybeRestoreQueue(changes.queue);
-  }
+  if (changes.queue) useSyncStore.setState({ remoteQueue: changes.queue });
   if (changes.playEventsAdded > 0) refreshStatsIfLoaded();
-  firstApply = false;
 }
 
 function mapToIds(identities: TrackIdentity[]): string[] {
@@ -369,22 +374,39 @@ function mapToIds(identities: TrackIdentity[]): string[] {
 }
 
 /**
- * Cross-device handoff: restore another device's queue only on the first
- * sync after startup and only when nothing is loaded locally — sync must
- * never yank an active session out from under the user.
+ * Cross-device handoff, once the startup sync is done: newest wins between the song this
+ * device restored and the queue another device left (handoffWins). It reads the engine's
+ * copy of the server queue, since a pull reports the queue only when it changed, and
+ * never touches anything the user has started or changed since startup.
  */
-function maybeRestoreQueue(queue: QueueChange): void {
-  if (!firstApply) return;
+async function maybeRestoreQueue(): Promise<void> {
+  const queue = await engine?.queueSnapshot();
+  if (!queue) return;
   const player = usePlayerStore.getState();
-  if (player.queue.length > 0 || player.isPlaying) return;
-  const authDevice = useAuthStore.getState().deviceId;
-  if (queue.deviceId !== null && queue.deviceId === authDevice) return; // our own push
+  if (player.isPlaying) return;
+  const local = {
+    empty: player.queue.length === 0,
+    restoredOnly: player.restoredQueue !== null && sameSongs(player.queue, player.restoredQueue),
+    lastPlayedAt: loadLastPlayback()?.playedAt ?? null,
+  };
+  if (!handoffWins(queue, useAuthStore.getState().deviceId, local)) return;
   const tracks = queue.tracks
     .map((identity) => useLibraryStore.getState().findTrackByIdentity(identity))
     .filter((t): t is NonNullable<typeof t> => t !== undefined);
   if (tracks.length === 0) return;
   const index = Math.min(Math.max(queue.currentIndex, 0), tracks.length - 1);
+  // Already here (the engine started twice, or this is the queue we left): reloading the
+  // library's copies would drop the resolved file paths of the loaded song.
+  if (sameSongs(player.queue, tracks) && player.currentIndex === index) return;
   usePlayerStore.getState().restoreQueue(tracks, index, queue.positionSeconds);
+}
+
+function sameSongs(a: Track[], b: Track[]): boolean {
+  return a.length === b.length && a.every((t, i) => t.id === b[i].id);
+}
+
+function queueKey(s: { queue: Track[]; currentIndex: number }): string {
+  return `${s.currentIndex}|${s.queue.map((t) => t.id).join(",")}`;
 }
 
 // ---- pushing the local queue -------------------------------------------------------

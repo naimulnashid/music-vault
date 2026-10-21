@@ -54,6 +54,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         // Last playback snapshot (queue itself lives in the Room queue_items table).
         val LAST_QUEUE_INDEX = intPreferencesKey("lastQueueIndex")
         val LAST_POSITION_MS = longPreferencesKey("lastPositionMs")
+        val LAST_QUEUE_ACTIVITY_AT = longPreferencesKey("lastQueueActivityAt")
 
         // Imported SAF tree uris, one per granted folder, separated by newline.
         val IMPORTED_TREES = stringPreferencesKey("importedTrees")
@@ -181,10 +182,17 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         }
     }
 
+    /** Saved each second while playing, so it also stamps the queue as in use here. */
     suspend fun saveLastPlayback(queueIndex: Int, positionMs: Long) = edit {
         it[Keys.LAST_QUEUE_INDEX] = queueIndex
         it[Keys.LAST_POSITION_MS] = positionMs
+        it[Keys.LAST_QUEUE_ACTIVITY_AT] = System.currentTimeMillis()
     }
+
+    /** A queue edit made on this phone (not a restore): the queue handoff's "newest wins" clock. */
+    suspend fun markQueueActivity() = edit { it[Keys.LAST_QUEUE_ACTIVITY_AT] = System.currentTimeMillis() }
+
+    suspend fun lastQueueActivityAt(): Long? = context.dataStore.data.first()[Keys.LAST_QUEUE_ACTIVITY_AT]
 
     suspend fun lastPlayback(): Pair<Int, Long> {
         val prefs = context.dataStore.data.first()

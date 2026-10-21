@@ -846,6 +846,24 @@ class SyncEngine(
         changes.settings.add(SettingChange(row.scope, row.key, row.value, row.editedAt))
     }
 
+    /**
+     * The latest server queue this device has pulled, from the shadow. Pulls only report
+     * a queue that changed since the last one seen, so startup reads it here instead.
+     */
+    suspend fun queueSnapshot(): QueueChange? {
+        val row = storage.shadowGet("queue", "singleton")
+            ?.let { SyncJson.decodeFromString(QueueStateRow.serializer(), it) } ?: return null
+        return QueueChange(
+            tracks = row.trackIds.map { identity(it) },
+            currentIndex = row.currentIndex,
+            positionSeconds = row.positionSeconds,
+            shuffle = row.shuffle,
+            repeat = row.repeat,
+            deviceId = row.deviceId,
+            editedAt = row.editedAt,
+        )
+    }
+
     private suspend fun applyQueueRow(row: QueueStateRow, changes: RemoteChanges) {
         storage.shadowPut("queue", "singleton", SyncJson.encodeToString(QueueStateRow.serializer(), row))
         changes.queue = QueueChange(

@@ -24,6 +24,11 @@ interface PlayerState {
   restoreTrack: (track: Track, time: number) => void;
   /** Loads a whole queue paused (cross-device handoff / session restore). */
   restoreQueue: (tracks: Track[], index: number, time: number) => void;
+  /**
+   * The queue as set by the last restore (startup or handoff), so sync can tell a restore
+   * from an edit: a restore is never pushed back out as this device's queue.
+   */
+  restoredQueue: Track[] | null;
   togglePlay: () => void;
   next: () => void;
   prev: () => void;
@@ -52,6 +57,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   currentTime: 0,
   duration: 0,
   currentTrack: null,
+  restoredQueue: null,
 
   playQueue: (tracks, startIndex) => {
     const shuffle = useSettingsStore.getState().shuffle;
@@ -69,19 +75,28 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   // Loads a track paused at a saved position (last playback resume) without
   // recording a new play or autoplaying.
   restoreTrack: (track, time) => {
-    set({ queue: [track], currentIndex: 0, currentTrack: track, isPlaying: false, currentTime: time, duration: 0 });
+    const queue = [track];
+    set({ queue, restoredQueue: queue, currentIndex: 0, currentTrack: track, isPlaying: false, currentTime: time, duration: 0 });
   },
 
   restoreQueue: (tracks, index, time) => {
     if (tracks.length === 0) return;
+    const loaded = get().currentTrack;
+    const current = tracks[index] ?? null;
+    // The same song is already loaded (a startup restore, then a handoff to it): the engine
+    // won't reload a song it has, so keep its resolved file and move it to the new position.
+    const sameSong = current !== null && loaded !== null && loaded.id === current.id;
+    const queue = sameSong && loaded.path ? tracks.map((t, i) => (i === index ? { ...t, path: loaded.path } : t)) : tracks;
     set({
-      queue: tracks,
+      queue,
+      restoredQueue: queue,
       currentIndex: index,
-      currentTrack: tracks[index] ?? null,
+      currentTrack: queue[index] ?? null,
       isPlaying: false,
       currentTime: time,
       duration: 0,
     });
+    if (sameSong) player.seek(time);
   },
 
   togglePlay: () => {

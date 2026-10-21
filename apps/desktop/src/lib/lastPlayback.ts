@@ -3,6 +3,11 @@ const KEY = "music-vault-lastplayback";
 export interface LastPlayback {
   trackId: string;
   time: number;
+  /**
+   * When this device last played (ms). Only playing moves it, never a save on pause or
+   * after a restore, so the queue handoff can tell use from a restore.
+   */
+  playedAt?: number;
 }
 
 export function loadLastPlayback(): LastPlayback | null {
@@ -14,9 +19,10 @@ export function loadLastPlayback(): LastPlayback | null {
   }
 }
 
-export function saveLastPlayback(trackId: string, time: number): void {
+export function saveLastPlayback(trackId: string, time: number, played = false): void {
   try {
-    localStorage.setItem(KEY, JSON.stringify({ trackId, time } satisfies LastPlayback));
+    const playedAt = played ? Date.now() : loadLastPlayback()?.playedAt;
+    localStorage.setItem(KEY, JSON.stringify({ trackId, time, playedAt } satisfies LastPlayback));
   } catch {
     // Ignore storage failures (quota / private mode).
   }

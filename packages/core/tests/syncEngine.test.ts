@@ -793,6 +793,29 @@ describe("SyncEngine", () => {
     expect(queue!.deviceId).toBe("A");
   });
 
+  it("the queue snapshot still has the server queue after a pull that reported nothing", async () => {
+    await a.engine.enqueue({
+      kind: "queue.set",
+      tracks: [HASH_REF(1), HASH_REF(2)],
+      currentIndex: 1,
+      positionSeconds: 42.5,
+      shuffle: false,
+      repeat: "off",
+      editedAt: ts(10),
+    });
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+    b.changes.length = 0;
+
+    await b.engine.syncNow(); // unchanged row: no queue change this time
+    expect(b.changes.some((c) => c.queue !== null)).toBe(false);
+    const snapshot = await b.engine.queueSnapshot();
+    expect(snapshot!.tracks.map((t) => t.contentHash)).toEqual(["hash-1", "hash-2"]);
+    expect(snapshot!.currentIndex).toBe(1);
+    expect(snapshot!.deviceId).toBe("A");
+    expect(snapshot!.editedAt).toBe(ts(10));
+  });
+
   it("play events are append-only and replay-idempotent", async () => {
     const event = {
       kind: "playEvent.add" as const,

@@ -17,6 +17,7 @@ import {
   opEntityKey,
   trackRefHasIdentity,
   trackRefKeys,
+  type QueueChange,
   type RemoteChanges,
   type SyncBreadcrumb,
   type SyncOp,
@@ -912,7 +913,20 @@ export class SyncEngine {
 
   private async applyQueueRow(row: QueueStateRow, changes: RemoteChanges): Promise<void> {
     await this.storage.shadowPut("queue", "singleton", JSON.stringify(row));
-    changes.queue = {
+    changes.queue = this.queueChangeOf(row);
+  }
+
+  /**
+   * The latest server queue this device has pulled, from the shadow. Pulls only report
+   * a queue that changed since the last one seen, so the startup handoff reads it here.
+   */
+  async queueSnapshot(): Promise<QueueChange | null> {
+    const raw = await this.storage.shadowGet("queue", "singleton");
+    return raw ? this.queueChangeOf(JSON.parse(raw) as QueueStateRow) : null;
+  }
+
+  private queueChangeOf(row: QueueStateRow): QueueChange {
+    return {
       tracks: row.track_ids.map((id) => this.identity(id)),
       currentIndex: row.current_index,
       positionSeconds: row.position_seconds,

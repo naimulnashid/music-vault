@@ -25,6 +25,11 @@ interface AuthState {
   session: Session | null;
   /** id of this install's row in the devices table (null until registered) */
   deviceId: string | null;
+  /**
+   * Device registration for this session has been tried (it may have failed, e.g. offline).
+   * Sync waits for it, so it starts once with the device id instead of again when it lands.
+   */
+  deviceReady: boolean;
   error: string | null;
   /**
    * Whether the last move to signedOut was the user's own Sign out. A session
@@ -56,10 +61,24 @@ async function ensureDeviceRegistered(session: Session): Promise<string | null> 
   }
 }
 
+let registration: { userId: string; done: Promise<string | null> } | null = null;
+
+/**
+ * One registration per signed-in account: startup, sign-in and the auth listener all
+ * ask, and a session that drops and comes back reuses the id it already got.
+ */
+function registerOnce(session: Session): Promise<string | null> {
+  if (registration?.userId !== session.user.id) {
+    registration = { userId: session.user.id, done: ensureDeviceRegistered(session) };
+  }
+  return registration.done;
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
   status: supabase ? "loading" : "disabled",
   session: null,
   deviceId: null,
+  deviceReady: false,
   error: null,
   signedOutByUser: false,
 
@@ -68,8 +87,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     void getSession(supabase)
       .then(async (session) => {
         if (session) {
-          const deviceId = await ensureDeviceRegistered(session);
-          set({ status: "signedIn", session, deviceId });
+          const deviceId = await registerOnce(session);
+          set({ status: "signedIn", session, deviceId, deviceReady: true });
         } else {
           set({ status: "signedOut", session: null });
         }
@@ -84,9 +103,17 @@ export const useAuthStore = create<AuthState>((set) => ({
         status: session ? "signedIn" : "signedOut",
         session,
         deviceId: session ? state.deviceId : null,
+        deviceReady: session ? state.deviceReady : false,
         // This event also fires for our own signOut (before it returns).
         signedOutByUser: session ? false : signingOut,
       }));
+      // A session that came back on its own (after a refresh failure) needs the device
+      // id again before sync restarts; startup and sign-in set it themselves.
+      if (session && !useAuthStore.getState().deviceReady) {
+        void registerOnce(session).then((deviceId) => {
+          if (useAuthStore.getState().session?.user.id === session.user.id) set({ deviceId, deviceReady: true });
+        });
+      }
     });
   },
 
@@ -95,8 +122,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const { session } = await coreSignIn(supabase, email, password);
       if (session) {
-        const deviceId = await ensureDeviceRegistered(session);
-        set({ status: "signedIn", session, deviceId, error: null });
+        const deviceId = await registerOnce(session);
+        set({ status: "signedIn", session, deviceId, deviceReady: true, error: null });
         return true;
       }
       set({ error: "Sign-in did not return a session." });
@@ -112,8 +139,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const { session } = await coreSignUp(supabase, email, password);
       if (session) {
-        const deviceId = await ensureDeviceRegistered(session);
-        set({ status: "signedIn", session, deviceId, error: null });
+        const deviceId = await registerOnce(session);
+        set({ status: "signedIn", session, deviceId, deviceReady: true, error: null });
         return true;
       }
       // email confirmation enabled on the project: no session until confirmed
@@ -135,7 +162,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     } finally {
       signingOut = false;
     }
-    set({ status: "signedOut", session: null, deviceId: null, signedOutByUser: true });
+    registration = null;
+    set({ status: "signedOut", session: null, deviceId: null, deviceReady: false, signedOutByUser: true });
   },
 
   clearError: () => set({ error: null }),
