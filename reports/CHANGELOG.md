@@ -11,12 +11,16 @@
 > Format follows [Keep a Changelog](https://keepachangelog.com/) conventions.
 > Releases since: `v1.0.0` and `v1.1.0`, both 2026-10-15, published as source on the public repo
 > (see [Notes on this changelog](#notes-on-this-changelog)); `v1.2.0`, 2026-10-20, published the
-> same way; `v1.3.0` and `v1.3.1`, both 2026-10-21, published the same way; `v1.4.0`, 2026-10-21,
-> tagged in the private repo, not exported yet.
+> same way; `v1.3.0`, `v1.3.1` and `v1.4.0`, all 2026-10-21, published the same way.
 
 ---
 
 ## [Unreleased]
+
+### Changed
+- The README title starts with the app icon.
+- The landing page hero shows the library screenshot again; the demo video loop is switched off
+  for now. The loop files stay in `apps/site/public/video/` and in the video project, unused.
 
 ## [1.4.0] - 2026-10-21
 
@@ -137,9 +141,7 @@ Versions: 1.2.0 everywhere; Android `versionCode 3`.
   Remotion project in `video/remotion/` (its own package, not a workspace) edits them into the
   cut: title card, six web shots with a drawn cursor, zooms on clicks and captions, the phone
   shot with drawn touches, the How it works diagram and an end card, over CC0 music, plus a
-  15-second silent loop for the landing page (MP4 and WebM, 1280x720) that ends on its first frame. It
-  now plays in the landing page hero in place of the library screenshot, muted and looping, with
-  its first frame as the poster and no playback for visitors who ask for reduced motion. The Android
+  15-second silent loop for the landing page (MP4 and WebM, 1280x720) that ends on its first frame. The Android
   screenshot script shares the emulator helpers (`apps/android/scripts/emulator.mjs`). Steps in [video/README.md](../video/README.md), music credit in
   [video/CREDITS.md](../video/CREDITS.md). Remotion has its own license: free for individuals
   and for companies of up to 3 people. The demo's "Saltwater Hours" now has made-up synced

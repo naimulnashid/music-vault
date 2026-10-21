@@ -1,4 +1,4 @@
-# Music Vault
+# <img src="apps/site/public/favicon.svg" alt="Music Vault app icon: two white music notes joined by a beam on a violet rounded square" width="40" height="40" align="absmiddle"> Music Vault
 
 [![CI](https://github.com/naimulnashid/music-vault/actions/workflows/ci.yml/badge.svg)](https://github.com/naimulnashid/music-vault/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/naimulnashid/music-vault)](https://github.com/naimulnashid/music-vault/releases/latest)
