@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicvault.data.cloud.AuthState
 import com.musicvault.data.sync.SyncPhase
+import com.musicvault.data.sync.describeSyncStatus
 import com.musicvault.ui.theme.LocalVaultColors
 
 /**
@@ -110,22 +111,20 @@ fun AccountSection(authViewModel: AuthViewModel, onClose: () -> Unit) {
                     modifier = Modifier.size(18.dp),
                 )
                 Spacer(Modifier.size(12.dp))
-                Text(
-                    when (sync.phase) {
-                        SyncPhase.SYNCING -> "Syncing…"
-                        SyncPhase.OFFLINE -> "Offline, changes queued"
-                        SyncPhase.ERROR -> "Sync issue, will retry"
-                        SyncPhase.AUTH -> "Sign in again to sync"
-                        SyncPhase.IDLE ->
-                            if (sync.pendingOps > 0) "${sync.pendingOps} change${if (sync.pendingOps == 1) "" else "s"} queued" else "Everything synced"
-                    },
-                    color = colors.textMuted,
-                    fontSize = 13.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                if (sync.phase == SyncPhase.AUTH) {
+                val text = describeSyncStatus(sync)
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text.label,
+                        color = colors.textMuted,
+                        fontSize = 13.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    for (line in text.details) {
+                        Text(line, color = colors.textMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+                if (text.needsSignIn) {
                     TextButton(onClick = {
                         reauth = true
                         showDialog = true

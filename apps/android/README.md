@@ -14,7 +14,7 @@ The Android client of Music Vault. Fully native — Kotlin, Jetpack Compose, Med
 - **Equalizer**: 10-band ±12 dB (31 Hz–16 kHz) via `DynamicsProcessing`, presets Flat / Bass Boost / Vocal / Treble Boost / Custom.
 - **Visualizer**: spectrum bars + waveform modes (platform `Visualizer`; Android requires the mic permission to tap audio output — nothing is recorded).
 - **Views**: All Tracks (search + sort by artist/album/title), Albums grid, Album page, Artist page, Playlists (create/rename/delete/reorder), Smart playlists (Recently Added/Played, Most Played, Favorites, Never Played), grouped browse (Genre/Artist/Year/Language), Statistics (listening time, tracks played, top artists/genres, most played).
-- **Sync**: favorites, playlists, smart playlists, edits, play history, settings and the queue sync with desktop and web through the shared sync protocol (Kotlin port of the engine).
+- **Sync**: favorites, playlists, smart playlists, edits, play history and settings sync with desktop and web through the shared sync protocol (Kotlin port of the engine). The queue stays on the phone for now: Android doesn't yet publish it or pick up the queue desktop and web hand off.
 - **Persistence**: queue, playback position and settings survive restarts (Room + DataStore). Playback resumes paused at the saved position.
 - **System integration**: MediaStyle notification, lock screen controls, Bluetooth/headset buttons, Android Auto browse tree (Tracks/Albums/Playlists/Favorites), audio-focus and becoming-noisy handling, sleep timer (15/30/45/60 min) that keeps counting in the background.
 - **Theming**: light, dark or follow the system, plus pure-black AMOLED; one violet accent and the Figtree typeface, as on desktop and web.

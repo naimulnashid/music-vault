@@ -87,20 +87,14 @@ class SupabaseSyncTransport(
         tiebreak: List<String>,
         since: String?,
     ): List<T> = guarded {
-        val out = mutableListOf<T>()
-        var from = 0L
-        while (true) {
-            val page = client.from(table).select {
+        readAllPages(PULL_PAGE) { from, to ->
+            client.from(table).select {
                 if (since != null) filter { gt(cursorColumn, since) }
                 order(cursorColumn, Order.ASCENDING)
                 for (column in tiebreak) order(column, Order.ASCENDING)
-                range(from, from + PULL_PAGE - 1)
+                range(from, to)
             }.decodeList<T>()
-            out += page
-            if (page.size < PULL_PAGE.toInt()) break
-            from += PULL_PAGE
         }
-        out
     }
 
     override suspend fun pullTracks(since: String?): List<TrackRow> = pull("tracks", "updated_at", listOf("id"), since)
@@ -222,10 +216,21 @@ class SupabaseSyncTransport(
         }
     }
 
+    /**
+     * Every member, tombstones included: add, remove and reorder decide from the
+     * whole list, so a big playlist must not be cut off at the response cap. Rows
+     * are never hard-deleted and added_at is fixed at insert, so this order stays
+     * stable across pages while other devices add songs.
+     */
     override suspend fun getPlaylistItems(playlistId: String): List<PlaylistItemRow> = guarded {
-        client.from("playlist_items").select {
-            filter { eq("playlist_id", playlistId) }
-        }.decodeList<PlaylistItemRow>()
+        readAllPages(PULL_PAGE) { from, to ->
+            client.from("playlist_items").select {
+                filter { eq("playlist_id", playlistId) }
+                order("added_at", Order.ASCENDING)
+                order("id", Order.ASCENDING)
+                range(from, to)
+            }.decodeList<PlaylistItemRow>()
+        }
     }
 
     override suspend fun upsertPlaylistItem(row: PlaylistItemUpsert) {
@@ -328,7 +333,7 @@ class SupabaseSyncTransport(
     }
 
     private companion object {
-        /** Rows per pull request — Supabase's default PostgREST response cap. */
+        /** Rows asked for per request: Supabase's default PostgREST response cap. */
         const val PULL_PAGE = 1000L
 
         val SYNCED_TABLES = listOf(
@@ -423,3 +428,20 @@ private data class PlayEventInsertRow(
     @SerialName("duration_played") val durationPlayed: Double,
     val completed: Boolean,
 )
+
+/**
+ * Every row of a paged query; [fetch] must order rows stably. Stops at the first
+ * empty page, not the first short one: a project can lower the response cap below
+ * [pageSize], and a short page would then look like the end and truncate the read.
+ * Advancing by the rows actually received keeps a lower cap gap-free.
+ */
+internal suspend fun <T> readAllPages(pageSize: Long, fetch: suspend (from: Long, to: Long) -> List<T>): List<T> {
+    val out = mutableListOf<T>()
+    var from = 0L
+    while (true) {
+        val page = fetch(from, from + pageSize - 1)
+        if (page.isEmpty()) return out
+        out += page
+        from += page.size
+    }
+}

@@ -237,6 +237,8 @@ export interface SyncBreadcrumb {
     | "flush.conflictLost"
     | "pull.applied"
     | "enqueue.dropped"
-    | "realtime.hint";
+    | "realtime.hint"
+    | "auth.renewed"
+    | "auth.renewFailed";
   detail?: Record<string, string | number | boolean | null>;
 }

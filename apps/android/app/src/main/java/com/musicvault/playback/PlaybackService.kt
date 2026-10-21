@@ -4,6 +4,7 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Process
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.session.CommandButton
@@ -105,12 +106,31 @@ class PlaybackService : MediaLibraryService() {
         super.onDestroy()
     }
 
+    /**
+     * The service is exported so the system, Bluetooth and Android Auto can reach
+     * it, which lets any installed app connect too, browse the library and drive
+     * playback. Only these get in: this app (its own notification), the system,
+     * callers Android trusts for media control (System UI's media controls, apps
+     * the user gave notification access) and Android Auto / Automotive.
+     */
+    private fun isTrustedController(session: MediaSession, controller: MediaSession.ControllerInfo): Boolean =
+        controller.uid == Process.myUid() ||
+            controller.uid == Process.SYSTEM_UID ||
+            controller.isTrusted ||
+            session.isMediaNotificationController(controller) ||
+            session.isAutomotiveController(controller) ||
+            session.isAutoCompanionController(controller)
+
     private inner class LibraryCallback : MediaLibrarySession.Callback {
 
         override fun onConnect(
             session: MediaSession,
             controller: MediaSession.ControllerInfo,
         ): MediaSession.ConnectionResult {
+            if (!isTrustedController(session, controller)) {
+                Timber.w("Refused media controller %s", controller.packageName)
+                return MediaSession.ConnectionResult.reject()
+            }
             val commands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
                 .add(CLEAR_QUEUE_COMMAND)
                 .build()
@@ -152,7 +172,10 @@ class PlaybackService : MediaLibraryService() {
             val future = SettableFuture.create<LibraryResult<ImmutableList<MediaItem>>>()
             serviceScope.launch {
                 try {
-                    future.set(LibraryResult.ofItemList(childrenOf(parentId), params))
+                    // A client that doesn't page asks for everything (page 0, Int.MAX_VALUE);
+                    // it gets the first MAX_CHILDREN so one reply stays small.
+                    val size = if (pageSize == Int.MAX_VALUE) MAX_CHILDREN else pageSize
+                    future.set(LibraryResult.ofItemList(pageOf(childrenOf(parentId), page, size), params))
                 } catch (e: Exception) {
                     Timber.e(e, "onGetChildren failed for %s", parentId)
                     future.set(LibraryResult.ofError(SessionError.ERROR_UNKNOWN))
@@ -232,10 +255,9 @@ class PlaybackService : MediaLibraryService() {
                 folderItem(NODE_FAVORITES, "Favorites"),
             )
             parentId == NODE_TRACKS ->
-                sortedTracks().take(MAX_CHILDREN).map { trackItem(it, "$NODE_TRACKS$SEP${it.id}") }
+                sortedTracks().map { trackItem(it, "$NODE_TRACKS$SEP${it.id}") }
             parentId == NODE_FAVORITES ->
-                sortedTracks().filter { it.favorite }.take(MAX_CHILDREN)
-                    .map { trackItem(it, "$NODE_FAVORITES$SEP${it.id}") }
+                sortedTracks().filter { it.favorite }.map { trackItem(it, "$NODE_FAVORITES$SEP${it.id}") }
             parentId == NODE_ALBUMS ->
                 Albums.groupAlbums(sortedTracks()).map { album ->
                     folderItem("$NODE_ALBUMS$SEP${album.key}", album.album, album.artist, album.tracks.firstOrNull()?.artworkPath)

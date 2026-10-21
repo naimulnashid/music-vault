@@ -111,13 +111,19 @@ practice refs resolve on the fast path.
    with the next op. A cycle in which any op failed this way ends with phase
    `error` and that error as `lastError`, even when the pull succeeds; the
    next cycle with no failures clears it.
-5. Android only, so far: a rejected session (HTTP 401, PGRST301, JWT expired,
-   or no session at all) is not an op failure. The cycle stops without
-   bumping `attempts`, refreshes the session once and runs again. If the
-   refresh fails or the retry is rejected too, the engine pauses with phase
-   `auth` until the app sees a new session. The app also pauses the engine
-   while supabase-kt reports `RefreshFailure`, so nothing goes out with only
-   the anon key. Core still treats these as ordinary op errors.
+5. A rejected session (HTTP 401, PGRST301/PGRST302, JWT expired, or no
+   session at all) is not an op failure. The cycle stops without bumping
+   `attempts`, renews the session once and runs again. If the renewal fails
+   or the retry is rejected too: Android pauses with phase `auth` until the
+   app sees a new session (it also pauses while supabase-kt reports
+   `RefreshFailure`, so nothing goes out with only the anon key); core (web
+   and desktop) ends the cycle with phase `error` and `lastError` "Sign in
+   again to sync". Core's renewal is the app's `refreshAuth` option.
+6. Only the user's own Sign out wipes the outbox, cursors and shadow. A
+   session that is lost (expired or revoked) stops sync but keeps them for
+   their account, named by the `account.owner` cursor (web and desktop), so
+   unsynced edits go up when that account signs back in; a different account
+   signing in clears them first.
 
 The read-then-write in step 3 is not transactional; two devices flushing the
 same row in the same instant can still finish in either order. Accepted for
@@ -206,9 +212,14 @@ Apply rules:
 - A full pull also **prunes the tracks shadow** to exactly the rows it
   returned, so a row removed on the server by hand (an admin cleanup)
   disappears locally too.
-- Pulls are **paged** (1,000 rows per request, Supabase's response cap),
-  ordered by the cursor column then the primary key, so a full pull always
-  sees the whole table before pruning.
+- Pulls are **paged** (up to 1,000 rows per request, Supabase's default
+  response cap), ordered by the cursor column then the primary key, so a full
+  pull always sees the whole table before pruning. Paging stops at the first
+  empty page, not the first short one, so a project with a lower cap still
+  reads every row.
+- The playlist-member read behind add, remove and reorder is paged the same
+  way (ordered by `added_at`, then `id`), so those ops see every member of a
+  playlist bigger than one response.
 
 ## Realtime
 
@@ -217,6 +228,11 @@ table filtered on `user_id` and reacts to any event by scheduling a debounced
 pull — Realtime is purely a *hint to pull sooner*; the pull/cursor path stays
 the single way state enters a client, so a missed Realtime event costs
 latency, never correctness.
+
+Coming back online is the other hint: web and desktop listen for the browser's
+`online` event, Android for its default network becoming validated after a
+loss, and each calls `notifyOnline()` so queued edits go up without waiting for
+the next edit or a manual Sync now.
 
 ## Queue handoff
 
@@ -236,12 +252,19 @@ and no restore happens. Note the distinction a pusher must preserve: a queue
 whose tracks have no identity resolves to zero `TrackRef`s but is not a cleared
 queue, and must not be pushed as one.
 
+Web and desktop implement both sides. Android doesn't yet: it keeps its queue in
+Room for restarts but neither pushes `queue.set` nor restores a handed-off queue.
+
 ## Local state on a device
 
 A device's library is a mirror of the account: playlists, favorites and
 ratings come from the server, and nothing local is pushed up at sign-in.
 Signing out (or signing in as a different account) clears the sync state and
 the mirrored playlists, so one account's data never syncs into another.
+
+The time of the last successful cycle is kept with the cursors
+(`status.lastSyncAt`), so after a restart offline the account menu can still
+say how stale the device is.
 
 ## Diagnostics (breadcrumbs)
 
@@ -250,7 +273,7 @@ attach to it, and the two implementations mirror events, not byte-identical
 detail. Events: `cycle.start` / `cycle.end` (outcome, pending ops, duration),
 `flush.coalesced`, `flush.opFailed` (kind, attempts, error), `flush.conflictLost`
 (a local edit lost LWW), `pull.applied` (per-table counts), `enqueue.dropped`
-(identity-less ref) and `realtime.hint`; Android adds `auth.rejected` and
-`auth.refreshed`. The engine keeps the last 200 in a
+(identity-less ref) and `realtime.hint`; session renewal adds `auth.renewed` /
+`auth.renewFailed` in core and `auth.rejected` / `auth.refreshed` on Android. The engine keeps the last 200 in a
 ring buffer (`getBreadcrumbs()`); desktop also writes them to the rotating
 appdata log (target `sync`), Android to logcat (`MVSync`), web to the console.

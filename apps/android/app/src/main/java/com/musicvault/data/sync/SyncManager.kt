@@ -1,5 +1,9 @@
 package com.musicvault.data.sync
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import com.musicvault.data.cloud.AuthRepository
 import com.musicvault.data.cloud.CloudClient
 import com.musicvault.data.db.PlaylistDao
@@ -12,6 +16,7 @@ import com.musicvault.data.vault.VaultArtwork
 import com.musicvault.data.vault.VaultMerge
 import com.musicvault.di.ApplicationScope
 import com.musicvault.playback.PlaybackController
+import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.CoroutineScope
@@ -34,6 +39,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class SyncManager @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val authRepository: AuthRepository,
     private val storage: RoomSyncStorage,
     private val playlistDao: PlaylistDao,
@@ -65,6 +71,7 @@ class SyncManager @Inject constructor(
     /** Call once from Application.onCreate. Safe no-op without Supabase config. */
     fun start() {
         val client = CloudClient.client ?: return
+        watchConnectivity()
         scope.launch {
             var wasSignedIn = false
             client.auth.sessionStatus.collect { status ->
@@ -154,6 +161,30 @@ class SyncManager @Inject constructor(
     private suspend fun clearAccountPlayback() {
         withContext(Dispatchers.Main) { playbackController.get().clearQueue() }
         vaultApi.forgetSignedUrls()
+    }
+
+    /**
+     * Retry queued edits as soon as the device is back online (the web app's
+     * "online" listener); otherwise they wait for the next edit or Sync now.
+     * Fires once the network is validated, and only after a real loss, so
+     * registering doesn't start a cycle of its own.
+     */
+    private fun watchConnectivity() {
+        val connectivity = context.getSystemService(ConnectivityManager::class.java) ?: return
+        connectivity.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
+            private var lost = connectivity.activeNetwork == null
+
+            override fun onLost(network: Network) {
+                lost = true
+            }
+
+            override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
+                if (lost && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
+                    lost = false
+                    engine?.notifyOnline()
+                }
+            }
+        })
     }
 
     private fun stopEngine() {

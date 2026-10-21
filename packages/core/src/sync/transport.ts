@@ -124,6 +124,18 @@ export class SyncNetworkError extends Error {
   }
 }
 
+/**
+ * The server refused the session (expired or revoked JWT). Like a network
+ * failure it stops the flush without counting against each op; the engine
+ * renews the session once and retries before reporting it.
+ */
+export class SyncAuthError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SyncAuthError";
+  }
+}
+
 const SYNCED_TABLES = [
   "tracks",
   "playlists",
@@ -135,7 +147,12 @@ const SYNCED_TABLES = [
   "play_events",
 ] as const;
 
-function classify(error: { message: string }): Error {
+function classify(error: { message: string; code?: string }): Error {
+  // PostgREST's JWT errors (PGRST301 "JWT expired", PGRST302 missing or bad
+  // token) mean the session, not the change, was refused.
+  if (error.code === "PGRST301" || error.code === "PGRST302" || /JWT/.test(error.message)) {
+    return new SyncAuthError(error.message);
+  }
   // supabase-js surfaces fetch-level failures as a message, not a code.
   if (/fetch|network|abort|timeout|ENOTFOUND|ECONN/i.test(error.message)) {
     return new SyncNetworkError(error.message);
@@ -143,8 +160,28 @@ function classify(error: { message: string }): Error {
   return new Error(error.message);
 }
 
-/** Rows per pull request — Supabase's default PostgREST response cap. */
+/** Rows asked for per request: Supabase's default PostgREST response cap. */
 const PULL_PAGE = 1000;
+
+/**
+ * Every row of a query, a page at a time; `page` must order rows stably. Stops at
+ * the first empty page, not the first short one: a project can lower the response
+ * cap below PULL_PAGE, and a short page would then look like the end and truncate
+ * the read. Advancing by the rows actually received keeps a lower cap gap-free.
+ */
+async function readAll<T>(
+  page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string; code?: string } | null }>,
+): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; ; ) {
+    const { data, error } = await page(from, from + PULL_PAGE - 1);
+    if (error) throw classify(error);
+    const rows = data ?? [];
+    if (rows.length === 0) return out;
+    out.push(...rows);
+    from += rows.length;
+  }
+}
 
 export class SupabaseTransport implements SyncTransport {
   private readonly client: MusicVaultClient;
@@ -161,21 +198,16 @@ export class SupabaseTransport implements SyncTransport {
    * the engine prunes the tracks shadow to exactly what it returns. `tiebreak`
    * (the primary key) keeps the order stable across pages when timestamps tie.
    */
-  private async pull<T>(table: string, cursorColumn: string, tiebreak: string[], since: string | null): Promise<T[]> {
-    const out: T[] = [];
-    for (let from = 0; ; from += PULL_PAGE) {
+  private pull<T>(table: string, cursorColumn: string, tiebreak: string[], since: string | null): Promise<T[]> {
+    return readAll<T>((from, to) => {
       let query = this.client
         .from(table as "tracks")
         .select("*")
         .order(cursorColumn as "updated_at", { ascending: true });
       for (const column of tiebreak) query = query.order(column as "id", { ascending: true });
       if (since !== null) query = query.gt(cursorColumn as "updated_at", since);
-      const { data, error } = await query.range(from, from + PULL_PAGE - 1);
-      if (error) throw classify(error);
-      const page = (data ?? []) as T[];
-      out.push(...page);
-      if (page.length < PULL_PAGE) return out;
-    }
+      return query.range(from, to) as unknown as PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
+    });
   }
 
   pullTracks(since: string | null) {
@@ -288,13 +320,22 @@ export class SupabaseTransport implements SyncTransport {
     if (error) throw classify(error);
   }
 
-  async getPlaylistItems(playlistId: string): Promise<PlaylistItemRow[]> {
-    const { data, error } = await this.client
-      .from("playlist_items")
-      .select("*")
-      .eq("playlist_id", playlistId);
-    if (error) throw classify(error);
-    return data ?? [];
+  /**
+   * Every member, tombstones included: add, remove and reorder decide from the
+   * whole list, so a big playlist must not be cut off at the response cap. Rows
+   * are never hard-deleted and added_at is fixed at insert, so this order stays
+   * stable across pages while other devices add songs.
+   */
+  getPlaylistItems(playlistId: string): Promise<PlaylistItemRow[]> {
+    return readAll((from, to) =>
+      this.client
+        .from("playlist_items")
+        .select("*")
+        .eq("playlist_id", playlistId)
+        .order("added_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
   }
 
   async upsertPlaylistItem(row: PlaylistItemUpsert): Promise<void> {

@@ -11,7 +11,7 @@ import { isValidTrackPatch } from "../trackFields";
 import type { RepeatMode } from "../types";
 import { keyBetween, nKeysBetween } from "./fractional";
 import type { OutboxEntry, SyncStorage } from "./storage";
-import { SyncNetworkError, type SyncTransport } from "./transport";
+import { SyncAuthError, SyncNetworkError, type SyncTransport } from "./transport";
 import {
   opEditedAt,
   opEntityKey,
@@ -39,7 +39,18 @@ export interface SyncEngineOptions {
   onStatus?: (status: SyncStatus) => void;
   /** Diagnostic trail (cycle outcomes, op failures, lost conflicts). */
   onBreadcrumb?: (crumb: SyncBreadcrumb) => void;
+  /**
+   * Renews the session after the server refused it; the cycle then retries
+   * once. Throws when it can't (the user must sign in again).
+   */
+  refreshAuth?: () => Promise<void>;
 }
+
+/** Cursor holding the last successful cycle's time, so a restart offline can still say how stale this device is. */
+const LAST_SYNC_CURSOR = "status.lastSyncAt";
+
+/** Status text when the session can't be renewed. */
+export const SIGN_IN_AGAIN = "Sign in again to sync";
 
 const REALTIME_DEBOUNCE_MS = 800;
 
@@ -193,29 +204,37 @@ export class SyncEngine {
   }
 
   private async runCycle(fullPull: boolean): Promise<void> {
+    if (this.status.lastSyncAt === null) {
+      this.status = { ...this.status, lastSyncAt: await this.storage.cursorGet(LAST_SYNC_CURSOR) };
+    }
     this.setPhase("syncing");
     this.crumb("cycle.start", { full: fullPull, pendingOps: this.status.pendingOps });
     const startedAt = Date.now();
     const changes = emptyChanges();
-    try {
-      // A rejected op stays queued; its error must outlive the pull that
-      // follows, or the status would claim everything synced.
-      const pushError = await this.flush(changes);
-      await this.pull(fullPull, changes);
-      this.status = {
-        phase: pushError ? "error" : "idle",
-        pendingOps: (await this.storage.outboxAll()).length,
-        lastSyncAt: this.now(),
-        lastError: pushError,
-      };
-    } catch (err) {
-      const offline = err instanceof SyncNetworkError;
-      this.status = {
-        ...this.status,
-        phase: offline ? "offline" : "error",
-        pendingOps: (await this.storage.outboxAll()).length,
-        lastError: err instanceof Error ? err.message : String(err),
-      };
+    for (let attempt = 0; ; attempt++) {
+      try {
+        // A rejected op stays queued; its error must outlive the pull that
+        // follows, or the status would claim everything synced.
+        const pushError = await this.flush(changes);
+        await this.pull(fullPull, changes);
+        this.status = {
+          phase: pushError ? "error" : "idle",
+          pendingOps: (await this.storage.outboxAll()).length,
+          lastSyncAt: this.now(),
+          lastError: pushError,
+        };
+        await this.storage.cursorSet(LAST_SYNC_CURSOR, this.status.lastSyncAt!);
+      } catch (err) {
+        if (err instanceof SyncAuthError && attempt === 0 && (await this.renewSession())) continue;
+        const offline = err instanceof SyncNetworkError;
+        this.status = {
+          ...this.status,
+          phase: offline ? "offline" : "error",
+          pendingOps: (await this.storage.outboxAll()).length,
+          lastError: err instanceof SyncAuthError ? SIGN_IN_AGAIN : err instanceof Error ? err.message : String(err),
+        };
+      }
+      break;
     }
     const applied =
       changes.favorites.length +
@@ -250,6 +269,19 @@ export class SyncEngine {
   // ---- flush ----------------------------------------------------------------
 
   /** Pushes the outbox; returns the last non-network push error of this flush, or null. */
+  /** True when the session was renewed and the cycle may retry. */
+  private async renewSession(): Promise<boolean> {
+    if (!this.opts.refreshAuth) return false;
+    try {
+      await this.opts.refreshAuth();
+      this.crumb("auth.renewed");
+      return true;
+    } catch (err) {
+      this.crumb("auth.renewFailed", { error: err instanceof Error ? err.message : String(err) });
+      return false;
+    }
+  }
+
   private async flush(changes: RemoteChanges): Promise<string | null> {
     const entries = await this.storage.outboxAll();
     if (entries.length === 0) return null;
@@ -283,7 +315,8 @@ export class SyncEngine {
         await this.pushOp(entry.op, changes);
         await this.storage.outboxDelete([entry.op.id]);
       } catch (err) {
-        if (err instanceof SyncNetworkError) throw err; // offline: stop, keep everything
+        // Offline or a refused session: stop, keep everything, don't count it against the op.
+        if (err instanceof SyncNetworkError || err instanceof SyncAuthError) throw err;
         await this.storage.outboxBumpAttempts([entry.op.id]);
         // Non-network failure (constraint, bad payload): keep the op for a
         // later retry but let the rest of the queue through.

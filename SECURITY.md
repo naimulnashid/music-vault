@@ -34,7 +34,9 @@ the ones between accounts, and between the apps and those two services:
   folders, or write outside them (for example through an artwork or download
   file name) is in scope.
 - **The Android app** (`apps/android/`), including files shared into it from
-  other apps.
+  other apps, and its media service: another app browsing the library or
+  controlling playback without the user giving it notification access is in
+  scope.
 
 Every download is checked against the track's BLAKE3 content hash before it is
 kept. A way to make a client keep audio that does not match is in scope too.

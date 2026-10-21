@@ -314,7 +314,7 @@ class SyncEngineTest {
 
     private var opSeq = 0
 
-    private inner class Harness(scope: CoroutineScope) {
+    private inner class Harness(val scope: CoroutineScope) {
         val server = FakeServer()
         val a = Device(server, "A", scope)
         val b = Device(server, "B", scope)
@@ -411,6 +411,25 @@ class SyncEngineTest {
         a.engine.syncNow()
         val track = server.tracks.values.first()
         assertThat(server.ratings[track.id]?.rating).isEqualTo(4)
+    }
+
+    @Test
+    fun `a restart that starts offline still knows when this device last synced`() = syncTest {
+        a.engine.syncNow()
+        val lastSyncAt = a.engine.getStatus().lastSyncAt
+        assertThat(lastSyncAt).isNotNull()
+
+        // Same storage, new engine: the in-memory status starts empty.
+        val transport = FakeTransport(server).apply { offline = true }
+        val restarted = SyncEngine(
+            transport,
+            a.storage,
+            SyncEngine.Options(deviceId = "A", scope = scope, now = { ts(999) }, uuid = { "x" }, autoSync = false),
+        )
+        restarted.init()
+        restarted.syncNow()
+        assertThat(restarted.getStatus().phase).isEqualTo(SyncPhase.OFFLINE)
+        assertThat(restarted.getStatus().lastSyncAt).isEqualTo(lastSyncAt)
     }
 
     @Test

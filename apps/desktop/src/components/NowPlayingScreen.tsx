@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, Heart } from "lucide-react";
+import { AudioLines, ChevronDown, Heart, SlidersVertical } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { usePlayerStore } from "../store/playerStore";
 import { useLibraryStore } from "../store/libraryStore";
@@ -10,6 +10,7 @@ import { AlbumArt, Ambient } from "./AlbumArt";
 import { IconButton } from "./ui/Button";
 import { QueuePanel } from "./QueuePanel";
 import { LyricsPanel } from "./LyricsPanel";
+import { SleepTimer } from "./SleepTimer";
 import type { Track } from "../types";
 
 type Tab = "next" | "lyrics" | "details";
@@ -34,6 +35,8 @@ export function NowPlayingScreen() {
   const isFavorite = useLibraryStore((s) =>
     currentTrack ? Boolean(s.tracks.find((t) => t.id === currentTrack.id)?.favorite) : false,
   );
+  const activePanel = useUiStore((s) => s.activePanel);
+  const togglePanel = useUiStore((s) => s.togglePanel);
   const [tab, setTab] = useState<Tab>("next");
 
   useEffect(() => {
@@ -68,8 +71,8 @@ export function NowPlayingScreen() {
       </div>
 
       <div className="relative flex-1 min-h-0 flex flex-col lg:flex-row gap-6 lg:gap-12 px-6 md:px-10 xl:px-16 pb-6 overflow-y-auto lg:overflow-hidden">
-        {/* Artwork + title */}
-        <div className="flex-1 min-w-0 min-h-0 flex flex-col items-center justify-center gap-6">
+        {/* Artwork + title. Below lg the page scrolls, so this keeps its height instead of sliding under Up next. */}
+        <div className="flex-none lg:flex-1 min-w-0 lg:min-h-0 flex flex-col items-center justify-center gap-6">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={currentTrack.id}
@@ -119,6 +122,16 @@ export function NowPlayingScreen() {
               className={isFavorite ? "text-accent! hover:text-accent!" : ""}
             >
               <Heart key={String(isFavorite)} className={`w-6 h-6 ${isFavorite ? "fill-current animate-pop" : ""}`} />
+            </IconButton>
+          </div>
+          {/* The player bar drops these below md; the full player keeps them reachable. */}
+          <div className="md:hidden w-[min(100%,52vh,560px)] flex items-center justify-center gap-6">
+            <SleepTimer />
+            <IconButton label="Visualizer" size="md" active={activePanel === "visualizer"} onClick={() => togglePanel("visualizer")}>
+              <AudioLines className="w-5 h-5" />
+            </IconButton>
+            <IconButton label="Sound" size="md" active={activePanel === "equalizer"} onClick={() => togglePanel("equalizer")}>
+              <SlidersVertical className="w-5 h-5" />
             </IconButton>
           </div>
         </div>

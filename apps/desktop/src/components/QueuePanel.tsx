@@ -101,14 +101,20 @@ export function QueuePanel({ variant = "panel" }: { variant?: "panel" | "stage" 
   const reorderQueue = usePlayerStore((s) => s.reorderQueue);
   const clearQueue = usePlayerStore((s) => s.clearQueue);
   const currentRef = useRef<HTMLDivElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
   const ids = queue.map(rowId);
   const remaining = queue.slice(currentIndex + 1).reduce((sum, t) => sum + t.duration, 0);
 
-  // Open with the playing song in view.
+  // Open with the playing song in view. Only the list scrolls: scrollIntoView would also
+  // scroll the phone-width full player and hide its artwork.
   useEffect(() => {
-    currentRef.current?.scrollIntoView({ block: "center" });
+    const list = listRef.current;
+    const row = currentRef.current;
+    if (!list || !row) return;
+    const offset = row.getBoundingClientRect().top - list.getBoundingClientRect().top;
+    list.scrollTop += offset - (list.clientHeight - row.offsetHeight) / 2;
   }, []);
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -144,7 +150,7 @@ export function QueuePanel({ variant = "panel" }: { variant?: "panel" | "stage" 
           {clearButton}
         </div>
       )}
-      <div className="flex-1 overflow-y-auto pb-3">
+      <div ref={listRef} className="flex-1 overflow-y-auto pb-3">
         {queue.length === 0 && (
           <div className="px-5 py-10 text-center">
             <p className="font-semibold">Your queue is empty</p>

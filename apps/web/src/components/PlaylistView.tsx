@@ -1,11 +1,12 @@
 import { useMemo, useRef, useState } from "react";
-import { MoreHorizontal, Pencil, SlidersHorizontal, Trash2 } from "lucide-react";
+import { MoreHorizontal, Pencil, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useLibraryStore } from "../store/libraryStore";
 import { useHistoryStore } from "../store/historyStore";
 import { useUiStore } from "../store/uiStore";
 import { TrackList } from "./TrackList";
 import { DownloadAllButton } from "./DownloadAllButton";
 import { SmartPlaylistDialog } from "./SmartPlaylistDialog";
+import { AddSongsDialog } from "./AddSongsDialog";
 import { evaluateSmartPlaylist } from "../lib/smartEval";
 import { emptySmartRules, formatDurationLong } from "@musicvault/core";
 import type { Track } from "../types";
@@ -31,6 +32,7 @@ export function PlaylistView() {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
   const [showRules, setShowRules] = useState(false);
+  const [addingSongs, setAddingSongs] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<MenuAnchor | null>(null);
   const moreRef = useRef<HTMLButtonElement>(null);
 
@@ -132,13 +134,21 @@ export function PlaylistView() {
       {playlist.isSmart && (
         <SmartPlaylistDialog open={showRules} onClose={() => setShowRules(false)} playlist={playlist} />
       )}
+      {!playlist.isSmart && (
+        <AddSongsDialog open={addingSongs} onClose={() => setAddingSongs(false)} playlist={playlist} />
+      )}
 
       {playlistTracks.length === 0 ? (
-        <p className="px-8 py-10 text-center text-sm text-muted">
-          {playlist.isSmart
-            ? "No songs match these rules yet."
-            : "This playlist is empty. Add songs from any song’s ⋮ menu → Add to playlist."}
-        </p>
+        playlist.isSmart ? (
+          <p className="px-8 py-10 text-center text-sm text-muted">No songs match these rules yet.</p>
+        ) : (
+          <div className="px-8 py-10 flex flex-col items-center gap-4 text-center">
+            <p className="text-sm text-muted">This playlist is empty.</p>
+            <Button variant="primary" icon={<Plus className="w-4 h-4" />} onClick={() => setAddingSongs(true)}>
+              Add songs
+            </Button>
+          </div>
+        )
       ) : playlist.isSmart ? (
         <TrackList tracks={playlistTracks} />
       ) : (

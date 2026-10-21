@@ -126,7 +126,9 @@ On Android: an album and Downloads.
 - A yearly recap on Windows and the web.
 
 **Sync**
-- Favorites, playlists, edits, the queue, settings and play history sync between your devices.
+- Favorites, playlists, edits, settings and play history sync between your devices.
+- Windows and the web share the queue: opening one with nothing playing picks up the queue the
+  other left. Android keeps its queue on the phone for now.
 - Edits made offline wait in a queue and go up when you reconnect; the newest edit wins.
 
 ## How it works
@@ -298,7 +300,8 @@ for anything larger, open an issue first. See [CONTRIBUTING.md](CONTRIBUTING.md)
 - **On each device.** The apps keep a copy of your library and the audio they have cached or
   downloaded: in the app's data folder on Windows, app-private storage on Android and the
   browser's storage on the web. The apps don't encrypt these copies, so anyone with access to the
-  device's files can play them.
+  device's files can play them. On Android, only the system, Android Auto and apps you give
+  notification access can browse your library or control playback through its media service.
 - **Integrity.** Every download is checked against the song's BLAKE3 hash before it is kept.
 - **Limitation: open sign-ups.** Any account on your Supabase project can upload into your bucket;
   the `vault` function has no allowlist or storage quota. Once your own account exists, turn off

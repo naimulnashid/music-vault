@@ -151,6 +151,7 @@ class SyncEngine(
     }
 
     private suspend fun runCycle(fullPull: Boolean) {
+        if (status.lastSyncAt == null) status = status.copy(lastSyncAt = storage.cursorGet(LAST_SYNC_CURSOR))
         setPhase(SyncPhase.SYNCING)
         crumb("cycle.start", mapOf("full" to fullPull, "pendingOps" to status.pendingOps))
         val startedAt = System.currentTimeMillis()
@@ -228,6 +229,7 @@ class SyncEngine(
             lastSyncAt = options.now(),
             lastError = pushError,
         )
+        storage.cursorSet(LAST_SYNC_CURSOR, status.lastSyncAt!!)
     }
 
     // ---- flush ----------------------------------------------------------------
@@ -870,5 +872,8 @@ class SyncEngine(
 
     private companion object {
         const val REALTIME_DEBOUNCE_MS = 800L
+
+        /** The last successful cycle's time, so a restart offline can still say how stale this device is. */
+        const val LAST_SYNC_CURSOR = "status.lastSyncAt"
     }
 }

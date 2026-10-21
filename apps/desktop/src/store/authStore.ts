@@ -11,6 +11,8 @@ import {
 import { supabase } from "../lib/supabase";
 
 const DEVICE_ID_KEY = "mv.deviceId";
+/** True while our own signOut runs, so its SIGNED_OUT event counts as the user's. */
+let signingOut = false;
 
 export type AuthStatus =
   | "disabled" // no Supabase env configured — the app needs an account
@@ -24,6 +26,11 @@ interface AuthState {
   /** id of this install's row in the devices table (null until registered) */
   deviceId: string | null;
   error: string | null;
+  /**
+   * Whether the last move to signedOut was the user's own Sign out. A session
+   * that expired or was revoked also signs out, but must keep unsynced edits.
+   */
+  signedOutByUser: boolean;
   init: () => void;
   signIn: (email: string, password: string) => Promise<boolean>;
   signUp: (email: string, password: string) => Promise<boolean>;
@@ -54,6 +61,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   session: null,
   deviceId: null,
   error: null,
+  signedOutByUser: false,
 
   init: () => {
     if (!supabase) return;
@@ -76,6 +84,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         status: session ? "signedIn" : "signedOut",
         session,
         deviceId: session ? state.deviceId : null,
+        // This event also fires for our own signOut (before it returns).
+        signedOutByUser: session ? false : signingOut,
       }));
     });
   },
@@ -117,12 +127,15 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signOut: async () => {
     if (!supabase) return;
+    signingOut = true;
     try {
       await coreSignOut(supabase);
     } catch (err) {
       console.error("sign-out failed", err);
+    } finally {
+      signingOut = false;
     }
-    set({ status: "signedOut", session: null, deviceId: null });
+    set({ status: "signedOut", session: null, deviceId: null, signedOutByUser: true });
   },
 
   clearError: () => set({ error: null }),

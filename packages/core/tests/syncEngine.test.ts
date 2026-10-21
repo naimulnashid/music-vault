@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   MemorySyncStorage,
+  SIGN_IN_AGAIN,
+  SyncAuthError,
   SyncEngine,
   SyncNetworkError,
   type PlayEventInsert,
@@ -69,6 +71,8 @@ class FakeServer {
 
 class FakeTransport implements SyncTransport {
   offline = false;
+  /** When true, every call fails as an expired session would (PostgREST PGRST301). */
+  sessionExpired = false;
   /** When set, favorite pushes fail with this non-network error (a rejected write). */
   favoriteError: string | null = null;
   onChangeCbs: Array<() => void> = [];
@@ -77,6 +81,7 @@ class FakeTransport implements SyncTransport {
 
   private guard(): void {
     if (this.offline) throw new SyncNetworkError("fetch failed (offline)");
+    if (this.sessionExpired) throw new SyncAuthError("JWT expired");
   }
 
   private pulled<T extends { [k: string]: unknown }>(rows: T[], column: string, since: string | null): T[] {
@@ -319,7 +324,7 @@ interface Device {
 
 let opSeq = 0;
 
-function makeDevice(server: FakeServer, name: string): Device {
+function makeDevice(server: FakeServer, name: string, refreshAuth?: () => Promise<void>): Device {
   const transport = new FakeTransport(server);
   const storage = new MemorySyncStorage();
   const changes: RemoteChanges[] = [];
@@ -330,6 +335,7 @@ function makeDevice(server: FakeServer, name: string): Device {
     uuid: () => `${name}-op-${++opSeq}`,
     autoSync: false, // tests sequence cycles explicitly for determinism
     onChanges: (c) => changes.push(c),
+    refreshAuth,
   });
   return { engine, transport, storage, changes };
 }
@@ -471,6 +477,19 @@ describe("SyncEngine", () => {
     expect(await a.storage.outboxAll()).toHaveLength(0);
   });
 
+  it("a restart that starts offline still knows when this device last synced", async () => {
+    await a.engine.syncNow();
+    const lastSyncAt = a.engine.getStatus().lastSyncAt;
+    expect(lastSyncAt).not.toBeNull();
+
+    // Same storage, new engine: the in-memory status starts empty.
+    const transport = new FakeTransport(server);
+    transport.offline = true;
+    const restarted = new SyncEngine(transport, a.storage, { deviceId: "a", now: () => ts(999), uuid: () => "x", autoSync: false });
+    await restarted.syncNow();
+    expect(restarted.getStatus()).toMatchObject({ phase: "offline", lastSyncAt });
+  });
+
   it("a rejected push keeps the status in error after a successful pull", async () => {
     a.transport.favoriteError = "constraint violated";
     await a.engine.enqueue({ kind: "favorite.set", track: HASH_REF(1), favorite: true, editedAt: ts(10) });
@@ -482,6 +501,34 @@ describe("SyncEngine", () => {
     await a.engine.syncNow();
     expect(a.engine.getStatus()).toMatchObject({ phase: "idle", pendingOps: 0, lastError: null });
     expect(server.favorites.size).toBe(1);
+  });
+
+  it("an expired session is renewed once and the cycle retried", async () => {
+    let renewals = 0;
+    const d = makeDevice(server, "renewing", async () => {
+      renewals++;
+      d.transport.sessionExpired = false;
+    });
+    await d.engine.init();
+    d.transport.sessionExpired = true;
+    await d.engine.enqueue({ kind: "favorite.set", track: HASH_REF(1), favorite: true, editedAt: ts(10) });
+    await d.engine.syncNow();
+    expect(renewals).toBe(1);
+    expect(d.engine.getStatus()).toMatchObject({ phase: "idle", pendingOps: 0, lastError: null });
+    expect(server.favorites.size).toBe(1);
+  });
+
+  it("a session that can't be renewed asks to sign in again and keeps the change", async () => {
+    const d = makeDevice(server, "stale", async () => {
+      throw new Error("refresh token revoked");
+    });
+    await d.engine.init();
+    d.transport.sessionExpired = true;
+    await d.engine.enqueue({ kind: "favorite.set", track: HASH_REF(1), favorite: true, editedAt: ts(10) });
+    await d.engine.syncNow();
+    expect(d.engine.getStatus()).toMatchObject({ phase: "error", pendingOps: 1, lastError: SIGN_IN_AGAIN });
+    // A refused session is not the change's fault: its retry count stays put.
+    expect((await d.storage.outboxAll())[0].attempts).toBe(0);
   });
 
   it("breadcrumbs trace drops, cycles, coalescing, offline and lost conflicts", async () => {

@@ -55,8 +55,28 @@ export const useSyncStore = create<SyncStoreState>(() => ({
 
 // ---- lifecycle -----------------------------------------------------------------
 
+/** Cursor naming the account the stored outbox, cursors and shadow belong to. */
+const OWNER_CURSOR = "account.owner";
+
+/**
+ * Stored sync state (and the playlists mirrored from it) belongs to one
+ * account. A lost session keeps it for that account; a different account
+ * signing in starts clean.
+ */
+async function claimStorage(s: TauriSyncStorage, userId: string): Promise<void> {
+  const owner = await s.cursorGet(OWNER_CURSOR);
+  if (owner && owner !== userId) {
+    await s.clearAll();
+    const { playlists } = useLibraryStore.getState();
+    await Promise.all(playlists.map((p) => db.deletePlaylist(p.id)));
+    useLibraryStore.setState({ playlists: [] });
+  }
+  await s.cursorSet(OWNER_CURSOR, userId);
+}
+
 function startEngine(session: Session, deviceId: string | null): void {
   if (!supabase) return;
+  const client = supabase;
   const key = `${session.user.id}/${deviceId ?? ""}`;
   if (engineKey === key) return; // already running for this identity
   stopEngine();
@@ -68,6 +88,11 @@ function startEngine(session: Session, deviceId: string | null): void {
     deviceId,
     onChanges: (changes) => void applyChanges(changes),
     onStatus: (status) => useSyncStore.setState({ status }),
+    // An expired token is renewed once per cycle; failing that the status asks to sign in again.
+    refreshAuth: async () => {
+      const { error } = await client.auth.refreshSession();
+      if (error) throw error;
+    },
     // Breadcrumbs go to the rotating appdata log via Rust (best-effort).
     onBreadcrumb: (crumb) =>
       void invoke("sync_breadcrumb", {
@@ -96,8 +121,10 @@ function startEngine(session: Session, deviceId: string | null): void {
     if (state.vaultRows !== prev.vaultRows) scheduleReapplyPlaylists();
   });
 
+  const claimed = storage;
   void (async () => {
     try {
+      await claimStorage(claimed, session.user.id);
       await engine!.init();
       await hydrateFromShadow();
       await loadVaultRows();
@@ -129,6 +156,35 @@ function stopEngine(): void {
 }
 
 /**
+ * The next account must not inherit this one's playback or loaded data: stop
+ * playback, drop the queue and resume point, signed links, queued downloads
+ * and synced stats. Device-owned data stays: local listening history,
+ * downloaded and cached audio files, and settings such as the theme. Call
+ * after stopEngine, so the player listener is gone and the empty queue is not
+ * pushed.
+ */
+function clearAccountPlayback(): void {
+  usePlayerStore.getState().clearQueue();
+  forgetSignedUrls();
+  const { queued, cancelDownloads } = useDownloadStore.getState();
+  if (queued.size > 0) void cancelDownloads([...queued]);
+  resetStats();
+}
+
+/**
+ * The session was lost (expired or revoked) rather than ended by the user:
+ * stop sync and hide the account's vault songs and favorites, but keep the
+ * outbox, cursors, shadow and mirrored playlists, so the same account's
+ * unsynced edits go up when it signs back in.
+ */
+function stopAndHide(): void {
+  stopEngine();
+  useLibraryStore.setState({ cloudState: { favorites: {}, ratings: {} } });
+  useLibraryStore.getState().setVaultRows([], []);
+  clearAccountPlayback();
+}
+
+/**
  * Sign-out: stop and forget all sync state (outbox, cursors, shadow) and the
  * playlists mirrored from the account, so the next account starts clean.
  */
@@ -142,16 +198,7 @@ function stopAndClear(): void {
   );
   useLibraryStore.setState({ playlists: [], cloudState: { favorites: {}, ratings: {} } });
   useLibraryStore.getState().setVaultRows([], []);
-  // The next account must not inherit this one's playback or loaded data: stop
-  // playback, drop the queue and resume point, signed links, queued downloads
-  // and synced stats. Device-owned data stays: local listening history,
-  // downloaded and cached audio files, and settings such as the theme. The
-  // player listener is already gone, so the empty queue is not pushed.
-  usePlayerStore.getState().clearQueue();
-  forgetSignedUrls();
-  const { queued, cancelDownloads } = useDownloadStore.getState();
-  if (queued.size > 0) void cancelDownloads([...queued]);
-  resetStats();
+  clearAccountPlayback();
 }
 
 useAuthStore.subscribe((state, prev) => {
@@ -159,7 +206,9 @@ useAuthStore.subscribe((state, prev) => {
     // (Re)start when the session appears or the device registration lands.
     startEngine(state.session, state.deviceId);
   } else if (prev.status === "signedIn" && state.status === "signedOut") {
-    stopAndClear();
+    // Only the user's own Sign out wipes unsynced edits.
+    if (state.signedOutByUser) stopAndClear();
+    else stopAndHide();
   }
 });
 

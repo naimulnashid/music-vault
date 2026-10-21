@@ -1,5 +1,14 @@
 package com.musicvault.ui.screens
 
+import com.musicvault.ui.components.AddSongsSheet
+import com.musicvault.ui.components.PillButton
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.Alignment
 import com.musicvault.ui.components.CollectionHeader
 import com.musicvault.ui.components.IconCover
 import com.musicvault.domain.Format
@@ -83,6 +92,7 @@ fun PlaylistScreen(
     var showRename by remember { mutableStateOf(false) }
     var showDelete by remember { mutableStateOf(false) }
     var showRules by remember { mutableStateOf(false) }
+    var showAddSongs by remember { mutableStateOf(false) }
 
     var moreOpen by remember { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxSize()) {
@@ -104,8 +114,10 @@ fun PlaylistScreen(
                 { trackId -> libraryViewModel.removeTrackFromPlaylist(playlist.id, trackId) }
             },
             draggable = !playlist.isSmart,
-            emptyMessage = if (playlist.isSmart) "No songs match these rules yet." else "Empty for now — add songs from any song's ⋮ menu.",
+            // A manual playlist's empty state (with Add songs) is drawn under the header.
+            emptyMessage = if (playlist.isSmart) "No songs match these rules yet." else null,
             header = {
+                Column {
                 CollectionHeader(
                     kind = if (playlist.isSmart) "Smart playlist" else "Playlist",
                     title = playlist.name,
@@ -157,6 +169,17 @@ fun PlaylistScreen(
                         }
                     },
                 )
+                if (!playlist.isSmart && playlistTracks.isEmpty()) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 24.dp),
+                    ) {
+                        Text("This playlist is empty.", color = colors.textMuted, fontSize = 14.sp)
+                        Spacer(Modifier.height(14.dp))
+                        PillButton("Add songs", onClick = { showAddSongs = true }, icon = Icons.Rounded.Add, primary = true)
+                    }
+                }
+                }
             },
             onReorder = if (playlist.isSmart) {
                 null
@@ -168,6 +191,16 @@ fun PlaylistScreen(
                     libraryViewModel.reorderPlaylist(playlist.id, reordered)
                 }
             },
+        )
+    }
+
+    if (showAddSongs) {
+        AddSongsSheet(
+            playlistName = playlist.name,
+            inPlaylist = playlist.trackIds.toSet(),
+            tracks = allTracks,
+            onAdd = { trackId -> libraryViewModel.addTrackToPlaylist(playlist.id, trackId) },
+            onDismiss = { showAddSongs = false },
         )
     }
 

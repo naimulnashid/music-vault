@@ -56,6 +56,19 @@ export const useSyncStore = create<SyncStoreState>(() => ({
 
 // ---- lifecycle -----------------------------------------------------------------
 
+/** Cursor naming the account the stored outbox, cursors and shadow belong to. */
+const OWNER_CURSOR = "account.owner";
+
+/**
+ * Stored sync state belongs to one account. A lost session keeps it for that
+ * account; a different account signing in starts clean.
+ */
+async function claimStorage(s: IdbSyncStorage, userId: string): Promise<void> {
+  const owner = await s.cursorGet(OWNER_CURSOR);
+  if (owner && owner !== userId) await s.clearAll();
+  await s.cursorSet(OWNER_CURSOR, userId);
+}
+
 function startEngine(session: Session, deviceId: string | null): void {
   const supabase = getSupabaseBrowser();
   if (!supabase) return;
@@ -70,6 +83,11 @@ function startEngine(session: Session, deviceId: string | null): void {
     deviceId,
     onChanges: (changes) => void applyChanges(changes),
     onStatus: (status) => useSyncStore.setState({ status }),
+    // An expired token is renewed once per cycle; failing that the status asks to sign in again.
+    refreshAuth: async () => {
+      const { error } = await supabase.auth.refreshSession();
+      if (error) throw error;
+    },
     // No file log in the browser — the console trail (plus engine.getBreadcrumbs())
     // is the diagnostic surface here.
     onBreadcrumb: (crumb) => console.debug(`[sync] ${crumb.event}`, crumb.detail ?? ""),
@@ -89,8 +107,10 @@ function startEngine(session: Session, deviceId: string | null): void {
     }
   });
 
+  const claimed = storage;
   void (async () => {
     try {
+      await claimStorage(claimed, session.user.id);
       await engine!.init();
       await hydrateFromShadow();
       engine!.start();
@@ -116,17 +136,15 @@ function stopEngine(): void {
   useSyncStore.setState({ status: null, remoteQueue: null });
 }
 
-/** Sign-out: stop and forget all sync state (outbox, cursors, shadow). */
-function stopAndClear(): void {
-  const s = storage;
-  stopEngine();
-  void s?.clearAll();
-  useLibraryStore.setState({ tracks: [], cloudTracks: [], playlists: [], hydrated: false });
-  // The next account must not inherit this one's playback or loaded data: stop
-  // playback, drop the queue and resume point, signed links, queued downloads
-  // and synced stats. Device-owned data stays: local listening history,
-  // downloaded and cached audio files, and settings such as the theme. The
-  // player listener is already gone, so the empty queue is not pushed.
+/**
+ * The next account must not inherit this one's playback or loaded data: stop
+ * playback, drop the queue and resume point, signed links, queued downloads
+ * and synced stats. Device-owned data stays: local listening history,
+ * downloaded and cached audio files, and settings such as the theme. Call
+ * after stopEngine, so the player listener is gone and the empty queue is not
+ * pushed.
+ */
+function clearAccountPlayback(): void {
   usePlayerStore.getState().clearQueue();
   forgetSignedUrls();
   const { queued, cancelDownloads } = useDownloadStore.getState();
@@ -134,12 +152,34 @@ function stopAndClear(): void {
   resetStats();
 }
 
+/**
+ * The session was lost (expired or revoked) rather than ended by the user:
+ * stop sync and hide the account's data, but keep the outbox, cursors and
+ * shadow, so the same account's unsynced edits go up when it signs back in.
+ */
+function stopAndHide(): void {
+  stopEngine();
+  useLibraryStore.setState({ tracks: [], cloudTracks: [], playlists: [], hydrated: false });
+  clearAccountPlayback();
+}
+
+/** Sign-out: stop and forget all sync state (outbox, cursors, shadow). */
+function stopAndClear(): void {
+  const s = storage;
+  stopEngine();
+  void s?.clearAll();
+  useLibraryStore.setState({ tracks: [], cloudTracks: [], playlists: [], hydrated: false });
+  clearAccountPlayback();
+}
+
 useAuthStore.subscribe((state, prev) => {
   if (state.status === "signedIn" && state.session) {
     // (Re)start when the session appears or the device registration lands.
     startEngine(state.session, state.deviceId);
   } else if (prev.status === "signedIn" && state.status === "signedOut") {
-    stopAndClear();
+    // Only the user's own Sign out wipes unsynced edits.
+    if (state.signedOutByUser) stopAndClear();
+    else stopAndHide();
   }
 });
 

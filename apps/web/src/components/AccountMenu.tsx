@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { AlertTriangle, Bell, CircleHelp, CloudOff, Download, LogIn, LogOut, RefreshCw, UserRound, WifiOff } from "lucide-react";
 import { installApp, useCanInstall } from "../lib/pwa";
 import { useAuthStore } from "../store/authStore";
+import { describeSyncStatus } from "@musicvault/core";
 import { useSyncStore } from "../store/syncStore";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 import { NotificationToggle } from "./NotificationToggle";
@@ -215,16 +216,7 @@ function SyncRow() {
   const syncNow = useSyncStore((s) => s.syncNow);
   if (!status) return null;
 
-  const label =
-    status.phase === "syncing"
-      ? "Syncing…"
-      : status.phase === "offline"
-        ? "Offline — changes queued"
-        : status.phase === "error"
-          ? "Sync issue — will retry"
-          : status.pendingOps > 0
-            ? `${status.pendingOps} change${status.pendingOps === 1 ? "" : "s"} queued`
-            : "Everything synced";
+  const { label, details } = describeSyncStatus(status);
 
   const icon =
     status.phase === "offline" ? (
@@ -236,9 +228,16 @@ function SyncRow() {
     );
 
   return (
-    <div className="px-4 h-12 flex items-center gap-3 border-t border-line" title={status.lastError ?? undefined}>
+    <div className="px-4 min-h-12 py-2 flex items-center gap-3 border-t border-line">
       {icon}
-      <span className="flex-1 truncate text-sm text-muted">{label}</span>
+      <div className="flex-1 min-w-0">
+        <div className="truncate text-sm text-muted">{label}</div>
+        {details.map((line) => (
+          <div key={line} className="truncate text-xs text-muted">
+            {line}
+          </div>
+        ))}
+      </div>
       <Button size="sm" variant="secondary" onClick={() => void syncNow()} disabled={status.phase === "syncing"}>
         Sync now
       </Button>

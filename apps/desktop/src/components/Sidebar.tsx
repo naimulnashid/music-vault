@@ -41,6 +41,11 @@ export function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
   const [name, setName] = useState("");
   const [smartOpen, setSmartOpen] = useState(true);
 
+  const cancelCreate = () => {
+    setCreating(false);
+    setName("");
+  };
+
   const handleCreate = async () => {
     const trimmed = name.trim();
     if (trimmed && creating) {
@@ -139,23 +144,47 @@ export function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
         </div>
 
         {creating && (
-          <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="px-1 mt-2">
+          <motion.form
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="px-1 mt-2 space-y-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleCreate();
+            }}
+            // Leaving the form (not moving to its own buttons) still saves a typed name.
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) void handleCreate();
+            }}
+          >
             <input
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") void handleCreate();
-                if (e.key === "Escape") {
-                  setCreating(false);
-                  setName("");
-                }
+                if (e.key === "Escape") cancelCreate();
               }}
-              onBlur={() => void handleCreate()}
               placeholder="Playlist name"
+              aria-label="Playlist name"
               className="mv-field"
             />
-          </motion.div>
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={!name.trim()}
+                className="flex-1 h-8 rounded-full text-sm font-semibold bg-accent text-accent-fg hover:bg-accent-hover transition-colors disabled:opacity-40"
+              >
+                Create
+              </button>
+              <button
+                type="button"
+                onClick={cancelCreate}
+                className="flex-1 h-8 rounded-full text-sm font-semibold bg-surface-2 hover:bg-surface-3 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </motion.form>
         )}
 
         <button

@@ -16,6 +16,7 @@ export function LyricsPanel({ variant = "panel" }: { variant?: "panel" | "stage"
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const currentTime = usePlayerStore((s) => s.currentTime);
   const activeLineRef = useRef<HTMLButtonElement | null>(null);
+  const bodyRef = useRef<HTMLDivElement | null>(null);
   const stage = variant === "stage";
 
   // Synced lyrics, or plain lyrics that turn out to be LRC (pasted into the
@@ -27,12 +28,17 @@ export function LyricsPanel({ variant = "panel" }: { variant?: "panel" | "stage"
   }, [currentTrack?.lyricsSynced, currentTrack?.lyricsText]);
   const activeIndex = synced && synced.length > 0 ? findCurrentLineIndex(synced, currentTime) : -1;
 
+  // Only the lyrics scroll: scrollIntoView would also move the phone-width full player.
   useEffect(() => {
-    activeLineRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+    const body = bodyRef.current;
+    const line = activeLineRef.current;
+    if (!body || !line) return;
+    const offset = line.getBoundingClientRect().top - body.getBoundingClientRect().top;
+    body.scrollTo({ top: body.scrollTop + offset - (body.clientHeight - line.offsetHeight) / 2, behavior: "smooth" });
   }, [activeIndex]);
 
   const body = (
-    <div className={`flex-1 overflow-y-auto select-text ${stage ? (synced?.length ? "px-5 py-[22vh]" : "px-5 py-6") : "px-5 py-4"}`}>
+    <div ref={bodyRef} className={`flex-1 overflow-y-auto select-text ${stage ? (synced?.length ? "px-5 py-[22vh]" : "px-5 py-6") : "px-5 py-4"}`}>
       {!currentTrack && <p className="text-sm text-muted">Nothing playing.</p>}
 
       {currentTrack && synced && synced.length > 0 && (

@@ -10,12 +10,66 @@
 > Entries are grouped by release and theme rather than one line per commit.
 > Format follows [Keep a Changelog](https://keepachangelog.com/) conventions.
 > Releases since: `v1.0.0` and `v1.1.0`, both 2026-10-15, published as source on the public repo
-> (see [Notes on this changelog](#notes-on-this-changelog)); `v1.2.0`, 2026-10-20, tagged in the
-> private repo, not exported yet.
+> (see [Notes on this changelog](#notes-on-this-changelog)); `v1.2.0`, 2026-10-20, published the
+> same way; `v1.3.0`, 2026-10-21, tagged in the private repo, not exported yet.
 
 ---
 
 ## [Unreleased]
+
+## [1.3.0] - 2026-10-21
+
+Everything since `v1.2.0`: the rest of the 2026-10-19 audit fixes, including an Android security
+fix. Versions: 1.3.0 everywhere; Android `versionCode 4`.
+
+### Added
+- An empty playlist shows an Add songs button on every app. It opens a searchable list of the
+  library (the first 100 matches; search narrows it) where each song is added with one tap, without
+  leaving the playlist. Smart playlists keep their "No songs match these rules yet." message.
+
+### Changed
+- The account menu's sync row says what a problem means for your edits, on every app. When sync
+  is stuck it lists how many changes are kept on this device and when the device last synced
+  (remembered across restarts), and offline with nothing waiting it says edits sync when you're
+  back online. Web and desktop now show "Sign in again to sync" when the session can't be renewed;
+  before, that reason was only in a hover tooltip behind "Sync issue".
+- Web and desktop: naming a new playlist in the sidebar shows Create and Cancel buttons instead
+  of relying on Enter or clicking away. Clicking away still saves a typed name; Escape cancels.
+
+### Fixed
+- Android syncs as soon as the phone is back online. It had no connectivity listener, so edits
+  made offline waited for the next edit, a realtime event or Sync now; web and desktop already
+  retried on the browser's online event.
+- Android Auto: browsing a list longer than 500 songs returns every page. The browse tree ignored
+  the requested page and sent the same first 500 each time; every node now returns the page asked
+  for, and a client that doesn't page still gets the first 500.
+- Docs and landing page: the queue no longer counts as syncing on Android. Windows and the web
+  hand the queue to each other; Android keeps its queue on the phone (a known gap, not a
+  regression).
+- Sync (core and Android): removing or reordering songs in a playlist with more members than one
+  server response holds (1,000 by default) now reaches the server. The member list was read in
+  one request, so a song past the cut-off was skipped while the change still counted as synced,
+  and an add could get the wrong position. Every sync read now also keeps paging until an empty
+  page, so a project with a lower response cap no longer truncates pulls.
+- Web at phone width: the full-screen player has Sleep timer, Visualizer and Sound buttons under
+  the song title (they were only in the desktop-width bottom bar). The Up next panel no longer
+  covers the artwork and title, and the player opens at the top instead of scrolled to the
+  playing song in the queue; the queue and synced lyrics scroll only their own list.
+- Web and desktop sync recover from an expired session: a refused token (PGRST301, JWT expired)
+  is renewed once and the cycle retried, without counting against the queued changes; if it
+  can't be renewed the status says "Sign in again to sync". A session that expires or is revoked
+  no longer wipes unsynced edits as the user's own Sign out does: sync stops and the account's
+  data leaves the screen, and its queued edits go up when the same account signs back in (they
+  are cleared if a different account signs in). Android had the same fix in 1.2.0.
+
+### Security
+- Android: other apps can no longer browse the library or control playback through the media
+  service. It is exported for the system, Bluetooth and Android Auto, and it accepted every app
+  that connected. Now only Music Vault itself, the system, callers Android trusts for media control
+  (System UI's media controls, apps the user gave notification access) and Android Auto or
+  Automotive get in. Checked on an emulator with a separate test app, which was refused before
+  and let in once it had notification access; the notification, lock-screen controls and media
+  keys work as before. Android Auto itself was not tested.
 
 ## [1.2.0] - 2026-10-20
 
