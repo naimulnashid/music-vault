@@ -183,6 +183,10 @@ signed 50 at a time ([vault/mirror.rs](../apps/desktop/src-tauri/src/vault/mirro
 An upload of a mirror copy is matched by `MUSICVAULT_HASH`: refused while that song is live, and
 uploaded as a new song once it has been deleted, so the mirror doubles as a backup.
 
+Only the desktop upload reads `MUSICVAULT_HASH`; the web and Android apps would take a mirror copy
+for a new song. That is by design (owner, 2026-10-22): mirror copies are uploaded from the desktop
+app, so the other uploaders don't get the check.
+
 ---
 
 ## Security
@@ -208,7 +212,5 @@ past that, storage is about $0.015 per GB-month.
 - Android verifies pinned downloads but not the streaming cache (Media3 caches as it plays).
 - The first play of a track needs a network connection; there is no bulk "download my whole
   vault" on Android yet (desktop has "Download all").
-- The library mirror is desktop-only, and only the desktop upload recognises a mirror copy; the
-  web and Android apps would upload one as a new song.
 - Edits made to files in the mirror don't reach the vault, and the next change to that song online
   overwrites them.
