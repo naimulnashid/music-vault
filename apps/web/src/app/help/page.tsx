@@ -101,6 +101,16 @@ export default function HelpPage() {
           <Li>Media keys and the Windows media overlay work out of the box.</Li>
           <Li>Themes: light, dark or follow the system, plus a pure-black AMOLED mode.</Li>
           <Li>Sleep timer and synced lyrics (add an .lrc file when you upload a song).</Li>
+          <Li>
+            Download folder (Downloads view): Change folder picks where downloads are kept, and the
+            songs already there move with it; Use default goes back.
+          </Li>
+          <Li>
+            Library mirror (Downloads view): Choose folder keeps every song there as an ordinary
+            music file, in Artist\Album\Title, with its current details, cover and lyrics written
+            in, so any other player can use it. It updates after each sync; songs deleted from the
+            vault move to a “Removed from vault” folder instead of being deleted.
+          </Li>
         </ul>
 
         <H2>Sync — how it behaves</H2>

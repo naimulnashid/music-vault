@@ -62,6 +62,7 @@
   460 KiB, x86_64 585 KiB).
 
 ### Changed
+- The web Help page's Desktop extras cover the Download folder setting and the Library mirror.
 - A comma in an artist or genre tag separates two names: "A, B" is listed under both A and B in
   By Artist and By Genre, and the song shows on both artist pages.
 - Language and Country in the upload form and track editor list every value when opened, even
