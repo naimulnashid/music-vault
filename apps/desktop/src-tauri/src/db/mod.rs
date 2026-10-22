@@ -13,7 +13,7 @@ use crate::error::AppResult;
 #[derive(Clone)]
 pub struct Db(pub Arc<Mutex<Connection>>);
 
-const SCHEMA_VERSION: i64 = 9;
+const SCHEMA_VERSION: i64 = 10;
 
 pub fn open(db_path: &Path) -> AppResult<Db> {
     if let Some(parent) = db_path.parent() {
@@ -288,6 +288,24 @@ fn migrate(conn: &Connection) -> AppResult<()> {
         }
         tracing::info!("library reset for the vault (schema v9)");
     }
+    if version < 10 {
+        // The library mirror (vault/mirror.rs): which file in the mirror folder
+        // each track was written to, and the details it was written with.
+        conn.execute_batch(
+            r#"
+            CREATE TABLE IF NOT EXISTS mirror_entries (
+              track_id     TEXT PRIMARY KEY,
+              content_hash TEXT NOT NULL,
+              rel_path     TEXT NOT NULL,
+              digest       TEXT NOT NULL,
+              has_lrc      INTEGER NOT NULL DEFAULT 0,
+              tagged       INTEGER NOT NULL DEFAULT 0,
+              written_at   INTEGER NOT NULL
+            );
+            PRAGMA user_version = 10;
+            "#,
+        )?;
+    }
     Ok(())
 }
 
@@ -378,7 +396,7 @@ mod tests {
 
         let db = open(&path).expect("v9 upgrade");
         let conn = db.0.lock().unwrap();
-        assert_eq!(count(&conn, "PRAGMA user_version"), 9);
+        assert_eq!(count(&conn, "PRAGMA user_version"), SCHEMA_VERSION);
         assert!(!table_exists(&conn, "tracks") && !table_exists(&conn, "drive_files") && !table_exists(&conn, "watched_folders"));
         for table in ["playlists", "playlist_tracks", "play_events", "sync_shadow", "sync_cursors", "cache_entries"] {
             assert_eq!(count(&conn, &format!("SELECT COUNT(*) FROM {table}")), 0, "{table} should be empty");

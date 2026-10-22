@@ -27,3 +27,18 @@ export function findCurrentLineIndex(lines: LyricLine[], currentTime: number): n
   }
   return index;
 }
+
+/** Synced lyrics as LRC text (`[mm:ss.xx]line`), the form players read beside a song. */
+export function toLrc(lines: LyricLine[]): string {
+  return [...lines]
+    .sort((a, b) => a.time - b.time)
+    .map(({ time, text }) => {
+      // Rounded as a whole, so 59.996 s becomes 01:00.00 rather than 00:60.00.
+      const cs = Math.max(0, Math.round(time * 100));
+      const mm = String(Math.floor(cs / 6000)).padStart(2, "0");
+      const ss = String(Math.floor((cs % 6000) / 100)).padStart(2, "0");
+      const xx = String(cs % 100).padStart(2, "0");
+      return `[${mm}:${ss}.${xx}]${text}\n`;
+    })
+    .join("");
+}

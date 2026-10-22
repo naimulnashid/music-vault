@@ -403,7 +403,7 @@ is running — they are **not** the source of truth; cursor pulls are.
 **Concurrency** — a single `Arc<Mutex<Connection>>`, because "rusqlite connections are not Sync
 … fine for a single-user app" ([db/mod.rs:11-14](../apps/desktop/src-tauri/src/db/mod.rs)).
 
-## 2.1 Version history — `SCHEMA_VERSION = 9` ([db/mod.rs:16](../apps/desktop/src-tauri/src/db/mod.rs))
+## 2.1 Version history — `SCHEMA_VERSION = 10` ([db/mod.rs:16](../apps/desktop/src-tauri/src/db/mod.rs))
 
 Migrations are sequential `if version < N` blocks in `migrate()`, each ending with
 `PRAGMA user_version = N` ([db/mod.rs:30-290](../apps/desktop/src-tauri/src/db/mod.rs)).
@@ -419,6 +419,7 @@ Migrations are sequential `if version < N` blocks in `migrate()`, each ending wi
 | 7 | post-1.0 | `cache_entries.source_md5` + backfill from the current Drive index | [221-235](../apps/desktop/src-tauri/src/db/mod.rs) |
 | 8 | post-1.0 | `drive_artwork` | [236-251](../apps/desktop/src-tauri/src/db/mod.rs) |
 | 9 | vault M6 | **Fresh start for the vault**: drops `tracks`, `drive_files`, `drive_folders`, `drive_artwork`, `watched_folders` and `cache_entries.source_md5`; empties playlists, play events, sync state and the cache (deleting the cached files); renames the cache-cap setting to `cache_max_bytes`. Device settings stay. | [252-290](../apps/desktop/src-tauri/src/db/mod.rs) |
+| 10 | post-1.4 | `mirror_entries` (library mirror) | [291-307](../apps/desktop/src-tauri/src/db/mod.rs) |
 
 **v4** rebuilt `playlist_tracks` without its FK to `tracks(id)` so playlists could reference
 tracks with no local row; that is now the normal case, since v9 dropped the local `tracks` table
@@ -453,6 +454,13 @@ holds the auto-cache cap.
 `path`, `size`, `pinned` (DEFAULT 0), `last_access`, `created_at`.
 **Index** `idx_cache_lru (pinned, last_access)` — the LRU eviction order, with pinned rows
 sorting away from eviction ([vault/cache.rs](../apps/desktop/src-tauri/src/vault/cache.rs)).
+
+### `mirror_entries` (v10)
+`track_id` TEXT PK (the synced row id), `content_hash`, `rel_path` (inside the mirror folder,
+`/`-separated), `digest` (of the details the file was written with), `has_lrc`, `tagged`,
+`written_at`. One row per file in the library mirror ([vault/mirror.rs](../apps/desktop/src-tauri/src/vault/mirror.rs)).
+Settings beside it: `mirror_dir` (the folder while the mirror is on), `mirror_entries_dir` and
+`mirror_entries_account` (the folder and account the rows describe; another one clears them).
 
 ### `sync_outbox` / `sync_cursors` / `sync_shadow` (v4)
 - `sync_outbox`: `id` TEXT PK (the op/idempotency key), `created_at` TEXT, `payload` TEXT,

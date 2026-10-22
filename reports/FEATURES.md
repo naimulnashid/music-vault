@@ -490,6 +490,11 @@ copies as before, and playback skips the auto-cache meanwhile (desktop/web
 The web app only downloads while it is open.
 **Desktop and web extras**: live speed and an aggregate total in the Downloading section, and
 "Download all" in the header.
+**Library mirror (desktop)**: a folder of ordinary, tagged copies of every song for other players,
+kept up to date after each sync; Choose folder, Mirror now, Change folder and Turn off on the
+Downloads page ([store/mirrorStore.ts](../apps/desktop/src/store/mirrorStore.ts),
+[vault/mirror.rs](../apps/desktop/src-tauri/src/vault/mirror.rs)). Details in
+[VAULT.md](VAULT.md#library-mirror-desktop).
 
 ---
 

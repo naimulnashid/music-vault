@@ -32,6 +32,16 @@
   (into downloads while "Download all songs automatically" is on), checked against its BLAKE3
   hash as a download is, so its first play there doesn't download it back. A file moved or
   re-saved since it was added is skipped, and nothing is kept while the auto-cache is off.
+- Desktop: a Library mirror on the Downloads page keeps every song in a folder you choose as an
+  ordinary file, `Artist\Album\Title.ext`, with its current details, cover and ReplayGain written
+  into it and synced lyrics as a `.lrc` beside it, so any player can use the folder without the
+  app. It updates itself after each sync: new songs are written, edited ones retagged or renamed,
+  and songs deleted from the vault move to `Removed from vault` (nothing is deleted). Songs this
+  PC already has are copied rather than downloaded, and a run that wouldn't fit the drive doesn't
+  start. MP3, AAC, WAV and AIFF get ID3v2.4 tags (lofty's 2.3 output is unreadable), FLAC, Ogg
+  and Opus Vorbis comments, M4A/MP4 iTunes tags and WavPack/APE APE tags; a format that can't be
+  tagged (Ogg FLAC) is copied as it is. Uploading a mirror copy of a song still in the vault is
+  refused; a copy of a deleted song uploads as new. Desktop SQLite v10 adds `mirror_entries`.
 - Desktop: a Download folder setting on the Downloads page. Change folder picks another folder
   and Use default goes back; the downloads already kept move there with progress (a rename on
   the same drive, a hash-checked copy across drives), and new ones follow. The folder is

@@ -175,6 +175,70 @@ pub fn delete_cache_entry(conn: &Connection, file_id: &str) -> AppResult<()> {
     Ok(())
 }
 
+// ---- library mirror ---------------------------------------------------------
+
+fn row_to_mirror_entry(row: &Row<'_>) -> rusqlite::Result<super::models::MirrorEntryRow> {
+    Ok(super::models::MirrorEntryRow {
+        track_id: row.get(0)?,
+        content_hash: row.get(1)?,
+        rel_path: row.get(2)?,
+        digest: row.get(3)?,
+        has_lrc: row.get::<_, i64>(4)? != 0,
+        tagged: row.get::<_, i64>(5)? != 0,
+        written_at: row.get(6)?,
+    })
+}
+
+pub fn list_mirror_entries(conn: &Connection) -> AppResult<Vec<super::models::MirrorEntryRow>> {
+    let mut stmt = conn.prepare(
+        "SELECT track_id, content_hash, rel_path, digest, has_lrc, tagged, written_at FROM mirror_entries",
+    )?;
+    let rows = stmt.query_map([], row_to_mirror_entry)?.collect::<Result<Vec<_>, _>>()?;
+    Ok(rows)
+}
+
+pub fn get_mirror_entry(conn: &Connection, track_id: &str) -> AppResult<Option<super::models::MirrorEntryRow>> {
+    let row = conn
+        .query_row(
+            "SELECT track_id, content_hash, rel_path, digest, has_lrc, tagged, written_at
+             FROM mirror_entries WHERE track_id = ?1",
+            params![track_id],
+            row_to_mirror_entry,
+        )
+        .optional()?;
+    Ok(row)
+}
+
+pub fn upsert_mirror_entry(conn: &Connection, entry: &super::models::MirrorEntryRow) -> AppResult<()> {
+    conn.execute(
+        "INSERT INTO mirror_entries (track_id, content_hash, rel_path, digest, has_lrc, tagged, written_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+         ON CONFLICT(track_id) DO UPDATE SET content_hash = excluded.content_hash, rel_path = excluded.rel_path,
+           digest = excluded.digest, has_lrc = excluded.has_lrc, tagged = excluded.tagged,
+           written_at = excluded.written_at",
+        params![
+            entry.track_id,
+            entry.content_hash,
+            entry.rel_path,
+            entry.digest,
+            entry.has_lrc as i64,
+            entry.tagged as i64,
+            entry.written_at
+        ],
+    )?;
+    Ok(())
+}
+
+pub fn delete_mirror_entry(conn: &Connection, track_id: &str) -> AppResult<()> {
+    conn.execute("DELETE FROM mirror_entries WHERE track_id = ?1", params![track_id])?;
+    Ok(())
+}
+
+pub fn clear_mirror_entries(conn: &Connection) -> AppResult<()> {
+    conn.execute("DELETE FROM mirror_entries", [])?;
+    Ok(())
+}
+
 /// (auto_bytes, pinned_bytes) currently on disk per the index.
 pub fn cache_usage(conn: &Connection) -> AppResult<(i64, i64)> {
     let auto: i64 = conn.query_row(

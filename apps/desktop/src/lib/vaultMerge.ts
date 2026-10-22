@@ -76,6 +76,14 @@ export function projectVault(
   pending: PendingTrackEdit[],
   vaultArt: Record<string, string>,
 ): Track[] {
+  return liveRows(rows, pending).map((row) => vaultTrack(row, vaultArt));
+}
+
+/**
+ * The rows that make tracks, with queued edits laid over them, as stored:
+ * without the display fallbacks (such as "Unknown Artist") a Track gets.
+ */
+export function liveRows(rows: RemoteTrackRow[], pending: PendingTrackEdit[]): RemoteTrackRow[] {
   const editsByKey = new Map<string, PendingTrackEdit[]>();
   for (const edit of pending) {
     for (const key of edit.keys) {
@@ -84,13 +92,13 @@ export function projectVault(
       editsByKey.set(key, list);
     }
   }
-  const out: Track[] = [];
+  const out: RemoteTrackRow[] = [];
   for (const row of rows) {
     if (row.deleted_at || !row.storage_key || !row.content_hash) continue;
     const seen = new Set<PendingTrackEdit>();
     for (const key of rowKeys(row)) for (const e of editsByKey.get(key) ?? []) seen.add(e);
     const edits = [...seen].sort((a, b) => a.editedAt.localeCompare(b.editedAt));
-    out.push(vaultTrack(edits.length > 0 ? overlayTrackEdits(row, edits) : row, vaultArt));
+    out.push(edits.length > 0 ? overlayTrackEdits(row, edits) : row);
   }
   return out;
 }

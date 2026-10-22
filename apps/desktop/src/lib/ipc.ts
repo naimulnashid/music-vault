@@ -146,6 +146,53 @@ export const vaultDownloadsMove = (dir: string) => invoke<DownloadsMoveReport>("
 export const onVaultDownloadsMoveProgress = (cb: (e: DownloadsMoveProgress) => void): Promise<UnlistenFn> =>
   listen<DownloadsMoveProgress>("vault://downloads-move-progress", (e) => cb(e.payload));
 
+// ---- Library mirror (vault/mirror.rs) ----------------------------------------
+
+/** One live vault track as the library mirror writes it. */
+export interface MirrorTrack {
+  id: string;
+  contentHash: string;
+  ext: string;
+  fileSize: number;
+  title: string;
+  artist: string;
+  album: string;
+  genre: string | null;
+  language: string | null;
+  country: string | null;
+  releaseDate: string | null;
+  lyricsText: string | null;
+  /** Synced lyrics as LRC text. */
+  lrc: string | null;
+  replayGainTrack: number | null;
+  replayGainAlbum: number | null;
+  artworkKey: string | null;
+}
+
+export interface MirrorWork {
+  id: string;
+  relPath: string;
+  needsAudio: boolean;
+}
+
+export interface MirrorPlan {
+  work: MirrorWork[];
+  removed: string[];
+  upToDate: number;
+  bytesNeeded: number;
+  freeBytes: number | null;
+  untagged: number;
+}
+
+export const vaultMirrorDir = () => invoke<string | null>("vault_mirror_dir");
+/** Turns the mirror on with `dir`, or off with null; its files stay either way. */
+export const vaultMirrorSetDir = (dir: string | null) => invoke<void>("vault_mirror_set_dir", { dir });
+export const vaultMirrorPlan = (account: string, tracks: MirrorTrack[], tombstoned: string[]) =>
+  invoke<MirrorPlan>("vault_mirror_plan", { account, tracks, tombstoned });
+export const vaultMirrorApply = (track: MirrorTrack, relPath: string, audioUrl: string | null) =>
+  invoke<{ tagged: boolean }>("vault_mirror_apply", { track, relPath, audioUrl });
+export const vaultMirrorRemove = (trackIds: string[]) => invoke<number>("vault_mirror_remove", { trackIds });
+
 // ---- Sync engine storage commands -------------------------------------------
 
 export interface SyncOutboxRow {
@@ -269,6 +316,8 @@ export interface PreparedFileDto {
   tags: Record<string, string | number>;
   lrc: string | null;
   cover: PreparedCoverDto | null;
+  /** For a library mirror copy: the content hash of the vault file it came from. */
+  mirrorOf: string | null;
 }
 
 export interface PrepareResultDto {

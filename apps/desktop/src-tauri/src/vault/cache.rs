@@ -209,7 +209,7 @@ pub fn valid_file_parts(content_hash: &str, ext: &str) -> bool {
 /// Copies `from` to `to` while hashing it, calling `on_bytes` per chunk.
 /// Returns the size when the copy hashes to `expected`; otherwise (or on any
 /// error) `to` is removed, so a wrong or partial copy is never left behind.
-fn copy_verified(from: &Path, to: &Path, expected: &str, on_bytes: &mut dyn FnMut(usize)) -> std::io::Result<Option<i64>> {
+pub(crate) fn copy_verified(from: &Path, to: &Path, expected: &str, on_bytes: &mut dyn FnMut(usize)) -> std::io::Result<Option<i64>> {
     let mut src = std::fs::File::open(from)?;
     let mut dst = std::fs::File::create(to)?;
     let copied = (|| {

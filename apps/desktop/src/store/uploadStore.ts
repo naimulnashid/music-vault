@@ -257,9 +257,26 @@ export const useUploadStore = create<UploadState>((set, get) => ({
       const existing = await findExisting(
         results.flatMap((r) => (r.file ? [sourceFromDto(r.file)] : [])),
       ).catch(() => new Map<string, RemoteTrackRow>());
+      const liveByHash = new Map(
+        useLibraryStore.getState().tracks.flatMap((t) => (t.contentHash ? [[t.contentHash, t] as const] : [])),
+      );
       const prepared: UploadItem[] = results.map((r) => {
         if (!r.file) return { id: crypto.randomUUID(), path: r.path, status: "invalid", error: r.error ?? "Couldn't read this file", values: {}, cover: null };
         const source = sourceFromDto(r.file);
+        // A mirror copy's own hash is new (its tags were rewritten), so it is
+        // matched by the song it was made from. A song since deleted from the
+        // vault uploads as usual: the mirror doubles as a backup.
+        const mirrored = r.file.mirrorOf ? liveByHash.get(r.file.mirrorOf) : undefined;
+        if (mirrored) {
+          return {
+            id: crypto.randomUUID(),
+            path: r.path,
+            status: "invalid",
+            error: `A library mirror copy of "${mirrored.title}", which is already in your vault`,
+            values: {},
+            cover: null,
+          } satisfies UploadItem;
+        }
         const dupe = known.has(source.contentHash);
         known.add(source.contentHash);
         const draft = draftFromSource(source);

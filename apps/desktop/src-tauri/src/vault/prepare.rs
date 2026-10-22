@@ -81,6 +81,9 @@ pub struct PreparedFile {
     /// Contents of a sibling `.lrc` file, if any (synced lyrics).
     pub lrc: Option<String>,
     pub cover: Option<PreparedCover>,
+    /// For a copy from the library mirror: the content hash of the vault file
+    /// it was made from (its own hash differs, its tags having been rewritten).
+    pub mirror_of: Option<String>,
 }
 
 /// The vault extension for a path, or None when the format isn't supported.
@@ -114,6 +117,7 @@ pub fn prepare_file(path: &Path, staging_dir: &Path) -> Result<PreparedFile> {
     };
 
     let lrc = std::fs::read_to_string(path.with_extension("lrc")).ok().filter(|s| !s.trim().is_empty());
+    let mirror_of = super::retag::read_mirror_hash(path).filter(|h| *h != content_hash);
 
     Ok(PreparedFile {
         path: path.to_string_lossy().to_string(),
@@ -141,6 +145,7 @@ pub fn prepare_file(path: &Path, staging_dir: &Path) -> Result<PreparedFile> {
         },
         lrc,
         cover,
+        mirror_of,
     })
 }
 

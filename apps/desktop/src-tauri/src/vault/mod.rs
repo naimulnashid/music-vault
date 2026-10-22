@@ -9,9 +9,13 @@
 //! - [`cache`]: the two-tier cache of vault audio on this device.
 //! - [`transfer`]: stream uploads to and downloads from pre-signed URLs with
 //!   progress events, verifying every download against its content hash.
+//! - [`mirror`]: keep a folder of plain, tagged music files in step with the
+//!   vault, with [`retag`] writing the details into each copy.
 
 pub mod cache;
+pub mod mirror;
 pub mod prepare;
+pub mod retag;
 pub mod transfer;
 
 use std::collections::{HashMap, HashSet};

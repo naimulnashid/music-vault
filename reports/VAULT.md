@@ -160,6 +160,29 @@ its cached or pinned copy (only tombstones the device has pulled count).
 
 A cached copy is used offline; the first play of a track needs to be online and signed in.
 
+## Library mirror (desktop)
+
+Downloads → Library mirror keeps a folder of ordinary music files, one per live track, that any
+player can use without the app. The vault's objects keep the bytes as uploaded; the mirror is
+where the online details reach the files.
+
+| | |
+|---|---|
+| Layout | `Artist\Album\Title.ext` (names made safe for Windows, at most 100 characters each); same-named songs get " (2)", " (3)", and keep their number. `.alac` is written as `.m4a`. Synced lyrics go beside the song as `Title.lrc` ([core `toLrc`](../packages/core/src/lrc.ts)). |
+| Tags | Title, artist, album, genre, release date, language, plain lyrics, ReplayGain, the full-size cover, and the custom fields `COUNTRY` and `MUSICVAULT_HASH` (the vault hash the copy was made from). Rules per format, and what lofty was tested to get wrong, are in [vault/retag.rs](../apps/desktop/src-tauri/src/vault/retag.rs). |
+| Source | This PC's cached or downloaded copy when there is one (hash-checked), else a signed download straight into the mirror; the cache isn't filled. |
+| Updates | After each sync (5 s debounce), once the session's first pull is in. `mirror_entries` holds each file's path and a digest of what it was written with, so a run only writes new songs, retags edited ones and renames moved ones, each through a temp file and one rename. |
+| Deletions | Only a tombstone removes a song: its file moves to `Removed from vault\<same path>`. A song merely missing from the list is left alone. |
+| Safety | A run that needs more space than the drive has doesn't start. The folder can't overlap the app's data folder or the download folder. Turning the mirror off or choosing another folder leaves the files as they are; the same folder again carries on where it stopped. An unplugged drive pauses the mirror. |
+
+Flow: [store/mirrorStore.ts](../apps/desktop/src/store/mirrorStore.ts) sends every live row
+([lib/mirror.ts](../apps/desktop/src/lib/mirror.ts)) to `vault_mirror_plan`, removes tombstoned
+songs with `vault_mirror_remove`, then runs `vault_mirror_apply` two songs at a time with links
+signed 50 at a time ([vault/mirror.rs](../apps/desktop/src-tauri/src/vault/mirror.rs)).
+
+An upload of a mirror copy is matched by `MUSICVAULT_HASH`: refused while that song is live, and
+uploaded as a new song once it has been deleted, so the mirror doubles as a backup.
+
 ---
 
 ## Security
@@ -185,3 +208,7 @@ past that, storage is about $0.015 per GB-month.
 - Android verifies pinned downloads but not the streaming cache (Media3 caches as it plays).
 - The first play of a track needs a network connection; there is no bulk "download my whole
   vault" on Android yet (desktop has "Download all").
+- The library mirror is desktop-only, and only the desktop upload recognises a mirror copy; the
+  web and Android apps would upload one as a new song.
+- Edits made to files in the mirror don't reach the vault, and the next change to that song online
+  overwrites them.

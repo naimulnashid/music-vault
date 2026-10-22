@@ -24,6 +24,21 @@ pub struct CacheEntryRow {
     pub created_at: i64,
 }
 
+/// A track written to the library mirror folder.
+#[derive(Clone, Debug, PartialEq)]
+pub struct MirrorEntryRow {
+    pub track_id: String,
+    pub content_hash: String,
+    /// Relative to the mirror folder, `/`-separated.
+    pub rel_path: String,
+    /// Of the details the file was written with ([`crate::vault::mirror`]).
+    pub digest: String,
+    pub has_lrc: bool,
+    /// False when the file was copied without the details (an untaggable format).
+    pub tagged: bool,
+    pub written_at: i64,
+}
+
 /// A pending sync op waiting to be flushed to Supabase.
 #[derive(Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]

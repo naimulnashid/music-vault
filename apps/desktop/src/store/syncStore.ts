@@ -35,6 +35,8 @@ interface SyncStoreState {
   status: SyncStatus | null;
   /** The last queue another device pushed (surfaced for handoff). */
   remoteQueue: QueueChange | null;
+  /** This session's startup pull has been tried, so the track rows are as fresh as they get. */
+  initialPullDone: boolean;
   syncNow: () => Promise<void>;
 }
 
@@ -50,6 +52,7 @@ let onlineListener: (() => void) | null = null;
 export const useSyncStore = create<SyncStoreState>(() => ({
   status: null,
   remoteQueue: null,
+  initialPullDone: false,
   syncNow: async () => {
     await engine?.syncNow();
   },
@@ -135,7 +138,11 @@ function startEngine(session: Session, deviceId: string | null): void {
       await hydrateFromShadow();
       await loadVaultRows();
       engine!.start();
-      await engine!.syncNow(true); // startup full pull heals any cursor gap
+      try {
+        await engine!.syncNow(true); // startup full pull heals any cursor gap
+      } finally {
+        if (storage === claimed) useSyncStore.setState({ initialPullDone: true });
+      }
       await maybeRestoreQueue();
     } catch (err) {
       console.error("[sync] startup failed:", err);
@@ -162,7 +169,7 @@ function stopEngine(): void {
   engine = null;
   storage = null;
   engineKey = null;
-  useSyncStore.setState({ status: null, remoteQueue: null });
+  useSyncStore.setState({ status: null, remoteQueue: null, initialPullDone: false });
 }
 
 /**

@@ -221,6 +221,10 @@ pub async fn move_downloads(app: &AppHandle, dir: PathBuf) -> Result<cache::Move
     if dir != paths.default_downloads_dir && dir.starts_with(&data_dir) {
         bail!("choose a folder outside the app's own data folder");
     }
+    let mirror = super::mirror::active_dir(&app.state::<Db>().0.lock().expect("db lock"));
+    if mirror.is_some_and(|m| dir.starts_with(&m) || m.starts_with(&dir)) {
+        bail!(super::mirror::OVERLAPS_MIRROR);
+    }
     if state.moving.swap(true, Ordering::SeqCst) {
         bail!("the downloads are already moving");
     }
@@ -318,47 +322,18 @@ async fn download_inner(
         bail!("download rejected ({})", resp.status());
     }
     let total = resp.content_length().map(|n| n as i64).unwrap_or(0);
-    let mut file = std::fs::File::create(&temp).context("can't create download file")?;
-    // Any failure from here on (stream, disk, hash, rename) must remove the
-    // .part: nothing indexes it, so nothing would ever evict it.
-    let streamed: Result<(i64, String)> = async {
-        let mut hasher = blake3::Hasher::new();
-        let mut downloaded: i64 = 0;
-        let mut last_emit = Instant::now();
-        let mut stream = resp.bytes_stream();
-        while let Some(chunk) = stream.next().await {
-            if state.cancelled.lock().expect("cancel lock").contains(key) {
-                bail!(CANCELLED);
-            }
-            let chunk = chunk.context("download stream failed")?;
-            hasher.update(&chunk);
-            file.write_all(&chunk)?;
-            downloaded += chunk.len() as i64;
-            if last_emit.elapsed().as_millis() >= 250 {
-                last_emit = Instant::now();
-                let _ = app.emit(
-                    "vault://download-progress",
-                    DownloadProgress { file_id: key.to_string(), downloaded, total },
-                );
-            }
+    let mut last_emit = Instant::now();
+    let downloaded = stream_verified(resp, &temp, content_hash, |downloaded| {
+        if state.cancelled.lock().expect("cancel lock").contains(key) {
+            bail!(CANCELLED);
         }
-        file.flush()?;
-        Ok((downloaded, hasher.finalize().to_hex().to_string()))
-    }
-    .await;
-    drop(file);
-
-    let downloaded = match streamed {
-        Ok((downloaded, actual)) if actual == content_hash => downloaded,
-        Ok(_) => {
-            let _ = std::fs::remove_file(&temp);
-            bail!("downloaded bytes don't match the track's content hash");
+        if last_emit.elapsed().as_millis() >= 250 {
+            last_emit = Instant::now();
+            let _ = app.emit("vault://download-progress", DownloadProgress { file_id: key.to_string(), downloaded, total });
         }
-        Err(e) => {
-            let _ = std::fs::remove_file(&temp);
-            return Err(e);
-        }
-    };
+        Ok(())
+    })
+    .await?;
     if let Err(e) = std::fs::rename(&temp, &target) {
         let _ = std::fs::remove_file(&temp);
         return Err(e).context("can't finalize download");
@@ -374,6 +349,57 @@ async fn download_inner(
     );
     let _ = app.emit("vault://download-done", DownloadDone { file_id: key.to_string(), path: path.clone(), pinned: pin });
     Ok(path)
+}
+
+/// Writes a download to `temp`, hashing it on the way, and returns its size
+/// once it matches `content_hash`. `on_chunk` gets the bytes so far after each
+/// chunk and stops the download with an error. On any failure `temp` is
+/// removed: nothing indexes it, so nothing would ever clean it up.
+async fn stream_verified(
+    resp: reqwest::Response,
+    temp: &Path,
+    content_hash: &str,
+    mut on_chunk: impl FnMut(i64) -> Result<()>,
+) -> Result<i64> {
+    let mut file = std::fs::File::create(temp).context("can't create download file")?;
+    let streamed: Result<(i64, String)> = async {
+        let mut hasher = blake3::Hasher::new();
+        let mut downloaded: i64 = 0;
+        let mut stream = resp.bytes_stream();
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk.context("download stream failed")?;
+            hasher.update(&chunk);
+            file.write_all(&chunk)?;
+            downloaded += chunk.len() as i64;
+            on_chunk(downloaded)?;
+        }
+        file.flush()?;
+        Ok((downloaded, hasher.finalize().to_hex().to_string()))
+    }
+    .await;
+    drop(file);
+    match streamed {
+        Ok((downloaded, actual)) if actual == content_hash => Ok(downloaded),
+        Ok(_) => {
+            let _ = std::fs::remove_file(temp);
+            bail!("downloaded bytes don't match the track's content hash");
+        }
+        Err(e) => {
+            let _ = std::fs::remove_file(temp);
+            Err(e)
+        }
+    }
+}
+
+/// Downloads a vault track to `temp` outside the cache (the library mirror),
+/// verified against its content hash like any download.
+pub async fn fetch_verified(app: &AppHandle, url: &str, temp: &Path, content_hash: &str) -> Result<i64> {
+    let state = app.state::<VaultState>();
+    let resp = state.http.get(url).send().await.context("download failed")?;
+    if !resp.status().is_success() {
+        bail!("download rejected ({})", resp.status());
+    }
+    stream_verified(resp, temp, content_hash, |_| Ok(())).await
 }
 
 /// Downloads a cover image into the artwork cache as `file_name` unless it is

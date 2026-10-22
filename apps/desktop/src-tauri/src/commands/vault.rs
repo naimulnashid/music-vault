@@ -7,7 +7,7 @@ use crate::commands::AppPaths;
 use crate::db::models::CacheEntryRow;
 use crate::db::{queries, Db};
 use crate::vault::cache::{self, CacheStats};
-use crate::vault::{prepare, transfer};
+use crate::vault::{mirror, prepare, transfer};
 
 /// Where prepared covers wait for upload: inside the artwork dir, so the
 /// upload form can preview them through the (artwork-scoped) asset protocol.
@@ -139,6 +139,58 @@ pub fn vault_downloads_dir(app: AppHandle) -> DownloadsDir {
 #[tauri::command]
 pub async fn vault_downloads_move(app: AppHandle, dir: String) -> Result<cache::MoveReport, String> {
     transfer::move_downloads(&app, PathBuf::from(dir)).await.map_err(|e| e.to_string())
+}
+
+/// The library mirror folder, while the mirror is on.
+#[tauri::command]
+pub fn vault_mirror_dir(app: AppHandle) -> Option<String> {
+    let db = app.state::<Db>();
+    let conn = db.0.lock().expect("db lock");
+    mirror::active_dir(&conn).map(|d| d.to_string_lossy().to_string())
+}
+
+/// Turns the library mirror on with `dir`, or off with none (its files stay).
+#[tauri::command]
+pub fn vault_mirror_set_dir(app: AppHandle, dir: Option<String>) -> Result<(), String> {
+    let db = app.state::<Db>();
+    let conn = db.0.lock().expect("db lock");
+    mirror::set_dir(&conn, &app.state::<AppPaths>(), dir.map(PathBuf::from)).map_err(|e| e.to_string())
+}
+
+/// What a mirror run has to do for these live tracks and deleted track ids.
+#[tauri::command]
+pub async fn vault_mirror_plan(
+    app: AppHandle,
+    account: String,
+    tracks: Vec<mirror::MirrorTrack>,
+    tombstoned: Vec<String>,
+) -> Result<mirror::MirrorPlan, String> {
+    let db = Db(app.state::<Db>().0.clone());
+    tauri::async_runtime::spawn_blocking(move || {
+        mirror::plan(&db, &app.state::<AppPaths>(), &account, &tracks, &tombstoned).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Brings one track's file in the mirror up to date.
+#[tauri::command]
+pub async fn vault_mirror_apply(
+    app: AppHandle,
+    track: mirror::MirrorTrack,
+    rel_path: String,
+    audio_url: Option<String>,
+) -> Result<mirror::ApplyOutcome, String> {
+    mirror::apply(&app, track, rel_path, audio_url).await.map_err(|e| e.to_string())
+}
+
+/// Moves deleted tracks' files into the mirror's "Removed from vault" folder.
+#[tauri::command]
+pub async fn vault_mirror_remove(app: AppHandle, track_ids: Vec<String>) -> Result<usize, String> {
+    let db = Db(app.state::<Db>().0.clone());
+    tauri::async_runtime::spawn_blocking(move || mirror::remove(&db, &track_ids).map_err(|e| e.to_string()))
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 /// Downloads a cover into the artwork cache (no-op when already there).

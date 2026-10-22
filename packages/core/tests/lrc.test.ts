@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findCurrentLineIndex, parseLrc } from "../src/lrc";
+import { findCurrentLineIndex, parseLrc, toLrc } from "../src/lrc";
 
 describe("parseLrc", () => {
   it("parses simple timestamped lines sorted by time", () => {
@@ -46,5 +46,25 @@ describe("findCurrentLineIndex", () => {
     expect(findCurrentLineIndex(lines, 5)).toBe(0);
     expect(findCurrentLineIndex(lines, 12)).toBe(1);
     expect(findCurrentLineIndex(lines, 99)).toBe(2);
+  });
+});
+
+describe("toLrc", () => {
+  it("writes one time tag per line, in time order", () => {
+    expect(toLrc([{ time: 12, text: "Two" }, { time: 5.5, text: "One" }])).toBe("[00:05.50]One\n[00:12.00]Two\n");
+  });
+
+  it("carries rounding into the next second and minute", () => {
+    expect(toLrc([{ time: 59.996, text: "a" }])).toBe("[01:00.00]a\n");
+    expect(toLrc([{ time: 61.234, text: "b" }])).toBe("[01:01.23]b\n");
+  });
+
+  it("reads back as the same lines", () => {
+    const lines = [
+      { time: 0, text: "" },
+      { time: 3.25, text: "Hello" },
+      { time: 125.5, text: "আমার সোনার বাংলা" },
+    ];
+    expect(parseLrc(toLrc(lines))).toEqual(lines);
   });
 });
