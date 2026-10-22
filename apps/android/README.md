@@ -11,6 +11,7 @@ The Android client of Music Vault. Fully native — Kotlin, Jetpack Compose, Med
 - **Lyrics**: synced lyrics auto-scroll with active-line highlight; plain lyrics fallback; active line shown on the Now Playing screen.
 - **Playback**: play/pause/next/previous (restarts after 3 s), seek, queue with drag-reorder/remove/clear/jump, shuffle-on-start (tapped track first), repeat off/all/one.
 - **Gapless & crossfade**: dual-ExoPlayer engine preloads the next track ~15 s ahead; gapless hard-switch or true overlap crossfade (0–12 s), same as the web audio engine.
+- **Formats**: whatever ExoPlayer and the phone's own decoders play, plus Monkey's Audio (`.ape`) and WavPack (`.wv`) through the app's own extractors and FFmpeg's decoders in the [`:ffmpeg` module](ffmpeg/README.md). The FFmpeg library is built for arm64-v8a, armeabi-v7a and x86_64; on other ABIs those two formats don't play.
 - **Equalizer**: 10-band ±12 dB (31 Hz–16 kHz) via `DynamicsProcessing`, presets Flat / Bass Boost / Vocal / Treble Boost / Custom.
 - **Visualizer**: spectrum bars + waveform modes (platform `Visualizer`; Android requires the mic permission to tap audio output — nothing is recorded).
 - **Views**: All Tracks (search + sort by artist/album/title), Albums grid, Album page, Artist page, Playlists (create/rename/delete/reorder), Smart playlists (Recently Added/Played, Most Played, Favorites, Never Played), grouped browse (Genre/Artist/Year/Language), Statistics (listening time, tracks played, top artists/genres, most played).
@@ -74,11 +75,14 @@ app/src/main/java/com/musicvault/
 │  └─ repo/    Library / History / Stats repositories
 ├─ playback/   VaultPlayer (SimpleBasePlayer over two ExoPlayers: gapless + crossfade),
 │              QueueState (pure, tested), EqController, PlaybackController,
-│              PlaybackService (MediaLibraryService + Android Auto tree)
+│              PlaybackService (MediaLibraryService + Android Auto tree),
+│              formats/ (APE and WavPack extractors)
 └─ ui/         Compose: top bar + account menu, bottom tabs, screens, mini player,
                Now Playing, bottom-sheet panels,
                vault/ (upload screen, track editor, share intake)
 ```
+
+`ffmpeg/` (the `:ffmpeg` module) holds the FFmpeg decoders for APE and WavPack. Its native library is prebuilt and committed, so building the app needs no NDK; [ffmpeg/README.md](ffmpeg/README.md) says how to rebuild it.
 
 ## Manual test checklist (on device)
 

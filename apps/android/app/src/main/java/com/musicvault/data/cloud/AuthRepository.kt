@@ -36,6 +36,9 @@ data class DeviceRow(
 )
 
 @Serializable
+private data class DeviceName(val id: String, val name: String)
+
+@Serializable
 private data class NewDevice(
     @SerialName("user_id") val userId: String,
     val name: String,
@@ -116,6 +119,21 @@ class AuthRepository @Inject constructor(
     }
 
     fun deviceId(): String? = prefs.getString(KEY_DEVICE_ID, null)
+
+    /** The account's device names by id, for "Play time by device"; empty when signed out or offline. */
+    suspend fun deviceNames(): Map<String, String> {
+        val c = client ?: return emptyMap()
+        if (c.auth.currentUserOrNull() == null) return emptyMap()
+        return try {
+            // id and name only: the table is small and holds nothing else needed here.
+            c.from("devices").select(io.github.jan.supabase.postgrest.query.Columns.list("id", "name"))
+                .decodeList<DeviceName>()
+                .associate { it.id to it.name }
+        } catch (e: Exception) {
+            Timber.w(e, "loading device names failed")
+            emptyMap()
+        }
+    }
 
     private companion object {
         const val KEY_DEVICE_ID = "device_id"

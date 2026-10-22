@@ -97,7 +97,8 @@ On Android: an album and Downloads.
   them to the Android app), review each song's details, then upload. Tags only pre-fill the form.
 - Edit a song's details and cover online from any app, one song or several at once: title, artist,
   album, genre, language, country, release date and lyrics.
-- Browse by song, album, artist, genre, year and language; search across all of them.
+- Browse by song, album, artist, genre, year, language and country; search across all of them.
+  Songs show as a list or as covers on Windows and the web. Give an artist a photo of their own.
 - Playlists with drag-and-drop ordering, favorites, and smart playlists: built-in ones (Recently
   Added, Most Played, Never Played…) and your own, built from rules.
 
@@ -107,22 +108,27 @@ On Android: an album and Downloads.
   and Windows media keys.
 - Android: background and lock-screen playback, notification and Android Auto controls, gapless
   and crossfade, the same equalizer, swipe between songs, and a volume slider on the full player.
+  APE and WavPack play here too, besides the formats Android itself decodes.
 - Web: plays in the browser and installs as an app (PWA) that opens offline.
 - Everywhere: a queue with play next and add to queue, synced lyrics, a visualizer and a sleep
   timer.
 
 **Offline**
 - Songs you play are cached on the device (Off to 10 GB, with Clear cache), so nothing downloads
-  twice.
+  twice. On Windows a song you upload is kept the same way, so its first play there doesn't
+  download it back.
 - Download a song, album, artist or playlist to keep it; the button shows progress, cancels while
   running and removes the downloads once complete.
 - "Download all songs automatically" keeps the whole vault on a device, including songs added
   later.
+- Windows: choose the folder downloads are kept in (Downloads → Download folder); the songs
+  already there move with it, with progress.
 - Every download is checked against the song's BLAKE3 hash before it is kept.
 
 **Statistics**
 - Listening time, plays, streaks, an activity chart, the last six months as a heatmap (with your
-  whole history a click away), a listening clock, and top artists, albums, genres and songs.
+  whole history a click away), a listening clock, top albums, artists, genres, years, countries,
+  languages and songs, and play time per device.
 - A yearly recap on Windows and the web.
 
 **Sync**
@@ -223,7 +229,8 @@ Every variable, what reads it and how exposed it is:
 3. **Play.** Click a song to play it and queue what follows. The queue, lyrics and equalizer open from
    the player.
 4. **Keep music offline.** Use Download on a song, album, artist or playlist, or switch on
-   "Download all songs automatically" on the Downloads page.
+   "Download all songs automatically" on the Downloads page. On Windows, Change folder there
+   picks where downloads are kept.
 5. **Organize.** Make playlists and drag songs to reorder them; smart playlists fill themselves
    from rules such as genre, language or play count.
 
@@ -302,10 +309,11 @@ for anything larger, open an issue first. See [CONTRIBUTING.md](CONTRIBUTING.md)
   secrets read by the `vault` function, which gives the apps short-lived signed URLs. Each app keeps
   your sign-in session on the device (in cookies on the web).
 - **On each device.** The apps keep a copy of your library and the audio they have cached or
-  downloaded: in the app's data folder on Windows, app-private storage on Android and the
-  browser's storage on the web. The apps don't encrypt these copies, so anyone with access to the
-  device's files can play them. On Android, only the system, Android Auto and apps you give
-  notification access can browse your library or control playback through its media service.
+  downloaded: in the app's data folder on Windows (downloads in the folder you choose),
+  app-private storage on Android and the browser's storage on the web. The apps don't encrypt
+  these copies, so anyone with access to the device's files can play them. On Android, only the
+  system, Android Auto and apps you give notification access can browse your library or control
+  playback through its media service.
 - **Integrity.** Every download is checked against the song's BLAKE3 hash before it is kept.
 - **Limitation: open sign-ups.** Any account on your Supabase project can upload into your bucket;
   the `vault` function has no allowlist or storage quota. Once your own account exists, turn off

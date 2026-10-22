@@ -19,7 +19,8 @@
         "minWidth": 900,
         "minHeight": 600,
         "maximized": true,
-        "dragDropEnabled": true
+        "dragDropEnabled": true,
+        "zoomHotkeysEnabled": true
       }
     ],
     "security": {
@@ -59,6 +60,11 @@
       "icons/128x128@2x.png",
       "icons/icon.ico"
     ],
-    "publisher": "Naimul Nashid"
+    "publisher": "Naimul Nashid",
+    "windows": {
+      "nsis": {
+        "installerHooks": "./windows/hooks.nsh"
+      }
+    }
   }
 }

@@ -12,12 +12,16 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.SimpleBasePlayer
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
 import com.musicvault.domain.model.RepeatMode
 import com.musicvault.domain.model.Track
+import com.musicvault.playback.formats.VaultExtractorsFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -73,21 +77,26 @@ class VaultPlayer(
         (context.getSystemService(Context.AUDIO_SERVICE) as AudioManager).generateAudioSessionId()
 
     private val players: List<ExoPlayer> = List(2) { index ->
-        ExoPlayer.Builder(context)
+        // PREFER puts the FFmpeg renderer (APE and WavPack only, see the :ffmpeg
+        // module) ahead of MediaCodec; it shares the audio sink, so the audio
+        // session, EQ and volume ramps work the same for those formats.
+        ExoPlayer.Builder(
+            context,
+            DefaultRenderersFactory(context)
+                .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER),
+        )
             .setLooper(Looper.getMainLooper())
             // NETWORK = CPU + Wi-Fi lock: songs stream/download from the vault
             // while the screen is off.
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .setHandleAudioBecomingNoisy(true)
-            .apply {
-                // vault:// URIs resolve through the pinned copy or the auto-cache.
-                dataSourceFactory?.let {
-                    setMediaSourceFactory(
-                        androidx.media3.exoplayer.source.DefaultMediaSourceFactory(context)
-                            .setDataSourceFactory(it),
-                    )
-                }
-            }
+            .setMediaSourceFactory(
+                DefaultMediaSourceFactory(
+                    // vault:// URIs resolve through the pinned copy or the auto-cache.
+                    dataSourceFactory ?: DefaultDataSource.Factory(context),
+                    VaultExtractorsFactory(),
+                ),
+            )
             .build()
             .apply {
                 setAudioAttributes(

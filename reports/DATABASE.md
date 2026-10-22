@@ -32,6 +32,7 @@ No client keeps its own copy of the track list — each projects the synced `tra
 | 0004 | [0004_vault.sql](../supabase/migrations/0004_vault.sql) | 354 | vault M1 | Vault columns on `tracks` (`storage_key`, `uploaded_at`, `artwork_key`, `field_edited_at`, `deleted_at`, `merged_into`), the protected-column trigger, and `apply_track_edit`, `merge_tracks`, `resolve_upload_target`, `delete_track` |
 | 0005 | [0005_drop_drive.sql](../supabase/migrations/0005_drop_drive.sql) | 131 | vault M7 | Drops `drive_file_id` / `drive_md5` and their indexes; identity becomes the content hash alone; re-creates `merge_tracks` and `resolve_upload_target` without Drive |
 | 0007 | [0007_artwork_key_guard.sql](../supabase/migrations/0007_artwork_key_guard.sql) | 45 | audit SEC-001 | Applied 2026-10-20. Extends `tracks_protect_vault_columns` to reject a client INSERT or UPDATE that sets `artwork_key` to anything but the row owner's own full cover key |
+| 0008 | [0008_artist_photos.sql](../supabase/migrations/0008_artist_photos.sql) | 122 | artist photos | Applied 2026-10-22. Guards `artist_photo` settings rows (null or the owner's own cover key), adds `referenced_artwork_keys`, and makes `delete_track` keep a cover an artist photo uses |
 
 There is **no migration runner in the repo** — no Supabase CLI config, no `supabase/config.toml`.
 The migrations are applied by hand (the RLS test says "run in the Supabase SQL editor (or psql)"
@@ -326,7 +327,7 @@ deliberately **no update/delete policies** — "append-only by construction"
 | Column | Type | Constraints |
 |---|---|---|
 | `user_id` | uuid | **PK** (composite), FK CASCADE |
-| `scope` | text | **PK** (composite), NOT NULL DEFAULT `'global'` — `'global'` or a device id string |
+| `scope` | text | **PK** (composite), NOT NULL DEFAULT `'global'` — `'global'`, a device id string, or `'artist_photo'` (key = artist name, value = cover key or null; **0008**) |
 | `key` | text | **PK** (composite), NOT NULL |
 | `value` | jsonb | NOT NULL |
 | `updated_at` | timestamptz | trigger-maintained |
@@ -363,7 +364,9 @@ One row per user — cross-device handoff.
 | `public.apply_track_edit(track, patch, edited_at)` | [0004](../supabase/migrations/0004_vault.sql) | Field-level last-writer-wins edit of a track's details; rejects read-only fields, empty titles and another user's cover key |
 | `public.resolve_upload_target(content_hash, md5)` | [0005](../supabase/migrations/0005_drop_drive.sql) | The row an upload attaches to (same hash, live or deleted) or null; `md5` is ignored |
 | `public.merge_tracks(keep, drop)` | [0005](../supabase/migrations/0005_drop_drive.sql) | Folds one row's favorites, ratings, playlist items, play events and queue references into another; the dropped row becomes a merge tombstone |
-| `public.delete_track(track)` | [0004](../supabase/migrations/0004_vault.sql) | Removes a track's user state, tombstones the row and returns the object keys to delete |
+| `public.delete_track(track)` | [0008](../supabase/migrations/0008_artist_photos.sql) (first in 0004) | Removes a track's user state, tombstones the row and returns the object keys to delete; the cover counts as still used when another track or an artist photo uses it |
+| `public.referenced_artwork_keys(keys)` | [0008](../supabase/migrations/0008_artist_photos.sql) | The given cover keys the caller's live tracks or artist photos use; the vault function's `sign-get` signs only these |
+| `public.settings_check_artist_photo()` | [0008](../supabase/migrations/0008_artist_photos.sql) | Before insert/update on `settings`: an `artist_photo` row needs a name of 1-500 characters and a null value or the owner's own full cover key |
 
 ## 1.5 Row Level Security
 

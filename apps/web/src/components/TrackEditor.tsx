@@ -11,7 +11,7 @@ import { adoptVaultCover } from "../lib/artwork";
 import { coverPreviewUrl, type WebCoverHandle } from "../lib/uploadPrepare";
 import { confirmDeleteFromVault } from "../lib/vaultActions";
 import { commonValues, EDITOR_FIELDS, patchInput, valuesFromTrack, type FormValues } from "../lib/trackForm";
-import { CoverControl, FieldInput, FieldSuggestions } from "./TrackFields";
+import { CoverControl, FieldInput } from "./TrackFields";
 import type { Track } from "../types";
 
 /**
@@ -56,7 +56,7 @@ function ReadOnlyFacts({ track }: { track: Track }) {
 }
 
 /** Uploads a picked cover to the vault and returns its artwork key. */
-async function uploadCover(cover: PreparedCover): Promise<string> {
+export async function uploadCover(cover: PreparedCover): Promise<string> {
   const vault = vaultApi();
   const session = useAuthStore.getState().session;
   if (!vault || !session) throw new Error("Sign in to change covers");
@@ -149,7 +149,6 @@ export function TrackEditor() {
         className="w-full max-w-2xl max-h-[88vh] flex flex-col rounded-2xl bg-surface border border-line shadow-[0_24px_80px_-16px_rgb(0_0_0/0.6)] animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
-        <FieldSuggestions />
         <div className="flex items-center gap-3 px-5 py-4 border-b border-line">
           <h2 id={titleId} className="text-lg font-bold flex-1 truncate">
             {single ? `Edit “${single.title}”` : `Edit ${tracks.length} tracks`}

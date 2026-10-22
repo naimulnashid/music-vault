@@ -1,4 +1,4 @@
-import { emptySmartRules, type StatsEvent } from "@musicvault/core";
+import { emptySmartRules, thumbKeyOf, type StatsEvent } from "@musicvault/core";
 import type { Playlist, Track } from "../types";
 import { addPlayEvent, allPlayEvents } from "./playEventLog";
 import { audioPut, putArtwork } from "./db";
@@ -6,6 +6,8 @@ import { useLibraryStore } from "../store/libraryStore";
 import { usePlayerStore } from "../store/playerStore";
 import { useAuthStore } from "../store/authStore";
 import { useDownloadStore } from "../store/downloadStore";
+import { useStatsStore } from "../store/statsStore";
+import { useArtistPhotoStore } from "../store/artistPhotoStore";
 
 /**
  * Screenshot demo: an invented library for the README's screenshots, so no
@@ -182,11 +184,26 @@ export async function loadDemo(): Promise<void> {
     for (const t of tracks.filter((x) => x.album === a.album)) await putArtwork(t.id, blob);
   }
 
+  // One artist with a photo of their own, cached the way a fetched vault cover is.
+  const photoKey = `users/00000000-0000-0000-0000-000000000000/art/${"d".repeat(64)}.jpg`;
+  const photo = await drawCover(["#fde68a", "#0e7490"], 4242);
+  await putArtwork(`vault:${photoKey}`, photo);
+  await putArtwork(`vault:${thumbKeyOf(photoKey)}`, photo);
+  useArtistPhotoStore.setState({ photos: { "Mira Sol": photoKey } });
+
   // A few downloads, so ticks and the Downloads page have something to show.
   const pinned = ["demo-0-0", "demo-0-1", "demo-1-0", "demo-1-3", "demo-3-0", "demo-5-0", "demo-6-1"];
   for (const id of pinned) await writeAudio(byId.get(id)!, 1, "pin");
   const current = byId.get("demo-1-0")!;
   await writeAudio(current, current.duration, "pin");
+
+  // Invented devices for "Play time by device"; the browser showing the demo is the PC.
+  const devices = new Map([
+    ["d3m0-pc00-0000-0000-000000000001", { name: "Windows PC", platform: "desktop" }],
+    ["d3m0-ph00-0000-0000-000000000002", { name: "Pixel phone", platform: "android" }],
+    ["d3m0-web0-0000-0000-000000000003", { name: "Web browser", platform: "web" }],
+  ]);
+  const [pc, phone, web] = [...devices.keys()];
 
   // Six months and a bit of listening, mostly evenings, a little every morning.
   if ((await allPlayEvents()).length === 0) {
@@ -208,6 +225,8 @@ export async function loadDemo(): Promise<void> {
           playedAt: start.getTime(),
           durationPlayed: Math.round(heard),
           completed: heard >= t.duration * 0.9,
+          // Picked from the day and play, not the random stream, so the rest of the data stays as it was.
+          deviceId: hour < 12 ? phone : (day + p) % 5 === 0 ? web : pc,
         };
         pending.push(addPlayEvent(event));
       }
@@ -221,7 +240,9 @@ export async function loadDemo(): Promise<void> {
   useAuthStore.setState({
     status: "signedIn",
     session: { user: { id: "demo", email: "you@example.com" } } as never,
+    deviceId: pc,
   });
+  useStatsStore.setState({ devices });
   const queue = [current, ...tracks.filter((t) => t.album === current.album && t.id !== current.id), byId.get("demo-6-0")!];
   usePlayerStore.getState().restoreQueue(queue, 0, 74);
 }

@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CloudDownload, Download, HardDrive, Trash2, X } from "lucide-react";
+import { CloudDownload, Download, FolderOpen, HardDrive, Trash2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useDownloadStore } from "../store/downloadStore";
 import { useLibraryStore } from "../store/libraryStore";
 import type { Track } from "../types";
 import { ViewHeader } from "./ViewHeader";
-import { TrackList } from "./TrackList";
+import { TrackCollection } from "./TrackCollection";
 import { AlbumArt } from "./AlbumArt";
 import { ProgressRing } from "./DownloadRing";
 import { Button } from "./ui/Button";
@@ -39,6 +39,11 @@ export function DownloadsView() {
   const clearCache = useDownloadStore((s) => s.clearCache);
   const autoDownload = useDownloadStore((s) => s.autoDownload);
   const setAutoDownload = useDownloadStore((s) => s.setAutoDownload);
+  const downloadsDir = useDownloadStore((s) => s.downloadsDir);
+  const moving = useDownloadStore((s) => s.moving);
+  const queuedCount = useDownloadStore((s) => s.queued.size);
+  const chooseDownloadsDir = useDownloadStore((s) => s.chooseDownloadsDir);
+  const moveDownloadsTo = useDownloadStore((s) => s.moveDownloadsTo);
   const tracks = useLibraryStore((s) => s.tracks);
   const library = useCollectionDownload(tracks);
 
@@ -259,16 +264,70 @@ export function DownloadsView() {
             </p>
           </section>
         )}
+
+        {downloadsDir && (
+          <section className="rounded-2xl bg-surface border border-line p-5">
+            <div className="flex flex-wrap items-center gap-3">
+              <FolderOpen className="w-5 h-5 text-muted" />
+              <div className="flex-1 min-w-0">
+                <div className="font-bold">Download folder</div>
+                <div className="text-sm text-muted truncate" title={downloadsDir.path}>
+                  {downloadsDir.path}
+                </div>
+              </div>
+              {downloadsDir.path !== downloadsDir.defaultPath && (
+                <Button
+                  variant="secondary"
+                  onClick={() => void moveDownloadsTo(downloadsDir.defaultPath)}
+                  disabled={moving !== null || inProgress.length > 0 || queuedCount > 0}
+                  title={`Move the downloads back to ${downloadsDir.defaultPath}`}
+                >
+                  Use default
+                </Button>
+              )}
+              <Button
+                variant="secondary"
+                onClick={() => void chooseDownloadsDir()}
+                disabled={moving !== null || inProgress.length > 0 || queuedCount > 0}
+                icon={<FolderOpen className="w-4 h-4" />}
+              >
+                Change folder
+              </Button>
+            </div>
+            {moving ? (
+              <>
+                <div className="mt-4 h-2 rounded-full bg-surface-3 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-accent transition-[width] duration-300"
+                    style={{ width: `${moving.totalBytes > 0 ? Math.min(100, (moving.bytes / moving.totalBytes) * 100) : 0}%` }}
+                  />
+                </div>
+                <p className="text-xs text-muted mt-3 tabular-nums">
+                  Moving {moving.done} of {moving.total} {moving.total === 1 ? "download" : "downloads"}
+                  {moving.totalBytes > 0 && ` • ${formatBytes(moving.bytes)} of ${formatBytes(moving.totalBytes)}`}
+                </p>
+              </>
+            ) : (
+              (inProgress.length > 0 || queuedCount > 0) && (
+                <p className="text-xs text-muted mt-3">The folder can be changed once the downloads finish.</p>
+              )
+            )}
+          </section>
+        )}
       </div>
 
-      <h2 className="px-6 md:px-8 pb-2 text-xl font-bold">On this device</h2>
+      {pinned.length === 0 && <h2 className="px-6 md:px-8 pb-2 text-xl font-bold">On this device</h2>}
       {pinned.length === 0 ? (
         <p className="px-8 pb-10 text-sm text-muted">
           Nothing downloaded yet — choose “Download” on a song, album, artist or playlist.
         </p>
       ) : (
         <>
-          <TrackList tracks={pinnedTracks} />
+          <TrackCollection
+            page="downloads"
+            tracks={pinnedTracks}
+            toolbar={<h2 className="text-xl font-bold">On this device</h2>}
+          />
           {orphans.map((entry) => {
             const { title } = label(entry.fileId, entry.path);
             return (

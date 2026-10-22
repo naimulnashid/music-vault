@@ -21,6 +21,8 @@ export interface StatsEvent {
   durationPlayed: number;
   /** True when >= 90% of the track was heard. */
   completed: boolean;
+  /** The device that played it (play_events.device_id); absent on old local events. */
+  deviceId?: string | null;
 }
 
 /** The metadata stats needs about a track. Lookup may miss (deleted tracks). */
@@ -30,6 +32,9 @@ export interface StatsTrackMeta {
   artist: string;
   album: string;
   genre?: string | null;
+  year?: number | null;
+  language?: string | null;
+  country?: string | null;
 }
 
 export const UNKNOWN_TRACK: StatsTrackMeta = {
@@ -254,7 +259,34 @@ export function rankTracks(
   return [...acc.values()].sort((a, b) => compareRanked(by, a, b, a.trackId, b.trackId)).slice(0, Math.max(0, limit));
 }
 
-export type GroupField = "artist" | "album" | "genre";
+export type GroupField = "artist" | "album" | "genre" | "year" | "language" | "country";
+
+/** "A, B" is two names (core smartPlaylists splitNames); each gets the full play. */
+function namesOf(value: string | null | undefined, unknown: string): string[] {
+  const out: string[] = [];
+  for (const part of (value ?? "").split(",")) {
+    const name = part.trim();
+    if (name && !out.includes(name)) out.push(name);
+  }
+  return out.length > 0 ? out : [unknown];
+}
+
+function groupNames(meta: StatsTrackMeta, field: GroupField): string[] {
+  switch (field) {
+    case "artist":
+      return namesOf(meta.artist, "Unknown Artist");
+    case "album":
+      return [meta.album];
+    case "genre":
+      return namesOf(meta.genre, "Unknown Genre");
+    case "year":
+      return [meta.year ? String(meta.year) : "Unknown Year"];
+    case "language":
+      return [meta.language || "Unknown Language"];
+    case "country":
+      return [meta.country || "Unknown Country"];
+  }
+}
 
 export function rankGroups(
   events: StatsEvent[],
@@ -266,30 +298,48 @@ export function rankGroups(
   const acc = new Map<string, RankedGroup>();
   for (const event of events) {
     const meta = metaById.get(event.trackId) ?? UNKNOWN_TRACK;
-    let name: string;
-    let secondary = "";
-    if (field === "artist") {
-      name = meta.artist;
-    } else if (field === "album") {
-      name = meta.album;
-      secondary = meta.artist;
-    } else {
-      name = meta.genre || "Unknown Genre";
+    const secondary = field === "album" ? meta.artist : "";
+    for (const name of groupNames(meta, field)) {
+      const key = `${name}${GROUP_SEP}${secondary}`;
+      let entry = acc.get(key);
+      if (!entry) {
+        entry = { name, secondary, plays: 0, listenSeconds: 0 };
+        acc.set(key, entry);
+      }
+      entry.plays += 1;
+      entry.listenSeconds += event.durationPlayed;
     }
-    const key = `${name}${GROUP_SEP}${secondary}`;
-    let entry = acc.get(key);
-    if (!entry) {
-      entry = { name, secondary, plays: 0, listenSeconds: 0 };
-      acc.set(key, entry);
-    }
-    entry.plays += 1;
-    entry.listenSeconds += event.durationPlayed;
   }
   return [...acc.values()]
     .sort((a, b) =>
       compareRanked(by, a, b, `${a.name}${GROUP_SEP}${a.secondary}`, `${b.name}${GROUP_SEP}${b.secondary}`),
     )
     .slice(0, Math.max(0, limit));
+}
+
+export interface DeviceTime {
+  /** play_events.device_id; null for plays recorded before the device registered. */
+  deviceId: string | null;
+  plays: number;
+  listenSeconds: number;
+}
+
+/** Listening per device, ranked like the other lists (ties by id, null last). */
+export function rankDevices(events: StatsEvent[], by: RankBy): DeviceTime[] {
+  const acc = new Map<string | null, DeviceTime>();
+  for (const event of events) {
+    const deviceId = event.deviceId ?? null;
+    let entry = acc.get(deviceId);
+    if (!entry) {
+      entry = { deviceId, plays: 0, listenSeconds: 0 };
+      acc.set(deviceId, entry);
+    }
+    entry.plays += 1;
+    entry.listenSeconds += event.durationPlayed;
+  }
+  // U+FFFF sorts after any real id, so "unknown device" ends a tie.
+  const tie = (d: DeviceTime) => d.deviceId ?? "￿";
+  return [...acc.values()].sort((a, b) => compareRanked(by, a, b, tie(a), tie(b)));
 }
 
 // ---- calendar buckets (charts + heatmap) --------------------------------------

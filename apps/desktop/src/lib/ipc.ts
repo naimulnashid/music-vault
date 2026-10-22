@@ -121,6 +121,31 @@ export const vaultCacheSetMax = (maxBytes: number) => invoke<CacheStats>("vault_
 export const vaultCacheClear = () => invoke<CacheStats>("vault_cache_clear");
 export const vaultDownloadCancel = (fileIds: string[]) => invoke<void>("vault_download_cancel", { fileIds });
 
+export interface DownloadsDir {
+  path: string;
+  defaultPath: string;
+}
+
+export interface DownloadsMoveProgress {
+  /** Downloads handled so far (moved, failed or already gone). */
+  done: number;
+  total: number;
+  bytes: number;
+  totalBytes: number;
+}
+
+export interface DownloadsMoveReport {
+  moved: number;
+  /** Downloads left in the old folder (in use, disk full); they still play from there. */
+  failed: number;
+}
+
+export const vaultDownloadsDir = () => invoke<DownloadsDir>("vault_downloads_dir");
+/** Moves pinned downloads to `dir` and keeps new ones there; `defaultPath` goes back. */
+export const vaultDownloadsMove = (dir: string) => invoke<DownloadsMoveReport>("vault_downloads_move", { dir });
+export const onVaultDownloadsMoveProgress = (cb: (e: DownloadsMoveProgress) => void): Promise<UnlistenFn> =>
+  listen<DownloadsMoveProgress>("vault://downloads-move-progress", (e) => cb(e.payload));
+
 // ---- Sync engine storage commands -------------------------------------------
 
 export interface SyncOutboxRow {
@@ -264,6 +289,9 @@ export const vaultPrepareCover = (path: string) => invoke<PreparedCoverDto>("vau
 export const vaultPutFile = (url: string, path: string, uploadId: string, contentType: string, expectedBlake3?: string) =>
   invoke<void>("vault_put_file", { url, path, uploadId, contentType, expectedBlake3: expectedBlake3 ?? null });
 export const vaultCached = (contentHash: string) => invoke<string | null>("vault_cached", { contentHash });
+/** After an upload's commit: copies the file into the cache (`pin`: downloads); false when it moved or changed. */
+export const vaultAdoptUpload = (path: string, contentHash: string, ext: string, pin: boolean) =>
+  invoke<boolean>("vault_adopt_upload", { path, contentHash, ext, pin });
 export const vaultDownload = (contentHash: string, ext: string, url: string, pin: boolean) =>
   invoke<string>("vault_download", { contentHash, ext, url, pin });
 /** Drops this device's copies of tracks deleted from the vault. */

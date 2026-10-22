@@ -1,5 +1,5 @@
 {
-  "$comment": "Golden test cases for the stats engine. Consumed by packages/core/tests/stats.test.ts (TypeScript) and apps/android StatsGoldenTest (Kotlin). All timestamps are epoch ms; offsetMinutes fixes the local calendar; now is fixed for determinism. Presets are resolved with rangeForPreset(preset, now, zone) before aggregating. Do not change semantics in one engine without updating the other AND these fixtures.",
+  "$comment": "Golden test cases for the stats engine. Consumed by packages/core/tests/stats.test.ts (TypeScript) and apps/android StatsGoldenTest (Kotlin). All timestamps are epoch ms; offsetMinutes fixes the local calendar; now is fixed for determinism. Presets are resolved with rangeForPreset(preset, now, zone) before aggregating. Do not change semantics in one engine without updating the other AND these fixtures. Events without deviceId stand for plays recorded before the device registered.",
   "offsetMinutes": 360,
   "now": 1784181600000,
   "tracks": [
@@ -8,28 +8,38 @@
       "title": "Bohemian Rhapsody",
       "artist": "Queen",
       "album": "A Night at the Opera",
-      "genre": "Rock"
+      "genre": "Rock",
+      "year": 1975,
+      "language": "English",
+      "country": "United Kingdom"
     },
     {
       "id": "t2",
       "title": "Take Five",
       "artist": "The Dave Brubeck Quartet",
       "album": "Time Out",
-      "genre": "Jazz"
+      "genre": "Jazz",
+      "year": 1959,
+      "language": "English",
+      "country": "United States"
     },
     {
       "id": "t3",
       "title": "Shape of You",
       "artist": "Ed Sheeran",
       "album": "Divide",
-      "genre": "Pop"
+      "genre": "Pop",
+      "year": 2017,
+      "country": "United Kingdom"
     },
     {
       "id": "t4",
       "title": "Don't Stop Me Now",
       "artist": "Queen",
       "album": "Jazz",
-      "genre": "Rock"
+      "genre": "Rock",
+      "year": 1978,
+      "language": "English"
     }
   ],
   "events": [
@@ -38,98 +48,112 @@
       "trackId": "t1",
       "playedAt": 1783653300000,
       "durationPlayed": 354,
-      "completed": true
+      "completed": true,
+      "deviceId": "dev-a"
     },
     {
       "id": "e02",
       "trackId": "t1",
       "playedAt": 1783699200000,
       "durationPlayed": 200,
-      "completed": false
+      "completed": false,
+      "deviceId": "dev-a"
     },
     {
       "id": "e03",
       "trackId": "t2",
       "playedAt": 1783735200000,
       "durationPlayed": 324,
-      "completed": true
+      "completed": true,
+      "deviceId": "dev-b"
     },
     {
       "id": "e04",
       "trackId": "t3",
       "playedAt": 1783792740000,
       "durationPlayed": 100,
-      "completed": false
+      "completed": false,
+      "deviceId": "dev-b"
     },
     {
       "id": "e05",
       "trackId": "t3",
       "playedAt": 1783792800000,
       "durationPlayed": 233,
-      "completed": true
+      "completed": true,
+      "deviceId": "dev-a"
     },
     {
       "id": "e06",
       "trackId": "t4",
       "playedAt": 1783859400000,
       "durationPlayed": 210,
-      "completed": true
+      "completed": true,
+      "deviceId": "dev-c"
     },
     {
       "id": "e07",
       "trackId": "t1",
       "playedAt": 1783922400000,
       "durationPlayed": 354,
-      "completed": true
+      "completed": true,
+      "deviceId": "dev-a"
     },
     {
       "id": "e08",
       "trackId": "t2",
       "playedAt": 1784079900000,
       "durationPlayed": 150,
-      "completed": false
+      "completed": false,
+      "deviceId": "dev-b"
     },
     {
       "id": "e09",
       "trackId": "t4",
       "playedAt": 1784176200000,
       "durationPlayed": 210,
-      "completed": true
+      "completed": true,
+      "deviceId": "dev-c"
     },
     {
       "id": "e10",
       "trackId": "gone",
       "playedAt": 1784178000000,
       "durationPlayed": 60,
-      "completed": false
+      "completed": false,
+      "deviceId": "dev-a"
     },
     {
       "id": "e11",
       "trackId": "t1",
       "playedAt": 1767202200000,
       "durationPlayed": 354,
-      "completed": true
+      "completed": true,
+      "deviceId": "dev-b"
     },
     {
       "id": "e12",
       "trackId": "t2",
       "playedAt": 1767204900000,
       "durationPlayed": 324,
-      "completed": true
+      "completed": true,
+      "deviceId": "dev-b"
     },
     {
       "id": "e13",
       "trackId": "t3",
       "playedAt": 1749132000000,
       "durationPlayed": 233,
-      "completed": true
+      "completed": true,
+      "deviceId": "dev-c"
     },
     {
       "id": "e14",
       "trackId": "t3",
       "playedAt": 1749222000000,
       "durationPlayed": 233,
-      "completed": true
+      "completed": true,
+      "deviceId": "dev-a"
     },
     {
       "id": "e15",
@@ -369,6 +393,129 @@
           "secondary": "",
           "plays": 1,
           "listenSeconds": 60
+        }
+      ]
+    },
+    {
+      "name": "rankGroups year allTime by time limit 10",
+      "call": {
+        "fn": "rankGroups",
+        "field": "year",
+        "by": "time",
+        "limit": 10
+      },
+      "expected": [
+        {
+          "name": "1975",
+          "secondary": "",
+          "plays": 5,
+          "listenSeconds": 1616
+        },
+        {
+          "name": "2017",
+          "secondary": "",
+          "plays": 5,
+          "listenSeconds": 899
+        },
+        {
+          "name": "1959",
+          "secondary": "",
+          "plays": 3,
+          "listenSeconds": 798
+        },
+        {
+          "name": "1978",
+          "secondary": "",
+          "plays": 2,
+          "listenSeconds": 420
+        },
+        {
+          "name": "Unknown Year",
+          "secondary": "",
+          "plays": 1,
+          "listenSeconds": 60
+        }
+      ]
+    },
+    {
+      "name": "rankGroups language allTime by plays limit 10",
+      "call": {
+        "fn": "rankGroups",
+        "field": "language",
+        "by": "plays",
+        "limit": 10
+      },
+      "expected": [
+        {
+          "name": "English",
+          "secondary": "",
+          "plays": 10,
+          "listenSeconds": 2834
+        },
+        {
+          "name": "Unknown Language",
+          "secondary": "",
+          "plays": 6,
+          "listenSeconds": 959
+        }
+      ]
+    },
+    {
+      "name": "rankGroups country last7Days by time limit 10",
+      "call": {
+        "fn": "rankGroups",
+        "preset": "last7Days",
+        "field": "country",
+        "by": "time",
+        "limit": 10
+      },
+      "expected": [
+        {
+          "name": "United Kingdom",
+          "secondary": "",
+          "plays": 5,
+          "listenSeconds": 1241
+        },
+        {
+          "name": "Unknown Country",
+          "secondary": "",
+          "plays": 3,
+          "listenSeconds": 480
+        },
+        {
+          "name": "United States",
+          "secondary": "",
+          "plays": 2,
+          "listenSeconds": 474
+        }
+      ]
+    },
+    {
+      "name": "rankDevices allTime by time",
+      "call": {
+        "fn": "rankDevices",
+        "by": "time"
+      },
+      "expected": [
+        {
+          "deviceId": "dev-a",
+          "plays": 6,
+          "listenSeconds": 1434
+        },
+        {
+          "deviceId": "dev-b",
+          "plays": 5,
+          "listenSeconds": 1252
+        },
+        {
+          "deviceId": "dev-c",
+          "plays": 3,
+          "listenSeconds": 653
+        },
+        {
+          "deviceId": null,
+          "plays": 2,
+          "listenSeconds": 454
         }
       ]
     },

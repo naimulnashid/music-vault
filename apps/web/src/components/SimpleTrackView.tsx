@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { formatDurationLong, type SmartKey } from "@musicvault/core";
 import type { Track } from "../types";
-import { TrackList } from "./TrackList";
+import { TrackCollection } from "./TrackCollection";
 import { Hero, PlayShuffleButtons } from "./ViewHeader";
 import { SMART_GRADIENTS, SMART_ICONS } from "./smartIcons";
 import { DownloadAllButton } from "./DownloadAllButton";
@@ -47,7 +47,7 @@ export function SimpleTrackView({ title, tracks, emptyMessage, action, smartKey 
       {tracks.length === 0 ? (
         <p className="text-sm text-muted px-8 py-10 text-center">{emptyMessage}</p>
       ) : (
-        <TrackList tracks={tracks} />
+        <TrackCollection page={`smart.${smartKey}`} tracks={tracks} />
       )}
     </div>
   );

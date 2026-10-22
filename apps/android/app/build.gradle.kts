@@ -147,6 +147,9 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.session)
     implementation(libs.androidx.media3.common)
+    implementation(libs.androidx.media3.extractor)
+    // APE and WavPack decoding (FFmpeg); see ffmpeg/README.md.
+    implementation(project(":ffmpeg"))
 
     implementation(libs.supabase.auth)
     implementation(libs.supabase.postgrest)

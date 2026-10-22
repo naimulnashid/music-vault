@@ -13,6 +13,8 @@ import {
   type RuleSortKey,
   type SmartRules,
 } from "@musicvault/core";
+import { OPTION_MODE, useFieldOptions, type OptionField } from "../lib/fieldOptions";
+import { Combobox } from "./ui/Combobox";
 
 interface SmartRulesEditorProps {
   rules: SmartRules;
@@ -42,9 +44,24 @@ function ConditionRow({
   const type = RULE_FIELDS[cond.field]?.type ?? "string";
   const ops = RULE_OPS_FOR_TYPE[type];
   const needsValue = !NO_VALUE_OPS.includes(cond.op);
+  const optionField = cond.field in OPTION_MODE ? (cond.field as OptionField) : null;
+  const options = useFieldOptions(optionField ?? "title");
 
   const valueInput = () => {
     if (!needsValue) return null;
+    if (type === "string" && optionField) {
+      return (
+        <Combobox
+          value={String(cond.value ?? "")}
+          onChange={(value) => onChange({ ...cond, value })}
+          options={options}
+          show={OPTION_MODE[optionField].show}
+          placeholder="value"
+          className="flex-1 min-w-32"
+          inputClassName={`${inputClass} w-full`}
+        />
+      );
+    }
     if (type === "string") {
       return (
         <input

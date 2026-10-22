@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { downloadFailureMessage } from "./downloadError";
+import { downloadFailureMessage, moveFailureMessage } from "./downloadError";
 
 describe("downloadFailureMessage", () => {
   it("says nothing when every download worked", () => {
@@ -18,5 +18,18 @@ describe("downloadFailureMessage", () => {
       { title: "Coastline", err: new TypeError("Failed to fetch") },
     ];
     expect(downloadFailureMessage(failures, true)).toBe("Couldn't download 2 songs: Can't download while offline");
+  });
+});
+
+describe("moveFailureMessage", () => {
+  it("says nothing when every download moved", () => {
+    expect(moveFailureMessage(0)).toBeNull();
+  });
+
+  it("says the ones left behind still play and how to retry", () => {
+    expect(moveFailureMessage(1)).toBe(
+      "1 download couldn't move and still plays from the old folder (in use, or the new folder is full). Choose the folder again to retry.",
+    );
+    expect(moveFailureMessage(3)).toMatch(/^3 downloads couldn't move and still play from/);
   });
 });

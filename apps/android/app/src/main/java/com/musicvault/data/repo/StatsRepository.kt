@@ -1,5 +1,6 @@
 package com.musicvault.data.repo
 
+import com.musicvault.data.cloud.AuthRepository
 import com.musicvault.data.db.PlayEventDao
 import com.musicvault.data.db.PlayEventEntity
 import com.musicvault.data.db.SyncDao
@@ -37,6 +38,7 @@ class StatsRepository @Inject constructor(
     private val playEventDao: PlayEventDao,
     syncDao: SyncDao,
     libraryRepository: LibraryRepository,
+    private val authRepository: AuthRepository,
 ) {
     data class StatsData(
         val events: List<StatsEvent> = emptyList(),
@@ -52,13 +54,12 @@ class StatsRepository @Inject constructor(
         syncDao.observeShadow("tracks"),
         libraryRepository.tracks,
     ) { localRows, shadowEventRows, shadowTrackRows, tracks ->
-        val localEvents = localRows.map {
-            StatsEvent(it.id, it.trackId, it.playedAt, it.durationPlayed, it.completed)
-        }
 
         val metaById = HashMap<String, StatsTrackMeta>()
         for (track in tracks) {
-            metaById[track.id] = StatsTrackMeta(track.id, track.title, track.artist, track.album, track.genre)
+            metaById[track.id] = StatsTrackMeta(
+                track.id, track.title, track.artist, track.album, track.genre, track.year, track.language, track.country,
+            )
         }
 
         // Remote track UUID → id used for aggregation (local when mappable).
@@ -72,7 +73,9 @@ class StatsRepository @Inject constructor(
                 aggregateId[row.id] = local.id
             } else {
                 aggregateId[row.id] = row.id
-                metaById[row.id] = StatsTrackMeta(row.id, row.title, row.artist, row.album, row.genre)
+                metaById[row.id] = StatsTrackMeta(
+                    row.id, row.title, row.artist, row.album, row.genre, row.year, row.language, row.country,
+                )
             }
         }
 
@@ -85,7 +88,16 @@ class StatsRepository @Inject constructor(
                 playedAt = parseIsoMs(row.playedAt),
                 durationPlayed = row.durationPlayed,
                 completed = row.completed,
+                deviceId = row.deviceId,
             )
+        }
+
+        // The local log doesn't record the device: it is this one, or what the
+        // synced copy says when the event was recorded under another sign-in.
+        val shadowDevice = shadowEvents.associate { it.id to it.deviceId }
+        val thisDevice = authRepository.deviceId()
+        val localEvents = localRows.map {
+            StatsEvent(it.id, it.trackId, it.playedAt, it.durationPlayed, it.completed, shadowDevice[it.id] ?: thisDevice)
         }
 
         // Local first: this device's copy of an event wins the dedupe.

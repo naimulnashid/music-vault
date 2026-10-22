@@ -67,19 +67,31 @@ pub fn run() {
 
             let db = db::open(&data_dir.join("library.db"))?;
             let db_ms = setup_started.elapsed().as_millis() as u64;
+            let custom_downloads = vault::cache::custom_downloads_dir(&db.0.lock().expect("db lock"));
             app.manage(db);
 
-
+            let default_downloads_dir = data_dir.join("downloads");
+            std::fs::create_dir_all(&default_downloads_dir)?;
+            // A picked folder on a drive that isn't plugged in: new downloads go to
+            // the default for this run; the setting stays for when it is back.
+            let downloads_dir = match custom_downloads {
+                Some(dir) if std::fs::create_dir_all(&dir).is_ok() => dir,
+                Some(dir) => {
+                    tracing::warn!(dir = %dir.display(), "download folder unavailable, using the default");
+                    default_downloads_dir.clone()
+                }
+                None => default_downloads_dir.clone(),
+            };
             let paths = commands::AppPaths {
                 artwork_dir: data_dir.join("artwork"),
                 audio_cache_dir: data_dir.join("audio-cache"),
-                downloads_dir: data_dir.join("downloads"),
+                downloads_dir: std::sync::RwLock::new(downloads_dir.clone()),
+                default_downloads_dir: default_downloads_dir.clone(),
             };
             std::fs::create_dir_all(&paths.audio_cache_dir)?;
-            std::fs::create_dir_all(&paths.downloads_dir)?;
             // No transfer runs before setup finishes, so any .part here was cut
             // off by a crash or kill and is unreachable; clear it.
-            vault::transfer::remove_stale_partials(&[&paths.audio_cache_dir, &paths.downloads_dir]);
+            vault::transfer::remove_stale_partials(&[&paths.audio_cache_dir, &default_downloads_dir, &downloads_dir]);
             app.manage(paths);
 
             let engine_started = std::time::Instant::now();
@@ -170,6 +182,9 @@ pub fn run() {
             commands::vault::vault_cache_set_max,
             commands::vault::vault_cache_clear,
             commands::vault::vault_download_cancel,
+            commands::vault::vault_adopt_upload,
+            commands::vault::vault_downloads_dir,
+            commands::vault::vault_downloads_move,
             commands::smtc_update,
             commands::smtc_playback,
             commands::window::mini_toggle,

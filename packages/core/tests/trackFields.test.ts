@@ -7,6 +7,7 @@ import {
   EDITABLE_TRACK_FIELDS,
   type EditableTrackRow,
   isValidTrackPatch,
+  maskReleaseDate,
   normalizeTrackPatch,
   overlayTrackEdits,
   READ_ONLY_TRACK_FIELDS,
@@ -153,5 +154,27 @@ describe("overlayTrackEdits / diffTrackFields / isValidTrackPatch", () => {
     expect(isValidTrackPatch({})).toBe(false);
     expect(isValidTrackPatch({ title: " " })).toBe(false);
     expect(isValidTrackPatch({ codec: "mp3" })).toBe(false);
+  });
+});
+
+describe("maskReleaseDate", () => {
+  it("drops non-digits and inserts hyphens while typing", () => {
+    expect(maskReleaseDate("", "2")).toBe("2");
+    expect(maskReleaseDate("201", "2019")).toBe("2019-");
+    expect(maskReleaseDate("2019-", "2019-0")).toBe("2019-0");
+    expect(maskReleaseDate("2019-0", "2019-05")).toBe("2019-05-");
+    expect(maskReleaseDate("2019-05-1", "2019-05-14")).toBe("2019-05-14");
+    expect(maskReleaseDate("2019-05-14", "2019-05-149")).toBe("2019-05-14");
+    expect(maskReleaseDate("", "2019a/05.14")).toBe("2019-05-14");
+    expect(maskReleaseDate("", "20190514")).toBe("2019-05-14");
+  });
+
+  it("lets backspace remove the hyphen", () => {
+    expect(maskReleaseDate("2019-", "2019")).toBe("2019");
+    expect(maskReleaseDate("2019-05-", "2019-05")).toBe("2019-05");
+  });
+
+  it("a trailing hyphen saves as the shorter date", () => {
+    expect(normalizeTrackPatch({ release_date: "2019-" })).toEqual({ release_date: "2019" });
   });
 });

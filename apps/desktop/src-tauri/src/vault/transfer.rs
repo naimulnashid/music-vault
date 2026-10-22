@@ -3,7 +3,7 @@
 //! here holds credentials.
 
 use std::io::{Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
@@ -173,6 +173,88 @@ pub fn cached(app: &AppHandle, content_hash: &str) -> Result<Option<String>> {
     Ok(cache::resolve_cached(&conn, &cache_key(content_hash))?)
 }
 
+/// After an upload's commit: copies the uploaded file into this device's cache
+/// (`pin`: the downloads tier) so the first play doesn't download it again.
+/// Holds the track's download lock, so a play started meanwhile waits for the
+/// copy instead of writing the same file.
+pub async fn adopt_upload(app: &AppHandle, source: &Path, content_hash: &str, ext: &str, pin: bool) -> Result<bool> {
+    if !cache::valid_file_parts(content_hash, ext) {
+        bail!("invalid content hash or extension");
+    }
+    let state = app.state::<VaultState>();
+    let key = cache_key(content_hash);
+    let lock = {
+        let mut locks = state.download_locks.lock().await;
+        locks.entry(key.clone()).or_default().clone()
+    };
+    let _guard = lock.lock().await;
+    let paths = app.state::<AppPaths>();
+    let dir = if pin { paths.downloads_dir() } else { paths.audio_cache_dir.clone() };
+    let db = Db(app.state::<Db>().0.clone());
+    let (source, hash, ext) = (source.to_path_buf(), content_hash.to_string(), ext.to_string());
+    let adopted = tauri::async_runtime::spawn_blocking(move || cache::adopt_upload(&db, &source, &hash, &ext, &dir, pin))
+        .await
+        .map_err(|e| anyhow!(e.to_string()))?;
+    {
+        let mut locks = state.download_locks.lock().await;
+        if locks.get(&key).is_some_and(|l| Arc::strong_count(l) <= 2) {
+            locks.remove(&key);
+        }
+    }
+    Ok(adopted?)
+}
+
+/// Message of a folder change asked for while downloads run; shown as is.
+pub const BUSY_DOWNLOADING: &str = "Wait for the downloads to finish, then change the folder.";
+
+/// Points pinned downloads at `dir` and moves the existing ones there with
+/// `vault://downloads-move-progress` events. New downloads go to `dir` from
+/// the start, so none lands in the old folder while the move runs. The
+/// current folder again retries the files an earlier move left behind.
+pub async fn move_downloads(app: &AppHandle, dir: PathBuf) -> Result<cache::MoveReport> {
+    let state = app.state::<VaultState>();
+    let paths = app.state::<AppPaths>();
+    if !dir.is_absolute() {
+        bail!("choose a folder on this PC");
+    }
+    let data_dir = paths.default_downloads_dir.parent().map(Path::to_path_buf).unwrap_or_default();
+    if dir != paths.default_downloads_dir && dir.starts_with(&data_dir) {
+        bail!("choose a folder outside the app's own data folder");
+    }
+    if state.moving.swap(true, Ordering::SeqCst) {
+        bail!("the downloads are already moving");
+    }
+    let result = async {
+        if !state.download_locks.lock().await.is_empty() {
+            bail!(BUSY_DOWNLOADING);
+        }
+        std::fs::create_dir_all(&dir).with_context(|| format!("can't use {}", dir.display()))?;
+        let db = Db(app.state::<Db>().0.clone());
+        {
+            let conn = db.0.lock().expect("db lock");
+            let value = if dir == paths.default_downloads_dir { String::new() } else { dir.to_string_lossy().to_string() };
+            queries::set_setting(&conn, cache::SETTING_DOWNLOADS_DIR, &value)?;
+        }
+        *paths.downloads_dir.write().expect("paths lock") = dir.clone();
+        let emit_app = app.clone();
+        let report = tauri::async_runtime::spawn_blocking(move || {
+            let mut last = Instant::now();
+            cache::move_pinned(&db, &dir, |p| {
+                if p.done == p.total || last.elapsed().as_millis() >= 100 {
+                    last = Instant::now();
+                    let _ = emit_app.emit("vault://downloads-move-progress", p.clone());
+                }
+            })
+        })
+        .await
+        .map_err(|e| anyhow!(e.to_string()))??;
+        Ok(report)
+    }
+    .await;
+    state.moving.store(false, Ordering::SeqCst);
+    result
+}
+
 /// Ensures a vault track is on disk, downloading it from `url` if needed.
 /// `pin` selects the tier. The bytes are verified against `content_hash`
 /// (BLAKE3) — the hash is the track's identity, so a mismatch is never kept.
@@ -223,11 +305,11 @@ async fn download_inner(
             if entry.pinned {
                 return Ok(path);
             }
-            return Ok(cache::promote_to_pinned(&conn, key, &path, &paths.downloads_dir)?);
+            return Ok(cache::promote_to_pinned(&conn, key, &path, &paths.downloads_dir())?);
         }
     }
 
-    let dir = if pin { &paths.downloads_dir } else { &paths.audio_cache_dir };
+    let dir = if pin { paths.downloads_dir() } else { paths.audio_cache_dir.clone() };
     let target = dir.join(format!("{content_hash}.{ext}"));
     let temp = target.with_extension(format!("{ext}.part"));
 
@@ -318,6 +400,15 @@ pub async fn fetch_art(app: &AppHandle, url: &str, file_name: &str) -> Result<St
     Ok(file_name.to_string())
 }
 
+/// Whether a file name is one of ours left by an interrupted transfer
+/// (`<hash>.<ext>.part`). The download folder may be one the owner also uses
+/// for other things, so other `.part` files are never touched.
+fn is_our_partial(name: &str) -> bool {
+    let Some(stem) = name.strip_suffix(".part") else { return false };
+    let Some((hash, ext)) = stem.split_once('.') else { return false };
+    cache::valid_file_parts(hash, ext)
+}
+
 /** Deletes leftover `.part` files of interrupted downloads. Returns how many went. */
 pub fn remove_stale_partials(dirs: &[&std::path::Path]) -> usize {
     let mut removed = 0;
@@ -325,7 +416,8 @@ pub fn remove_stale_partials(dirs: &[&std::path::Path]) -> usize {
         let Ok(entries) = std::fs::read_dir(dir) else { continue };
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.extension().is_some_and(|e| e == "part") && std::fs::remove_file(&path).is_ok() {
+            let ours = path.file_name().is_some_and(|n| is_our_partial(&n.to_string_lossy()));
+            if ours && std::fs::remove_file(&path).is_ok() {
                 removed += 1;
             }
         }
@@ -341,14 +433,18 @@ mod partial_tests {
     use super::remove_stale_partials;
 
     #[test]
-    fn removes_only_partial_files() {
+    fn removes_only_our_partial_files() {
         let dir = std::env::temp_dir().join(format!("mv-partials-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
-        std::fs::write(dir.join("aaa.flac.part"), b"half").unwrap();
-        std::fs::write(dir.join("bbb.flac"), b"whole").unwrap();
+        let ours = format!("{}.flac.part", "a".repeat(64));
+        std::fs::write(dir.join(&ours), b"half").unwrap();
+        std::fs::write(dir.join(format!("{}.flac", "b".repeat(64))), b"whole").unwrap();
+        // Someone else's download in a shared folder.
+        std::fs::write(dir.join("setup.exe.part"), b"theirs").unwrap();
         assert_eq!(remove_stale_partials(&[&dir]), 1);
-        assert!(!dir.join("aaa.flac.part").exists());
-        assert!(dir.join("bbb.flac").exists());
+        assert!(!dir.join(&ours).exists());
+        assert!(dir.join("setup.exe.part").exists());
+        assert!(dir.join(format!("{}.flac", "b".repeat(64))).exists());
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }

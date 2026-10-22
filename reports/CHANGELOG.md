@@ -17,7 +17,60 @@
 
 ## [Unreleased]
 
+### Added
+- **By Country** smart playlist on every app, after By Language. By Artist now comes before By
+  Genre.
+- Statistics: Top Years, Top Countries and Top Languages, and a Play Time by Device donut. Play
+  events already carried the device that played them; the charts name each device from the
+  account's device list (with the first 8 characters of its id) and fold a sixth device and
+  beyond into "Other devices".
+- Web and desktop: a list or cover view on Library, Downloads, the built-in smart playlists,
+  playlists, artist pages and genre/year/language/country groups. The choice is kept per page on
+  that device.
+- Desktop: Ctrl+plus, Ctrl+minus and Ctrl+0 zoom the window, as in a browser.
+- Desktop: a song uploaded from the PC is copied into the auto-cache once its upload commits
+  (into downloads while "Download all songs automatically" is on), checked against its BLAKE3
+  hash as a download is, so its first play there doesn't download it back. A file moved or
+  re-saved since it was added is skipped, and nothing is kept while the auto-cache is off.
+- Desktop: a Download folder setting on the Downloads page. Change folder picks another folder
+  and Use default goes back; the downloads already kept move there with progress (a rename on
+  the same drive, a hash-checked copy across drives), and new ones follow. The folder is
+  remembered on that PC only and can't be changed while downloads run. A download in use stays in
+  the old folder and still plays from there; choosing the folder again retries it.
+- Android: the upload form and track editor suggest artists, albums and genres while you type,
+  and Language and Country open a list of every value in the library, as on desktop and web.
+- Artist photos on every app: an artist page's menu chooses, changes or removes a photo, which
+  then replaces the album art in the artist's circle everywhere and syncs to your other devices.
+  Migration 0008 and the updated vault function are live (2026-10-22).
+- Android: Monkey's Audio (`.ape`) and WavPack (`.wv`) songs play, seek, crossfade and go
+  through the equalizer like the rest. Media3 has neither format, so the app gains APE and
+  WavPack extractors and an `:ffmpeg` module: Media3's FFmpeg decoder extension with only the
+  ape and wavpack decoders of FFmpeg 6.0.1, its native library prebuilt for arm64-v8a,
+  armeabi-v7a and x86_64 (`apps/android/ffmpeg/build-ffmpeg.sh` rebuilds it). Seeking lands on
+  the exact sample, not the start of a frame that can hold several seconds. The release APK
+  grows by 1.6 MiB, each library being stored uncompressed (arm64-v8a 554 KiB, armeabi-v7a
+  460 KiB, x86_64 585 KiB).
+
 ### Changed
+- A comma in an artist or genre tag separates two names: "A, B" is listed under both A and B in
+  By Artist and By Genre, and the song shows on both artist pages.
+- Language and Country in the upload form and track editor list every value when opened, even
+  with a wrong value typed; artist, album and genre suggest only matches. The same lists now fill
+  in smart playlist rules: Language and Country show every name, the other text fields suggest
+  matches as you type.
+- The release date field takes digits only and puts the hyphens in (2019-05-14); a date left
+  as "2019-" saves as 2019.
+- Statistics: the Listening Activity and Listening Clock charts have a time axis with gridlines,
+  the Listening Clock follows Listening Activity, every section sits in its own card, and the top
+  lists show five entries, two per row (Android: two per row on screens 600 dp and wider). Top
+  Genres, Years, Countries and Languages open the matching group, and Top Artists and Top Genres
+  count a play once for each comma-separated name.
+- The Windows installer no longer ticks "Create desktop shortcut", and silent installs no longer
+  leave one.
+- Desktop: the startup cleanup of interrupted downloads deletes only the app's own
+  `<hash>.<ext>.part` files, since the download folder may now be shared with other files. While
+  the download folder is on a drive that isn't plugged in, new downloads go to the default folder
+  and the songs kept on that drive stay indexed for when it is back.
 - The README title starts with the app icon.
 - The landing page hero shows the library screenshot again; the demo video loop is switched off
   for now. The loop files stay in `apps/site/public/video/` and in the video project, unused.

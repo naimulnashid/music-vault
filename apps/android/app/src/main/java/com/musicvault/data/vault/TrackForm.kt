@@ -91,7 +91,8 @@ object TrackForm {
                     put(field, raw.trim().ifEmpty { null }?.let { JsonPrimitive(it) } ?: JsonNull)
                 "lyrics_text" -> put(field, raw.trimEnd().ifBlank { null }?.let { JsonPrimitive(it) } ?: JsonNull)
                 "release_date" -> {
-                    val date = raw.trim()
+                    // A trailing hyphen is what the input mask leaves after "2019-".
+                    val date = raw.trim().trimEnd('-')
                     if (date.isNotEmpty() && !isCalendarDate(date)) {
                         throw Invalid("Release date must look like 2019, 2019-05 or 2019-05-14")
                     }
@@ -101,6 +102,20 @@ object TrackForm {
                 else -> throw Invalid("Field $field isn't editable")
             }
         }
+    }
+
+    /**
+     * Keeps a release-date input to digits in the YYYY-MM-DD shape while typing
+     * (core maskReleaseDate): non-digits are dropped and a hyphen appears once
+     * the year or month is complete. [previous] tells typing from deleting.
+     */
+    fun maskReleaseDate(previous: String, next: String): String {
+        val digits = next.filter { it in '0'..'9' }.take(8)
+        val out = StringBuilder(digits.take(4))
+        if (digits.length > 4) out.append('-').append(digits.substring(4, minOf(6, digits.length)))
+        if (digits.length > 6) out.append('-').append(digits.substring(6))
+        if (next.length > previous.length && (digits.length == 4 || digits.length == 6)) out.append('-')
+        return out.toString()
     }
 
     /** LRC text → the `lyrics_synced` JSON array ([{time, text}] in seconds), or null when empty. */

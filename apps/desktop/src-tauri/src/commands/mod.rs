@@ -7,6 +7,7 @@ pub mod vault;
 pub mod window;
 
 use std::path::PathBuf;
+use std::sync::RwLock;
 
 use tauri::{AppHandle, State};
 
@@ -18,8 +19,17 @@ pub struct AppPaths {
     pub artwork_dir: PathBuf,
     /// Auto-cache tier: filled by playing a track; LRU-evicted.
     pub audio_cache_dir: PathBuf,
-    /// Pinned tier: explicit downloads; never auto-evicted.
-    pub downloads_dir: PathBuf,
+    /// Pinned tier: explicit downloads; never auto-evicted. The owner can
+    /// move it ([`crate::vault::cache::SETTING_DOWNLOADS_DIR`]).
+    pub downloads_dir: RwLock<PathBuf>,
+    /// `<app-data>/downloads`, where pinned downloads go unless moved.
+    pub default_downloads_dir: PathBuf,
+}
+
+impl AppPaths {
+    pub fn downloads_dir(&self) -> PathBuf {
+        self.downloads_dir.read().expect("paths lock").clone()
+    }
 }
 
 #[tauri::command]

@@ -238,7 +238,7 @@ lucide-react · Vite 8. Rust: `symphonia` (mp3/flac/wav/pcm/ogg/vorbis/isomp4/aa
 
 **Android** — Kotlin 2.0.21 · Compose BOM 2024.12.01 · Media3 1.5.1 · Room 2.6.1 · Hilt 2.53.1 ·
 WorkManager 2.10 · AppAuth 0.11.1 · supabase-kt 3.0.3 · Ktor 3.0.3 · Coil · JAudioTagger ·
-Timber. `compileSdk`/`targetSdk` 35, `minSdk` 28, JDK 17.
+Timber · FFmpeg 6.0.1 (ape and wavpack decoders only, in the `:ffmpeg` module). `compileSdk`/`targetSdk` 35, `minSdk` 28, JDK 17.
 
 **Web** — Next.js 16.1 · React 19.2 · `@supabase/ssr` · `idb` · `music-metadata` · Zustand ·
 dnd-kit · Tailwind 4 · Playwright.

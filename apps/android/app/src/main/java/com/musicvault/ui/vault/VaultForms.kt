@@ -27,13 +27,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.musicvault.data.vault.PreparedCover
 import com.musicvault.data.vault.TrackForm
+import com.musicvault.ui.components.ComboField
+import com.musicvault.ui.components.FieldOptions
+import com.musicvault.ui.components.LocalFieldOptions
 import com.musicvault.ui.theme.LocalVaultColors
 import java.io.File
 
@@ -51,23 +56,45 @@ fun FieldInput(
 ) {
     val colors = LocalVaultColors.current
     val multiline = field in TrackForm.MULTILINE
+    val isDate = field == "release_date"
+    val value = values[field].orEmpty()
+    val label: @Composable () -> Unit = { Text(LABELS[field] ?: field, fontSize = 12.sp) }
+    val hintText = placeholder ?: TrackForm.PLACEHOLDERS[field]
+    val hint: (@Composable () -> Unit)? = hintText?.let { text -> { Text(text, fontSize = 13.sp, color = colors.textMuted) } }
+    val fieldColors = OutlinedTextFieldDefaults.colors(
+        focusedTextColor = colors.text,
+        unfocusedTextColor = colors.text,
+        focusedBorderColor = colors.accent,
+        unfocusedBorderColor = colors.border,
+        focusedLabelColor = colors.accent,
+        unfocusedLabelColor = colors.textMuted,
+        cursorColor = colors.accent,
+    )
+    // Title is suggested in smart rules only; here it stays a plain field.
+    if (field in FieldOptions.FIELDS && field != "title") {
+        ComboField(
+            value = value,
+            onValueChange = { onChange(field, it) },
+            options = LocalFieldOptions.current[field],
+            showAll = field in FieldOptions.SHOW_ALL,
+            multi = field in FieldOptions.MULTI,
+            label = label,
+            placeholder = hint,
+            colors = fieldColors,
+            modifier = modifier,
+        )
+        return
+    }
     OutlinedTextField(
-        value = values[field].orEmpty(),
-        onValueChange = { onChange(field, it) },
-        label = { Text(LABELS[field] ?: field, fontSize = 12.sp) },
-        placeholder = (placeholder ?: TrackForm.PLACEHOLDERS[field])?.let { { Text(it, fontSize = 13.sp, color = colors.textMuted) } },
+        value = value,
+        onValueChange = { onChange(field, if (isDate) TrackForm.maskReleaseDate(value, it) else it) },
+        label = label,
+        placeholder = hint,
         singleLine = !multiline,
         minLines = if (multiline) 3 else 1,
         maxLines = if (multiline) 8 else 1,
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedTextColor = colors.text,
-            unfocusedTextColor = colors.text,
-            focusedBorderColor = colors.accent,
-            unfocusedBorderColor = colors.border,
-            focusedLabelColor = colors.accent,
-            unfocusedLabelColor = colors.textMuted,
-            cursorColor = colors.accent,
-        ),
+        keyboardOptions = if (isDate) KeyboardOptions(keyboardType = KeyboardType.Number) else KeyboardOptions.Default,
+        colors = fieldColors,
         modifier = modifier.fillMaxWidth(),
     )
 }

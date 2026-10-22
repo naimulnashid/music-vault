@@ -4,7 +4,7 @@ import { MoreHorizontal, Pencil, Plus, SlidersHorizontal, Trash2 } from "lucide-
 import { useLibraryStore } from "../store/libraryStore";
 import { useHistoryStore } from "../store/historyStore";
 import { useUiStore } from "../store/uiStore";
-import { TrackList } from "./TrackList";
+import { TrackCollection } from "./TrackCollection";
 import { DownloadAllButton } from "./DownloadAllButton";
 import { SmartPlaylistDialog } from "./SmartPlaylistDialog";
 import { AddSongsDialog } from "./AddSongsDialog";
@@ -154,9 +154,10 @@ export function PlaylistView() {
           </div>
         )
       ) : playlist.isSmart ? (
-        <TrackList tracks={playlistTracks} />
+        <TrackCollection page="playlist" tracks={playlistTracks} />
       ) : (
-        <TrackList
+        <TrackCollection
+          page="playlist"
           tracks={playlistTracks}
           draggable
           onReorder={(reordered) => void reorderPlaylist(playlist.id, reordered.map((t) => t.id))}

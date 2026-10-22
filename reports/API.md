@@ -432,10 +432,10 @@ Every request is `POST { action, … }` with the caller's Supabase JWT.
 
 | Action | Body | Returns | Notes |
 |---|---|---|---|
-| `sign-get` | `{ keys }` (≤ 200) | `{ urls, denied, expiresIn }` | GET URLs for 1 h; only the caller's keys that a live row references |
+| `sign-get` | `{ keys }` (≤ 200) | `{ urls, denied, expiresIn }` | GET URLs for 1 h; only the caller's keys that a live row or an artist photo references |
 | `sign-put` | `{ kind: "audio", trackId, ext }` or `{ kind: "art", sha256, variant, size }` | `{ key, url, expiresIn }` | PUT URL for 15 min; 2 GiB audio / 5 MiB cover limits |
 | `commit` | `{ trackId, ext }` | `{ trackId, storageKey, size }` | Confirms the object and its size, records `storage_key`, revives a deleted row |
-| `delete` | `{ trackId }` | `{ trackId, deleted: true }` | `delete_track`, then removes the audio and an unshared cover |
+| `delete` | `{ trackId }` | `{ trackId, deleted: true }` | `delete_track`, then removes the audio and a cover no other song or artist photo uses |
 
 Errors come back as `{ error: <code>, message }` with an HTTP status. Details:
 [VAULT.md](VAULT.md#the-vault-edge-function).

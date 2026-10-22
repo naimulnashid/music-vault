@@ -1,0 +1,103 @@
+package com.musicvault.data.vault
+
+import com.musicvault.data.db.SyncDao
+import com.musicvault.data.sync.RemoteTrackIndex
+import com.musicvault.data.sync.SyncBus
+import com.musicvault.data.sync.SyncJson
+import com.musicvault.data.sync.SyncOp
+import com.musicvault.data.sync.SyncOpPayload
+import com.musicvault.di.ApplicationScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import timber.log.Timber
+import javax.inject.Inject
+import javax.inject.Singleton
+
+/**
+ * Artist photos (core artistPhotos.ts, supabase/migrations/0008_artist_photos.sql):
+ * settings rows with scope "artist_photo", key = artist name, value = the
+ * cover key of the picture or null once removed. They sync like any setting,
+ * so this reads the settings shadow and queues `setting.set` ops.
+ */
+@Singleton
+class ArtistPhotos @Inject constructor(
+    syncDao: SyncDao,
+    private val artwork: VaultArtwork,
+    private val vaultApi: VaultApi,
+    index: RemoteTrackIndex,
+    @ApplicationScope private val scope: CoroutineScope,
+) {
+    /** Edits this device queued, laid over the synced rows until a pull brings them back. */
+    private val local = MutableStateFlow<Map<String, String?>>(emptyMap())
+
+    /** Artist → cover key. */
+    val keys: Flow<Map<String, String>> = combine(syncDao.observeShadow(SHADOW), local) { rows, local ->
+        val out = HashMap<String, String>()
+        for (row in rows) {
+            val obj = runCatching { SyncJson.parseToJsonElement(row.payload).jsonObject }.getOrNull() ?: continue
+            if (obj.string("scope") != SCOPE) continue
+            val artist = obj.string("key") ?: continue
+            put(out, artist, obj["value"])
+        }
+        for ((artist, key) in local) put(out, artist, key?.let(::JsonPrimitive) ?: JsonNull)
+        out
+    }
+
+    /** Artist → cached picture file; photos not cached yet download in the background. */
+    val paths: Flow<Map<String, String>> = combine(keys, index.art) { keys, art ->
+        keys.mapNotNull { (artist, key) -> art[key]?.let { artist to it } }.toMap()
+    }
+
+    val signedIn: Boolean get() = vaultApi.userId() != null
+
+    init {
+        scope.launch {
+            // Queued edits survive a restart: read them back once from the outbox.
+            runCatching {
+                val pending = syncDao.outboxAll().mapNotNull { row ->
+                    (SyncJson.decodeFromString(SyncOp.serializer(), row.payload).payload as? SyncOpPayload.SettingSet)
+                        ?.takeIf { it.scope == SCOPE }
+                }
+                local.update { current ->
+                    pending.associate { it.key to coverKey(it.value) } + current
+                }
+            }.onFailure { Timber.w(it, "reading queued artist photos failed") }
+        }
+        scope.launch { keys.collect { artwork.cache(it.values) } }
+    }
+
+    /** Uploads [cover] as the artist's photo, or removes the photo when null. */
+    suspend fun set(artist: String, cover: PreparedCover?) {
+        val key = cover?.let { artwork.upload(it) }
+        local.update { it + (artist to key) }
+        SyncBus.enqueue(SyncOpPayload.SettingSet(SCOPE, artist, key?.let(::JsonPrimitive) ?: JsonNull, SyncBus.nowIso()))
+    }
+
+    private fun put(out: MutableMap<String, String>, artist: String, value: JsonElement?) {
+        val key = coverKey(value)
+        if (key != null) out[artist] = key else out.remove(artist)
+    }
+
+    private fun JsonObject.string(name: String): String? = (this[name] as? JsonPrimitive)?.contentOrNull
+
+    companion object {
+        const val SCOPE = "artist_photo"
+        private const val SHADOW = "settings"
+        private val COVER_KEY = Regex("^users/[0-9a-f-]{36}/art/[0-9a-f]{64}\\.jpg$")
+
+        /** The cover key a setting value holds, or null for a removed or malformed photo. */
+        fun coverKey(value: JsonElement?): String? =
+            (value as? JsonPrimitive)?.takeIf { it.isString }?.content?.takeIf { COVER_KEY.matches(it) }
+    }
+}

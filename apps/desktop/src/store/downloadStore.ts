@@ -1,20 +1,26 @@
 import { create } from "zustand";
+import { open } from "@tauri-apps/plugin-dialog";
 import {
   onVaultDownloadDone,
   onVaultDownloadError,
   onVaultDownloadProgress,
+  onVaultDownloadsMoveProgress,
   vaultCacheClear,
   vaultCacheSetMax,
   vaultCacheStats,
   vaultDownloadCancel,
   vaultDownloadRemove,
+  vaultDownloadsDir,
   vaultDownloadsList,
+  vaultDownloadsMove,
   type CacheEntryRow,
   type CacheStats,
+  type DownloadsDir,
+  type DownloadsMoveProgress,
 } from "../lib/ipc";
 import { ensureVaultLocal } from "../lib/vault";
 import { emitAppError } from "../lib/errorBus";
-import { downloadFailureMessage, type DownloadFailure } from "../lib/downloadError";
+import { downloadFailureMessage, moveFailureMessage, type DownloadFailure } from "../lib/downloadError";
 import { useLibraryStore } from "./libraryStore";
 import type { Track } from "../types";
 
@@ -44,6 +50,10 @@ interface DownloadStoreState {
   cacheStats: CacheStats | null;
   /** Device-local: download every vault song, and drop the auto-cache. */
   autoDownload: boolean;
+  /** Where pinned downloads live on this PC. */
+  downloadsDir: DownloadsDir | null;
+  /** Set while downloads move to another folder. */
+  moving: DownloadsMoveProgress | null;
   /** Wires download events (once), loads the cache index, starts auto-download. */
   init: () => Promise<void>;
   /** Queues pinned downloads; resolves when these tracks are done or cancelled. */
@@ -58,6 +68,10 @@ interface DownloadStoreState {
   setCacheMax: (bytes: number) => Promise<void>;
   clearCache: () => Promise<void>;
   setAutoDownload: (on: boolean) => void;
+  /** Opens a folder picker and moves the downloads to the folder chosen. */
+  chooseDownloadsDir: () => Promise<void>;
+  /** Moves every download to `dir` (the default folder to go back) and keeps new ones there. */
+  moveDownloadsTo: (dir: string) => Promise<void>;
 }
 
 export const keyOf = (track: Pick<Track, "contentHash">) => `vault:${track.contentHash}`;
@@ -152,6 +166,8 @@ export const useDownloadStore = create<DownloadStoreState>((set, get) => ({
   pinnedKeys: new Set(),
   cacheStats: null,
   autoDownload: loadAutoDownload(),
+  downloadsDir: null,
+  moving: null,
 
   init: async () => {
     const first = !listenersAttached;
@@ -244,9 +260,13 @@ export const useDownloadStore = create<DownloadStoreState>((set, get) => ({
 
   refreshDownloads: async () => {
     try {
-      const [cacheEntries, cacheStats] = await Promise.all([vaultDownloadsList(), vaultCacheStats()]);
+      const [cacheEntries, cacheStats, downloadsDir] = await Promise.all([
+        vaultDownloadsList(),
+        vaultCacheStats(),
+        vaultDownloadsDir(),
+      ]);
       const pinnedKeys = new Set(cacheEntries.filter((e) => e.pinned).map((e) => e.fileId));
-      set({ cacheEntries, cacheStats, pinnedKeys });
+      set({ cacheEntries, cacheStats, pinnedKeys, downloadsDir });
     } catch (err) {
       console.error("[downloads] refresh failed:", err);
     }
@@ -280,5 +300,31 @@ export const useDownloadStore = create<DownloadStoreState>((set, get) => ({
     set({ autoDownload: on });
     // Songs already in the auto-cache are moved into downloads, not fetched again.
     if (on) syncAutoDownload();
+  },
+
+  chooseDownloadsDir: async () => {
+    const picked = await open({
+      directory: true,
+      title: "Choose a download folder",
+      defaultPath: get().downloadsDir?.path,
+    });
+    if (typeof picked === "string") await get().moveDownloadsTo(picked);
+  },
+
+  moveDownloadsTo: async (dir) => {
+    if (get().moving) return;
+    set({ moving: { done: 0, total: get().pinnedKeys.size, bytes: 0, totalBytes: 0 } });
+    const unlisten = await onVaultDownloadsMoveProgress((moving) => set({ moving }));
+    try {
+      const report = await vaultDownloadsMove(dir);
+      const message = moveFailureMessage(report.failed);
+      if (message) emitAppError(message);
+    } catch (err) {
+      emitAppError(`Couldn't change the download folder: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      unlisten();
+      set({ moving: null });
+      await get().refreshDownloads();
+    }
   },
 }));

@@ -37,7 +37,22 @@ import com.musicvault.domain.model.Track
 import com.musicvault.ui.LibraryViewModel
 import com.musicvault.ui.components.AlbumArt
 import com.musicvault.ui.components.EmptyMessage
+import com.musicvault.domain.SmartPlaylists
 import com.musicvault.ui.components.TrackList
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material.icons.rounded.AddPhotoAlternate
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import com.musicvault.ui.player.PlayerViewModel
 import com.musicvault.ui.theme.LocalVaultColors
 
@@ -54,9 +69,26 @@ fun ArtistScreen(
     val tracks by libraryViewModel.tracks.collectAsStateWithLifecycle()
     val playlists by libraryViewModel.playlists.collectAsStateWithLifecycle()
     val playback by playerViewModel.uiState.collectAsStateWithLifecycle()
+    val photoPaths by libraryViewModel.artistPhotoPaths.collectAsStateWithLifecycle()
+    val photoKeys by libraryViewModel.artistPhotoKeys.collectAsStateWithLifecycle()
+    val photoPath = photoPaths[artistName]
+    val hasPhoto = artistName in photoKeys
+    var menuOpen by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val setPhoto: (android.net.Uri?) -> Unit = { uri ->
+        busy = true
+        libraryViewModel.setArtistPhoto(artistName, uri) { error ->
+            busy = false
+            if (error != null) android.widget.Toast.makeText(context, "Couldn't set the photo: $error", android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) setPhoto(uri)
+    }
 
     val artistTracks = remember(tracks, artistName) {
-        tracks.filter { it.artist == artistName }
+        tracks.filter { SmartPlaylists.hasArtist(it, artistName) }
             .sortedWith(
                 compareBy(String.CASE_INSENSITIVE_ORDER, Track::album)
                     .thenBy(String.CASE_INSENSITIVE_ORDER, Track::title)
@@ -90,6 +122,40 @@ fun ArtistScreen(
                     playerViewModel = playerViewModel,
                     meta = "${albums.size} ${if (albums.size == 1) "album" else "albums"} • ${artistTracks.size} ${if (artistTracks.size == 1) "song" else "songs"} • ${Format.formatDurationLong(totalDurationSec)}",
                     coverShape = CircleShape,
+                    cover = photoPath?.let { path -> { m -> AlbumArt(path, modifier = m, shape = CircleShape) } },
+                    extraActions = {
+                        if (libraryViewModel.canEditArtistPhotos) {
+                            Box {
+                                IconButton(onClick = { menuOpen = true }, enabled = !busy) {
+                                    if (busy) {
+                                        CircularProgressIndicator(color = colors.accent, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
+                                    } else {
+                                        Icon(Icons.Rounded.MoreVert, "More", tint = colors.text)
+                                    }
+                                }
+                                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                                    DropdownMenuItem(
+                                        text = { Text(if (hasPhoto) "Change photo" else "Choose photo") },
+                                        leadingIcon = { Icon(Icons.Rounded.AddPhotoAlternate, null) },
+                                        onClick = {
+                                            menuOpen = false
+                                            picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                        },
+                                    )
+                                    if (hasPhoto) {
+                                        DropdownMenuItem(
+                                            text = { Text("Remove photo") },
+                                            leadingIcon = { Icon(Icons.Rounded.Delete, null) },
+                                            onClick = {
+                                                menuOpen = false
+                                                setPhoto(null)
+                                            },
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    },
                 )
 
                 if (albums.isNotEmpty()) {

@@ -70,7 +70,8 @@ npm run tauri build -w music-vault-desktop
 ```
 `beforeBuildCommand: "npm run build"` runs the frontend build first; `frontendDist: "../dist"`.
 The only bundle target is **NSIS** (`"targets": ["nsis"]`) — no MSI, macOS or Linux target is
-configured.
+configured. [windows/hooks.nsh](../apps/desktop/src-tauri/windows/hooks.nsh) leaves the finish
+page's "Create desktop shortcut" box unticked and removes the shortcut silent installs make.
 
 ### Debug vs release
 - `tauri dev` → debug Rust, dev server frontend, devtools available.
@@ -92,7 +93,7 @@ Under the Tauri app-data dir (`app.path().app_data_dir()`,
 | `logs/music-vault.log` | Daily-rotating `tracing` log ([lib.rs:47-49](../apps/desktop/src-tauri/src/lib.rs)) |
 | `artwork/` | Covers fetched from the vault, `vault-<sha>.jpg` + `.thumb.jpg` (the only path the webview may read — asset scope) |
 | `audio-cache/` | Auto-cache tier (LRU-evicted) |
-| `downloads/` | Pinned tier (never auto-evicted) |
+| `downloads/` | Pinned tier (never auto-evicted), unless Downloads → Download folder moved it: the `settings` row `downloads_dir` then holds the folder |
 
 Log verbosity: `RUST_LOG` (default `info,music_vault_lib=debug`,
 [lib.rs:52-54](../apps/desktop/src-tauri/src/lib.rs)).
@@ -108,6 +109,10 @@ cd apps/android
 ./gradlew.bat installDebug              # to a connected device/emulator
 ./gradlew.bat testDebugUnitTest         # JVM unit tests
 ```
+
+No NDK is needed: the one native library of our own, `libffmpegJNI.so` (FFmpeg's APE and WavPack
+decoders), is prebuilt under `apps/android/ffmpeg/src/main/jniLibs`. To rebuild it, see
+[apps/android/ffmpeg/README.md](../apps/android/ffmpeg/README.md).
 
 ### Debug vs release
 - **Debug** — no minification; signed with the debug keystore. This is what CI builds, since the

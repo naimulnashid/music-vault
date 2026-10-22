@@ -53,7 +53,7 @@ const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: noSe
 // PostgREST takes `in` filters in the query string; chunk to keep URLs short.
 const IN_CHUNK = 25;
 
-async function referenced(client: SupabaseClient, column: "storage_key" | "artwork_key", keys: string[]) {
+async function referenced(client: SupabaseClient, column: "storage_key", keys: string[]) {
   const found = new Set<string>();
   for (let i = 0; i < keys.length; i += IN_CHUNK) {
     const { data, error } = await client
@@ -79,7 +79,12 @@ function userDb(client: SupabaseClient): UserDb {
       return data as TrackRow | null;
     },
     referencedStorageKeys: (keys) => referenced(client, "storage_key", keys),
-    referencedArtworkKeys: (keys) => referenced(client, "artwork_key", keys),
+    async referencedArtworkKeys(keys) {
+      // Song covers and artist photos (migration 0008); one RPC, keys in the body.
+      const { data, error } = await client.rpc("referenced_artwork_keys", { p_keys: keys });
+      if (error) throw error;
+      return new Set(data as string[]);
+    },
     async deleteTrack(id) {
       const { data, error } = await client.rpc("delete_track", { p_track_id: id });
       if (error) {

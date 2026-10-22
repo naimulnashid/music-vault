@@ -297,6 +297,10 @@ export type Database = {
         Args: { p_track_id: string };
         Returns: { storage_key: string | null; artwork_key: string | null; artwork_still_used: boolean }[];
       };
+      referenced_artwork_keys: {
+        Args: { p_keys: string[] };
+        Returns: string[];
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

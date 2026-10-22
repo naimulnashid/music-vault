@@ -102,6 +102,45 @@ pub async fn vault_download(
     transfer::download(&app, &content_hash, &ext, &url, pin).await.map_err(|e| e.to_string())
 }
 
+/// After an upload's commit: copies the source file into the cache (`pin`: the
+/// downloads tier) unless it moved or changed. Returns whether it was kept.
+#[tauri::command]
+pub async fn vault_adopt_upload(
+    app: AppHandle,
+    path: String,
+    content_hash: String,
+    ext: String,
+    pin: bool,
+) -> Result<bool, String> {
+    transfer::adopt_upload(&app, &PathBuf::from(path), &content_hash, &ext, pin)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DownloadsDir {
+    pub path: String,
+    pub default_path: String,
+}
+
+/// Where pinned downloads go on this device, and where they go by default.
+#[tauri::command]
+pub fn vault_downloads_dir(app: AppHandle) -> DownloadsDir {
+    let paths = app.state::<AppPaths>();
+    DownloadsDir {
+        path: paths.downloads_dir().to_string_lossy().to_string(),
+        default_path: paths.default_downloads_dir.to_string_lossy().to_string(),
+    }
+}
+
+/// Moves pinned downloads to `dir` (the default folder to go back) with
+/// `vault://downloads-move-progress` events, and keeps new ones there.
+#[tauri::command]
+pub async fn vault_downloads_move(app: AppHandle, dir: String) -> Result<cache::MoveReport, String> {
+    transfer::move_downloads(&app, PathBuf::from(dir)).await.map_err(|e| e.to_string())
+}
+
 /// Downloads a cover into the artwork cache (no-op when already there).
 #[tauri::command]
 pub async fn vault_fetch_art(app: AppHandle, url: String, file_name: String) -> Result<String, String> {

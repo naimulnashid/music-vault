@@ -40,7 +40,7 @@ Three clients, one account, one music library.
 | Path | What |
 |---|---|
 | `apps/desktop` | Tauri 2 + React 19 + TS + Tailwind, Rust backend (Symphonia → 10-band EQ → cpal/WASAPI, lofty tag scan, rusqlite) |
-| `apps/android` | Kotlin + Jetpack Compose + Media3 (dual-ExoPlayer gapless/crossfade) + Room |
+| `apps/android` | Kotlin + Jetpack Compose + Media3 (dual-ExoPlayer gapless/crossfade; APE and WavPack through an FFmpeg decoder module) + Room |
 | `apps/web` | Next.js 16 App Router on Vercel (added in Phase 5) |
 | `packages/core` | Shared TypeScript: types, sync engine, vault client, upload model, editable-field rules, LRC parser, smart-playlist and stats engines — consumed by desktop and web |
 | `supabase/` | SQL migrations + RLS policies, and the `vault` Edge Function (`functions/vault/`) |

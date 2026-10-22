@@ -70,7 +70,7 @@ Op kinds (`packages/core/src/sync/types.ts` is normative):
 | `playlistItem.add`  | `playlistId, track: TrackRef, prevTrack?, nextTrack?, editedAt` |
 | `playlistItem.remove` | `playlistId, track: TrackRef, editedAt`                      |
 | `playlist.reorder`  | `playlistId, tracks: TrackRef[] (full desired order), editedAt` |
-| `setting.set`       | `scope ('global' or device id), key, value, editedAt`          |
+| `setting.set`       | `scope ('global', device id or 'artist_photo'), key, value, editedAt` |
 | `queue.set`         | `tracks: TrackRef[] (empty clears the queue), currentIndex, positionSeconds, shuffle, repeat, editedAt` |
 | `track.edit`        | `track: TrackRef, patch {column: value, …} (editable fields only), editedAt` |
 | `playEvent.add`     | `eventId, track: TrackRef, playedAt, durationPlayed, completed` |

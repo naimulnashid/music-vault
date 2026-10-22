@@ -91,10 +91,18 @@ class StatsGoldenTest {
                 val field = when (call.field!!) {
                     "artist" -> Stats.GroupField.ARTIST
                     "album" -> Stats.GroupField.ALBUM
-                    else -> Stats.GroupField.GENRE
+                    "genre" -> Stats.GroupField.GENRE
+                    "year" -> Stats.GroupField.YEAR
+                    "language" -> Stats.GroupField.LANGUAGE
+                    "country" -> Stats.GroupField.COUNTRY
+                    else -> error("unknown field ${call.field}")
                 }
                 val actual = Stats.rankGroups(events, metaById, field, rankBy(call.by!!), call.limit!!)
                 json.encodeToJsonElement(RankedGroups, actual) to reEncode(expected, RankedGroups)
+            }
+            "rankDevices" -> {
+                val actual = Stats.rankDevices(events, rankBy(call.by!!))
+                json.encodeToJsonElement(DeviceTimes, actual) to reEncode(expected, DeviceTimes)
             }
             "bucketize" -> {
                 val unit = when (call.unit!!) {
@@ -176,9 +184,22 @@ class StatsGoldenTest {
     private companion object {
         val RankedTracks = ListSerializer(Stats.RankedTrack.serializer())
         val RankedGroups = ListSerializer(Stats.RankedGroup.serializer())
+        val DeviceTimes = ListSerializer(Stats.DeviceTime.serializer())
         val Buckets = ListSerializer(Stats.Bucket.serializer())
         val HourSlots = ListSerializer(Stats.HourSlot.serializer())
         val Ints = ListSerializer(Int.serializer())
         val LongOrNull = Long.serializer().nullable
+    }
+}
+
+class StatsSplitTest {
+    @Test
+    fun `rankGroups gives a play to each comma-separated artist and genre`() {
+        val meta = mapOf("t" to StatsTrackMeta("t", "T", "A, B", "X", genre = "Rock,Pop"))
+        val events = listOf(StatsEvent("e", "t", 0, 10.0, true))
+        assertThat(Stats.rankGroups(events, meta, Stats.GroupField.ARTIST, Stats.RankBy.TIME, 5).map { it.name })
+            .containsExactly("A", "B").inOrder()
+        assertThat(Stats.rankGroups(events, meta, Stats.GroupField.GENRE, Stats.RankBy.TIME, 5).map { it.name to it.listenSeconds })
+            .containsExactly("Pop" to 10.0, "Rock" to 10.0).inOrder()
     }
 }

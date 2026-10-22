@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Track } from "../src/types";
-import { computeSmartGroups, computeSmartTracks } from "../src/smartPlaylists";
+import { computeSmartGroups, computeSmartTracks, hasArtist, splitNames } from "../src/smartPlaylists";
 
 function track(overrides: Partial<Track> & { id: string }): Track {
   return {
@@ -65,5 +65,33 @@ describe("computeSmartGroups", () => {
     const groups = computeSmartGroups("year", withUnknown);
     expect(groups.map((g) => g.name)).toEqual(["2021", "2020", "Unknown Year"]);
     expect(groups[1].tracks.map((t) => t.id)).toEqual(["a", "c"]);
+  });
+
+  it("lists a song under each comma-separated artist and genre", () => {
+    const shared = [track({ id: "x", artist: "A, B", genre: "Rock,Pop" }), track({ id: "y", artist: "B" })];
+    const artists = computeSmartGroups("artist", shared);
+    expect(artists.map((g) => [g.name, g.tracks.map((t) => t.id)])).toEqual([
+      ["A", ["x"]],
+      ["B", ["x", "y"]],
+    ]);
+    expect(computeSmartGroups("genre", shared).map((g) => g.name)).toEqual(["Pop", "Rock", "Unknown Genre"]);
+  });
+
+  it("groups by country with Unknown fallback", () => {
+    const groups = computeSmartGroups("country", [track({ id: "x", country: "India" }), track({ id: "y" })]);
+    expect(groups.map((g) => g.name)).toEqual(["India", "Unknown Country"]);
+  });
+});
+
+describe("splitNames", () => {
+  it("trims, drops blanks and duplicates", () => {
+    expect(splitNames(" A ,, B, A ")).toEqual(["A", "B"]);
+    expect(splitNames(undefined)).toEqual([]);
+  });
+
+  it("hasArtist matches the whole tag or one of its names", () => {
+    expect(hasArtist({ artist: "A, B" }, "B")).toBe(true);
+    expect(hasArtist({ artist: "A, B" }, "A, B")).toBe(true);
+    expect(hasArtist({ artist: "AB" }, "A")).toBe(false);
   });
 });

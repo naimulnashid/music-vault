@@ -241,6 +241,22 @@ private fun ConditionValueInput(
     val textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp)
 
     when {
+        type == SmartRulesMeta.FieldType.STRING && cond.field in FieldOptions.FIELDS -> {
+            var text by remember(cond.field, cond.op) { mutableStateOf(cond.value?.content ?: "") }
+            ComboField(
+                value = text,
+                onValueChange = {
+                    text = it
+                    onChange(cond.copy(value = JsonPrimitive(it)))
+                },
+                options = LocalFieldOptions.current[cond.field],
+                showAll = cond.field in FieldOptions.SHOW_ALL,
+                multi = false,
+                placeholder = { Text("value", fontSize = 12.sp) },
+                textStyle = textStyle,
+            )
+        }
+
         type == SmartRulesMeta.FieldType.STRING -> {
             var text by remember(cond.field, cond.op) { mutableStateOf(cond.value?.content ?: "") }
             OutlinedTextField(

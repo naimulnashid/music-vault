@@ -21,6 +21,7 @@ import { supabase } from "../lib/supabase";
 import {
   onVaultUploadProgress,
   vaultAdoptArt,
+  vaultAdoptUpload,
   vaultPrepareFiles,
   vaultPutFile,
   type PreparedCoverDto,
@@ -28,6 +29,7 @@ import {
 } from "../lib/ipc";
 import { audioMime, vaultApi } from "../lib/vault";
 import { coverFromDto } from "../lib/covers";
+import { uploadCacheCopy } from "../lib/uploadCache";
 import { nowIso, syncEnqueue } from "../lib/syncBus";
 import {
   patchInput,
@@ -38,6 +40,7 @@ import {
   type FormValues,
 } from "../lib/trackForm";
 import { useAuthStore } from "./authStore";
+import { useDownloadStore } from "./downloadStore";
 import { useLibraryStore } from "./libraryStore";
 import { useSyncStore } from "./syncStore";
 
@@ -193,6 +196,17 @@ async function runOne(item: UploadItem, userId: string) {
     const draft = draftFor(item, shared, sharedCover);
     const outcome = await uploadTrack(deps(userId, item), draft);
     patchItem(item.id, { status: "done", outcome, stage: "done" });
+    // Keep this PC's copy, so the first play doesn't download it back. With
+    // auto-download on it goes straight to downloads, as a played song does.
+    const copy = uploadCacheCopy(outcome, item.source!);
+    if (copy) {
+      const pin = useDownloadStore.getState().autoDownload;
+      await vaultAdoptUpload(copy.path, copy.contentHash, copy.ext, pin)
+        .then(async (kept) => {
+          if (kept) await useDownloadStore.getState().refreshDownloads();
+        })
+        .catch((err) => console.warn("[upload] couldn't keep a local copy:", err));
+    }
     // Show the cover right away instead of downloading it back.
     if (draft.cover && outcome.status !== "already-in-vault") {
       const dto = draft.cover.handle as PreparedCoverDto;

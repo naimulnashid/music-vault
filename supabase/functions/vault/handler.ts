@@ -34,7 +34,7 @@ export interface UserDb {
   getTrack(id: string): Promise<TrackRow | null>;
   /** The subset of `keys` that a live track of the caller stores as audio. */
   referencedStorageKeys(keys: string[]): Promise<Set<string>>;
-  /** The subset of `keys` that a live track of the caller uses as its cover. */
+  /** The subset of `keys` that a live track of the caller uses as its cover, or an artist photo. */
   referencedArtworkKeys(keys: string[]): Promise<Set<string>>;
   /** Runs `delete_track`; null when the track doesn't exist or isn't the caller's. */
   deleteTrack(id: string): Promise<{ storageKey: string | null; artworkKey: string | null; artworkStillUsed: boolean } | null>;

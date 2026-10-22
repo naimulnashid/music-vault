@@ -3,7 +3,7 @@ package com.musicvault.domain
 import com.musicvault.domain.model.Track
 
 /** Port of smartPlaylists.ts. */
-enum class SmartKey { RECENTLY_ADDED, RECENTLY_PLAYED, MOST_PLAYED, FAVORITES, NEVER_PLAYED, GENRE, ARTIST, YEAR, LANGUAGE }
+enum class SmartKey { RECENTLY_ADDED, RECENTLY_PLAYED, MOST_PLAYED, FAVORITES, NEVER_PLAYED, GENRE, ARTIST, YEAR, LANGUAGE, COUNTRY }
 
 enum class SmartKind { LIST, GROUP }
 
@@ -28,10 +28,11 @@ object SmartPlaylists {
         SmartDef(SmartKey.MOST_PLAYED, "Most Played", SmartKind.LIST, "Play some tracks to build this list."),
         SmartDef(SmartKey.FAVORITES, "Favorites", SmartKind.LIST, "Tap the heart on any track to add it here."),
         SmartDef(SmartKey.NEVER_PLAYED, "Never Played", SmartKind.LIST, "Every track has been played at least once."),
-        SmartDef(SmartKey.GENRE, "By Genre", SmartKind.GROUP, "No genre tags found in your library."),
         SmartDef(SmartKey.ARTIST, "By Artist", SmartKind.GROUP, "No artists found."),
+        SmartDef(SmartKey.GENRE, "By Genre", SmartKind.GROUP, "No genre tags found in your library."),
         SmartDef(SmartKey.YEAR, "By Year", SmartKind.GROUP, "No year tags found in your library."),
         SmartDef(SmartKey.LANGUAGE, "By Language", SmartKind.GROUP, "No language tags found in your library."),
+        SmartDef(SmartKey.COUNTRY, "By Country", SmartKind.GROUP, "No country tags found in your library."),
     )
 
     fun def(key: SmartKey): SmartDef = ALL.first { it.key == key }
@@ -50,18 +51,33 @@ object SmartPlaylists {
         else -> emptyList()
     }
 
-    private fun groupOf(key: SmartKey, track: Track): String = when (key) {
-        SmartKey.GENRE -> track.genre?.takeIf { it.isNotBlank() } ?: "Unknown Genre"
-        SmartKey.ARTIST -> track.artist.takeIf { it.isNotBlank() } ?: "Unknown Artist"
-        SmartKey.YEAR -> track.year?.toString() ?: "Unknown Year"
-        SmartKey.LANGUAGE -> track.language?.takeIf { it.isNotBlank() } ?: "Unknown Language"
-        else -> ""
+    /**
+     * The names in an artist or genre tag. A comma separates two names ("A, B"
+     * is A and B), so a song shows up under each of them. Duplicates are dropped.
+     */
+    fun splitNames(value: String?): List<String> =
+        (value ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+
+    /** True when the song credits [name], alone or as one of its comma-separated artists. */
+    fun hasArtist(track: Track, name: String): Boolean =
+        track.artist == name || name in splitNames(track.artist)
+
+    private fun groupsOf(key: SmartKey, track: Track): List<String> {
+        fun List<String>.or(unknown: String) = ifEmpty { listOf(unknown) }
+        return when (key) {
+            SmartKey.GENRE -> splitNames(track.genre).or("Unknown Genre")
+            SmartKey.ARTIST -> splitNames(track.artist).or("Unknown Artist")
+            SmartKey.YEAR -> listOf(track.year?.toString() ?: "Unknown Year")
+            SmartKey.LANGUAGE -> listOf(track.language?.takeIf { it.isNotBlank() } ?: "Unknown Language")
+            SmartKey.COUNTRY -> listOf(track.country?.takeIf { it.isNotBlank() } ?: "Unknown Country")
+            else -> emptyList()
+        }
     }
 
     fun computeSmartGroups(key: SmartKey, tracks: List<Track>): List<SmartGroup> {
         val map = LinkedHashMap<String, MutableList<Track>>()
         for (track in tracks) {
-            map.getOrPut(groupOf(key, track)) { mutableListOf() }.add(track)
+            for (name in groupsOf(key, track)) map.getOrPut(name) { mutableListOf() }.add(track)
         }
         val groups = map.map { (name, groupTracks) -> SmartGroup(name, groupTracks) }
         return if (key == SmartKey.YEAR) {

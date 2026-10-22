@@ -1,12 +1,29 @@
+import { useVaultArtUrl } from "../lib/artwork";
+import { useArtistPhotoStore } from "../store/artistPhotoStore";
 import { AlbumArt, artKeyOf, type ArtSource } from "./AlbumArt";
 
 /**
- * Round artist picture: their first album's art, or an initial on a tinted
- * disc when no art exists (SVG text, so it scales with any size).
+ * Round artist picture: the photo picked for them, else their first album's
+ * art, else an initial on a tinted disc (SVG text, so it scales with any size).
+ * `full` loads the full-size photo for large heroes instead of the thumbnail.
  */
-export function ArtistAvatar({ name, track, className = "" }: { name: string; track?: ArtSource | null; className?: string }) {
+export function ArtistAvatar({
+  name,
+  track,
+  className = "",
+  full = false,
+}: {
+  name: string;
+  track?: ArtSource | null;
+  className?: string;
+  full?: boolean;
+}) {
+  const photoKey = useArtistPhotoStore((s) => s.photos[name]);
+  const photo = useVaultArtUrl(photoKey, !full);
+  if (photo) return <img src={photo} alt="" draggable={false} className={`${className} rounded-full object-cover`} />;
+  if (photoKey) return <div className={`${className} rounded-full bg-surface-2`} />;
   if (track && artKeyOf(track)) {
-    return <AlbumArt track={track} thumb className={`${className} rounded-full object-cover`} />;
+    return <AlbumArt track={track} thumb={!full} className={`${className} rounded-full object-cover`} />;
   }
   const initial = name.trim().charAt(0).toUpperCase() || "?";
   return (

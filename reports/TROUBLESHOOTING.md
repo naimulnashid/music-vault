@@ -18,7 +18,7 @@
 | Sync (all) | **Breadcrumbs** — `cycle.start`, `cycle.end`, `flush.coalesced`, `flush.opFailed`, `flush.conflictLost`, `pull.applied`, `enqueue.dropped`, `realtime.hint` ([core/sync/types.ts:213-230](../packages/core/src/sync/types.ts)); see [docs/sync-protocol.md](../docs/sync-protocol.md) § Diagnostics |
 
 `%APPDATA%\com.naimul.music-vault\` holds `library.db`, `logs/`, `artwork/`, `audio-cache/`,
-`downloads/`.
+`downloads/` (unless Downloads → Download folder moved the downloads elsewhere).
 
 ---
 

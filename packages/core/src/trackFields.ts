@@ -126,6 +126,22 @@ const ARTWORK_KEY = /^users\/([0-9a-f-]{36})\/art\/[0-9a-f]{64}\.jpg$/;
  */
 export const RELEASE_DATE = /^[0-9]{4}(-(0[1-9]|1[0-2])(-(0[1-9]|[12][0-9]|3[01]))?)?$/;
 
+/**
+ * Keeps a release-date input to digits in the YYYY-MM-DD shape while typing:
+ * anything but digits is dropped and the hyphens are put in for you, one
+ * appearing as soon as the year or the month is complete. `previous` tells
+ * typing from deleting, so backspace can remove a hyphen it just passed.
+ */
+export function maskReleaseDate(previous: string, next: string): string {
+  const digits = next.replace(/[^0-9]/g, "").slice(0, 8);
+  let out = digits.slice(0, 4);
+  if (digits.length > 4) out += `-${digits.slice(4, 6)}`;
+  if (digits.length > 6) out += `-${digits.slice(6)}`;
+  const typing = next.length > previous.length;
+  if (typing && (digits.length === 4 || digits.length === 6)) out += "-";
+  return out;
+}
+
 /** The year a release date starts with. */
 export function yearOfReleaseDate(date: string | null | undefined): number | undefined {
   if (!date || !RELEASE_DATE.test(date)) return undefined;
@@ -263,7 +279,8 @@ export function normalizeTrackPatch(input: Record<string, unknown>): TrackEditPa
         out[key] = typeof value === "string" && value.trim() !== "" ? value.replace(/\s+$/, "") : null;
         break;
       case "release_date": {
-        const date = typeof value === "number" ? String(value) : typeof value === "string" ? value.trim() : "";
+        // A trailing hyphen is what the input mask leaves after "2019-".
+        const date = typeof value === "number" ? String(value) : typeof value === "string" ? value.trim().replace(/-+$/, "") : "";
         if (date === "") {
           out.release_date = null;
           break;

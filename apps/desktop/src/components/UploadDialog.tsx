@@ -5,7 +5,7 @@ import { AlertCircle, CheckCircle2, FilePlus2, Link2, Loader2, UploadCloud, X } 
 import { formatTime } from "@musicvault/core";
 import { useUploadStore, type UploadItem } from "../store/uploadStore";
 import { SHARED_FIELDS, UPLOAD_FORM_FIELDS } from "../lib/trackForm";
-import { CoverControl, FieldInput, FieldSuggestions } from "./TrackFields";
+import { CoverControl, FieldInput } from "./TrackFields";
 import { stagedArtworkPath } from "../lib/covers";
 
 /**
@@ -166,7 +166,6 @@ export function UploadDialog() {
         className="w-full max-w-3xl max-h-[88vh] flex flex-col rounded-2xl bg-surface border border-line shadow-[0_24px_80px_-16px_rgb(0_0_0/0.6)] animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
-        <FieldSuggestions />
         <div className="flex items-center gap-3 px-5 py-4 border-b border-line">
           <UploadCloud className="w-5 h-5 text-accent" />
           <h2 id={titleId} className="text-lg font-bold flex-1">Upload to your vault</h2>

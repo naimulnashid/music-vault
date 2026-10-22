@@ -26,6 +26,13 @@
   --color-danger: #f87171;
   --color-scrim: rgb(0 0 0 / 0.55);
 
+  /* Categorical chart slots (device donut), validated for CVD separation on this surface. */
+  --color-series-1: #9b78f8;
+  --color-series-2: #d95926;
+  --color-series-3: #199e70;
+  --color-series-4: #c98500;
+  --color-series-5: #3987e5;
+
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
 
@@ -86,6 +93,11 @@
   --color-accent-soft: rgb(139 92 246 / 0.13);
   --color-danger: #dc2626;
   --color-scrim: rgb(10 10 20 / 0.4);
+  --color-series-1: #8b5cf6;
+  --color-series-2: #eb6834;
+  --color-series-3: #1baf7a;
+  --color-series-4: #eda100;
+  --color-series-5: #2a78d6;
 }
 
 /* AMOLED: pure black for OLED panels (dark theme only). */
@@ -255,11 +267,6 @@ input[type="range"] {
   );
   background-size: 200% 100%;
   animation: var(--animate-shimmer);
-}
-
-/* Suggestion lists on text fields: no drop-down arrow (Language/Country keep theirs). */
-.mv-no-picker::-webkit-calendar-picker-indicator {
-  display: none !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

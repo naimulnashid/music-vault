@@ -1,12 +1,45 @@
+import { useEffect } from "react";
+import { fetchVaultArt } from "../lib/vault";
+import { useArtistPhotoStore } from "../store/artistPhotoStore";
+import { useLibraryStore } from "../store/libraryStore";
 import { AlbumArt, artKeyOf, type ArtSource } from "./AlbumArt";
 
+/** The cached file for an artist's photo, downloading it into the artwork cache on first use. */
+function useArtistPhotoPath(name: string): { key?: string; path?: string } {
+  const key = useArtistPhotoStore((s) => s.photos[name]);
+  const path = useLibraryStore((s) => (key ? s.vaultArt[key] : undefined));
+  useEffect(() => {
+    if (!key || path) return;
+    void fetchVaultArt([key]).then((found) => {
+      if (found[key]) useLibraryStore.getState().adoptVaultArt(key, found[key]);
+    });
+  }, [key, path]);
+  return { key, path };
+}
+
 /**
- * Round artist picture: their first album's art, or an initial on a tinted
- * disc when no art exists (SVG text, so it scales with any size).
+ * Round artist picture: the photo picked for them, else their first album's
+ * art, else an initial on a tinted disc (SVG text, so it scales with any size).
+ * `full` loads the full-size photo for large heroes instead of the thumbnail.
  */
-export function ArtistAvatar({ name, track, className = "" }: { name: string; track?: ArtSource | null; className?: string }) {
+export function ArtistAvatar({
+  name,
+  track,
+  className = "",
+  full = false,
+}: {
+  name: string;
+  track?: ArtSource | null;
+  className?: string;
+  full?: boolean;
+}) {
+  const photo = useArtistPhotoPath(name);
+  if (photo.path) {
+    return <AlbumArt track={{ artworkPath: photo.path }} thumb={!full} className={`${className} rounded-full object-cover`} />;
+  }
+  if (photo.key) return <div className={`${className} rounded-full bg-surface-2`} />;
   if (track && artKeyOf(track)) {
-    return <AlbumArt track={track} thumb className={`${className} rounded-full object-cover`} />;
+    return <AlbumArt track={track} thumb={!full} className={`${className} rounded-full object-cover`} />;
   }
   const initial = name.trim().charAt(0).toUpperCase() || "?";
   return (

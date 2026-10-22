@@ -28,8 +28,11 @@ class VaultArtwork @Inject constructor(
     private val mutex = Mutex()
 
     /** Makes sure every cover the rows reference is cached; safe to call often. */
-    suspend fun sync() = mutex.withLock {
-        val keys = index.tracks.value.filter { it.deletedAt == null }.mapNotNull { it.artworkKey }.distinct()
+    suspend fun sync() = cache(index.tracks.value.filter { it.deletedAt == null }.mapNotNull { it.artworkKey })
+
+    /** Makes sure these covers are cached (song covers, artist photos). */
+    suspend fun cache(wanted: Collection<String>) = mutex.withLock {
+        val keys = wanted.distinct()
         val known = index.art.value
         val found = HashMap<String, String>()
         val missing = mutableListOf<String>()
@@ -58,6 +61,16 @@ class VaultArtwork @Inject constructor(
             }
         }
         if (found.isNotEmpty()) index.addArt(found)
+    }
+
+    /** Uploads a prepared cover (full and thumbnail) and keeps it locally; returns its key. */
+    suspend fun upload(cover: PreparedCover): String {
+        val full = vaultApi.signPutArt(cover.sha256, "full", cover.fullSize)
+        vaultApi.putFile(full.url, cover.full, "image/jpeg")
+        val thumb = vaultApi.signPutArt(cover.sha256, "thumb", cover.thumbSize)
+        vaultApi.putFile(thumb.url, cover.thumb, "image/jpeg")
+        adopt(full.key, cover.full)
+        return full.key
     }
 
     /** Stores a cover this device just uploaded, so it shows without downloading it back. */

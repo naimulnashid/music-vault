@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { useLibraryStore } from "../store/libraryStore";
 import { useUiStore } from "../store/uiStore";
 import { computeSmartGroups, formatDurationLong, smartDef, type SmartKey } from "@musicvault/core";
-import { TrackList } from "./TrackList";
+import { TrackCollection } from "./TrackCollection";
 import { Hero, PlayShuffleButtons, ViewHeader } from "./ViewHeader";
 import { CardGrid, CardPlayButton, cardMotion } from "./AlbumCard";
 import { Mosaic } from "./Mosaic";
@@ -13,7 +13,7 @@ import { DownloadAllButton } from "./DownloadAllButton";
 import { NotFound } from "./NotFound";
 
 /**
- * "By Genre / Artist / Year / Language": a card per group; opening one shows
+ * "By Artist / Genre / Year / Language / Country": a card per group; opening one shows
  * its songs. Artists open their artist page instead.
  */
 export function GroupedBrowseView({ smartKey }: { smartKey: SmartKey }) {
@@ -44,7 +44,7 @@ export function GroupedBrowseView({ smartKey }: { smartKey: SmartKey }) {
             </>
           }
         />
-        <TrackList tracks={group.tracks} />
+        <TrackCollection page={`group.${smartKey}`} tracks={group.tracks} />
       </div>
     );
   }

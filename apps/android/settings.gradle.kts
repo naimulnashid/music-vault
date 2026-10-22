@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Music Vault"
 include(":app")
+include(":ffmpeg")

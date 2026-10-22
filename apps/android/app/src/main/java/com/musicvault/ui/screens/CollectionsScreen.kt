@@ -29,6 +29,7 @@ import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Language
+import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.LibraryAdd
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.People
@@ -78,6 +79,7 @@ val SMART_ICONS: Map<SmartKey, ImageVector> = mapOf(
     SmartKey.ARTIST to Icons.Rounded.People,
     SmartKey.YEAR to Icons.Rounded.CalendarMonth,
     SmartKey.LANGUAGE to Icons.Rounded.Language,
+    SmartKey.COUNTRY to Icons.Rounded.Public,
 )
 
 /** Gradient behind each smart collection's tile (same pairs as desktop/web). */
@@ -91,6 +93,7 @@ val SMART_GRADIENTS: Map<SmartKey, List<Color>> = mapOf(
     SmartKey.ARTIST to listOf(Color(0xFFEC4899), Color(0xFF7C3AED)),
     SmartKey.YEAR to listOf(Color(0xFFF59E0B), Color(0xFFC2410C)),
     SmartKey.LANGUAGE to listOf(Color(0xFF06B6D4), Color(0xFF1D4ED8)),
+    SmartKey.COUNTRY to listOf(Color(0xFF84CC16), Color(0xFF047857)),
 )
 
 /** Collections tab: your playlists, smart playlists and albums. */

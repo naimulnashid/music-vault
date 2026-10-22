@@ -24,6 +24,7 @@ import { trackRefKeys, type TrackRow as RemoteTrackRow } from "@musicvault/core"
 import { useSettingsStore } from "./settingsStore";
 import { usePlayerStore } from "./playerStore";
 import { refreshStatsIfLoaded, resetStats } from "./statsStore";
+import { useArtistPhotoStore } from "./artistPhotoStore";
 import { useDownloadStore } from "./downloadStore";
 import { forgetSignedUrls } from "../lib/vault";
 
@@ -178,6 +179,7 @@ function clearAccountPlayback(): void {
   const { queued, cancelDownloads } = useDownloadStore.getState();
   if (queued.size > 0) void cancelDownloads([...queued]);
   resetStats();
+  useArtistPhotoStore.getState().reset();
 }
 
 /**
@@ -247,6 +249,7 @@ async function applyChanges(changes: RemoteChanges): Promise<void> {
   }
   for (const { scope, key, value } of changes.settings) {
     settings.applyRemoteSetting(scope, key, value);
+    useArtistPhotoStore.getState().applyRemote(scope, key, value);
   }
   if (changes.queue) useSyncStore.setState({ remoteQueue: changes.queue });
   if (changes.playEventsAdded > 0) refreshStatsIfLoaded();
@@ -419,4 +422,5 @@ async function hydrateFromShadow(): Promise<void> {
   if (Object.keys(cloudState.favorites).length > 0 || Object.keys(cloudState.ratings).length > 0) {
     useLibraryStore.getState().setCloudUserState(cloudState);
   }
+  await useArtistPhotoStore.getState().hydrate(storage);
 }

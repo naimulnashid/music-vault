@@ -12,6 +12,7 @@ private fun track(
     genre: String? = null,
     year: Int? = null,
     language: String? = null,
+    country: String? = null,
     addedAt: Long = 0,
     favorite: Boolean = false,
 ) = Track(
@@ -25,6 +26,7 @@ private fun track(
     genre = genre,
     year = year,
     language = language,
+    country = country,
     addedAt = addedAt,
     favorite = favorite,
 )
@@ -90,6 +92,24 @@ class SmartPlaylistsTest {
         // Case-insensitive alphabetical, matching the web's localeCompare: "eng" < "Unknown Language"
         assertThat(groups.map { it.name }).containsExactly("eng", "Unknown Language").inOrder()
         assertThat(groups.first { it.name == "eng" }.tracks.map { it.id }).containsExactly("d")
+    }
+
+    @Test
+    fun `comma separated artists and genres each get the song`() {
+        val shared = listOf(track("x", artist = "A, B", genre = "Rock,Pop"), track("y", artist = "B"))
+        val artists = SmartPlaylists.computeSmartGroups(SmartKey.ARTIST, shared)
+        assertThat(artists.map { it.name to it.tracks.map { t -> t.id } })
+            .containsExactly("A" to listOf("x"), "B" to listOf("x", "y")).inOrder()
+        assertThat(SmartPlaylists.computeSmartGroups(SmartKey.GENRE, shared).map { it.name })
+            .containsExactly("Pop", "Rock", "Unknown Genre").inOrder()
+        assertThat(SmartPlaylists.hasArtist(shared[0], "B")).isTrue()
+        assertThat(SmartPlaylists.hasArtist(shared[0], "A, B")).isTrue()
+    }
+
+    @Test
+    fun `groups by country with Unknown fallback`() {
+        val groups = SmartPlaylists.computeSmartGroups(SmartKey.COUNTRY, listOf(track("x", country = "India"), track("y")))
+        assertThat(groups.map { it.name }).containsExactly("India", "Unknown Country").inOrder()
     }
 }
 

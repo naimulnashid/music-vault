@@ -4,7 +4,7 @@ import { formatDurationLong } from "@musicvault/core";
 import { useLibraryStore, type SortKey } from "../store/libraryStore";
 import { useUploadStore } from "../store/uploadStore";
 import { useAuthStore } from "../store/authStore";
-import { TrackList } from "./TrackList";
+import { TrackCollection } from "./TrackCollection";
 import { PlayShuffleButtons, ViewHeader } from "./ViewHeader";
 import { Button } from "./ui/Button";
 import { Chips } from "./ui/Chips";
@@ -36,15 +36,14 @@ export function LibraryView() {
           </div>
         )}
       </ViewHeader>
-      {tracks.length > 0 && (
-        <div className="px-6 md:px-8 pb-3">
-          <Chips label="Sort by" options={SORTS} value={sortKey} onChange={setSortKey} />
-        </div>
-      )}
       {tracks.length === 0 ? (
         <EmptyLibrary signedIn={signedIn} onUpload={() => openUpload()} />
       ) : (
-        <TrackList tracks={tracks} />
+        <TrackCollection
+          page="library"
+          tracks={tracks}
+          toolbar={<Chips label="Sort by" options={SORTS} value={sortKey} onChange={setSortKey} />}
+        />
       )}
     </div>
   );

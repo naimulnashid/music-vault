@@ -55,6 +55,34 @@ async function loadVaultBlob(artworkKey: string, thumb: boolean): Promise<Blob |
   await putArtwork(VAULT_PREFIX + objectKey, blob).catch(() => {});
   return blob;
 }
+/** Object URLs for covers looked up by key rather than by song (artist photos). */
+const keyUrlCache = new Map<string, string>();
+
+/** An online cover (or its thumb) by its key; null while loading or when it can't be fetched. */
+export function useVaultArtUrl(artworkKey: string | undefined, thumb: boolean): string | null {
+  const id = artworkKey ? `${thumb ? "thumb" : "full"}:${artworkKey}` : "";
+  const [url, setUrl] = useState<string | null>(() => keyUrlCache.get(id) ?? null);
+  useEffect(() => {
+    if (!artworkKey) return setUrl(null);
+    const cached = keyUrlCache.get(id);
+    if (cached) return setUrl(cached);
+    let live = true;
+    setUrl(null);
+    loadVaultBlob(artworkKey, thumb)
+      .then((blob) => {
+        // Failures aren't cached, so the next view retries once the network is back.
+        const made = blob ? URL.createObjectURL(blob) : null;
+        if (made) keyUrlCache.set(id, made);
+        if (live) setUrl(made);
+      })
+      .catch(() => live && setUrl(null));
+    return () => {
+      live = false;
+    };
+  }, [artworkKey, thumb, id]);
+  return url;
+}
+
 const pending = new Map<string, Promise<string | null>>();
 const bumpListeners = new Set<(trackId: string) => void>();
 

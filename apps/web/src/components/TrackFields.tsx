@@ -1,10 +1,11 @@
-import { useMemo, useRef } from "react";
+import { useRef } from "react";
 import { ImagePlus, Music, Trash2 } from "lucide-react";
-import { EDITABLE_TRACK_FIELDS, type EditableTrackField, type PreparedCover } from "@musicvault/core";
+import { EDITABLE_TRACK_FIELDS, maskReleaseDate, type EditableTrackField, type PreparedCover } from "@musicvault/core";
 import { AlbumArt } from "./AlbumArt";
-import { useLibraryStore } from "../store/libraryStore";
 import { prepareCover } from "../lib/uploadPrepare";
 import type { FormValues } from "../lib/trackForm";
+import { OPTION_MODE, useFieldOptions, type OptionField } from "../lib/fieldOptions";
+import { Combobox } from "./ui/Combobox";
 
 /**
  * Shared form controls for the upload dialog and the track editor (same
@@ -16,37 +17,7 @@ export const inputClass =
   "w-full px-3 py-2 text-sm rounded-lg bg-surface-2 border border-transparent hover:bg-surface-3 focus:outline-none focus:border-accent focus:bg-surface-2 placeholder:text-subtle transition-colors";
 
 const LABELS = Object.fromEntries(EDITABLE_TRACK_FIELDS.map((f) => [f.key, f.label])) as Record<EditableTrackField, string>;
-const SUGGESTED: EditableTrackField[] = ["artist", "album", "genre", "language", "country"];
-/** Fields whose suggestions open from a drop-down arrow; the rest only suggest while typing. */
-const DROPDOWN = new Set<EditableTrackField>(["language", "country"]);
 const PLACEHOLDERS: Partial<Record<EditableTrackField, string>> = { release_date: "YYYY-MM-DD" };
-
-/** Distinct values already in the library, per suggestible field. */
-export function FieldSuggestions() {
-  const tracks = useLibraryStore((s) => s.tracks);
-  const lists = useMemo(() => {
-    const sets: Record<string, Set<string>> = Object.fromEntries(SUGGESTED.map((f) => [f, new Set<string>()]));
-    for (const t of tracks) {
-      if (t.artist && t.artist !== "Unknown Artist") sets.artist.add(t.artist);
-      if (t.album && t.album !== "Unknown Album") sets.album.add(t.album);
-      if (t.genre) sets.genre.add(t.genre);
-      if (t.language) sets.language.add(t.language);
-      if (t.country) sets.country.add(t.country);
-    }
-    return Object.fromEntries(Object.entries(sets).map(([k, v]) => [k, [...v].sort((a, b) => a.localeCompare(b))]));
-  }, [tracks]);
-  return (
-    <>
-      {SUGGESTED.map((field) => (
-        <datalist key={field} id={`mv-suggest-${field}`}>
-          {lists[field].map((v) => (
-            <option key={v} value={v} />
-          ))}
-        </datalist>
-      ))}
-    </>
-  );
-}
 
 export function FieldInput({
   field,
@@ -63,6 +34,8 @@ export function FieldInput({
 }) {
   const value = values[field] ?? "";
   const label = LABELS[field];
+  const suggested = field in OPTION_MODE ? (field as OptionField) : null;
+  const options = useFieldOptions(suggested ?? "title");
   if (field === "lyrics_text" || field === "lyrics_synced") {
     return (
       <label className={`block ${className ?? ""}`}>
@@ -80,15 +53,34 @@ export function FieldInput({
       </label>
     );
   }
+  // Title has suggestions in smart rules only; here it is a plain input.
+  if (suggested && field !== "title") {
+    return (
+      <label className={`block ${className ?? ""}`}>
+        <span className="text-xs font-semibold text-muted">{label}</span>
+        <Combobox
+          value={value}
+          onChange={(v) => onChange(field, v)}
+          options={options}
+          {...OPTION_MODE[suggested]}
+          placeholder={placeholder}
+          className="mt-1"
+          inputClassName={inputClass}
+        />
+      </label>
+    );
+  }
+  const isDate = field === "release_date";
   return (
     <label className={`block ${className ?? ""}`}>
       <span className="text-xs font-semibold text-muted">{label}</span>
       <input
         value={value}
-        onChange={(e) => onChange(field, e.target.value)}
+        onChange={(e) => onChange(field, isDate ? maskReleaseDate(value, e.target.value) : e.target.value)}
         placeholder={placeholder ?? PLACEHOLDERS[field]}
-        list={SUGGESTED.includes(field) ? `mv-suggest-${field}` : undefined}
-        className={`${inputClass} mt-1 ${DROPDOWN.has(field) ? "" : "mv-no-picker"}`}
+        inputMode={isDate ? "numeric" : undefined}
+        maxLength={isDate ? 10 : undefined}
+        className={`${inputClass} mt-1`}
       />
     </label>
   );

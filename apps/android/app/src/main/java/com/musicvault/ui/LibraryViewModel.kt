@@ -2,7 +2,10 @@ package com.musicvault.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.net.Uri
+import com.musicvault.data.vault.ArtistPhotos
 import com.musicvault.data.vault.DownloadRepository
+import com.musicvault.data.vault.UploadManager
 import com.musicvault.data.repo.HistoryRepository
 import com.musicvault.data.repo.HistorySnapshot
 import com.musicvault.data.repo.LibraryRepository
@@ -16,6 +19,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import javax.inject.Inject
 
 /** Web libraryStore sort keys. */
@@ -26,7 +31,28 @@ class LibraryViewModel @Inject constructor(
     private val libraryRepository: LibraryRepository,
     private val historyRepository: HistoryRepository,
     private val downloadRepository: DownloadRepository,
+    private val artistPhotos: ArtistPhotos,
+    private val uploads: UploadManager,
 ) : ViewModel() {
+
+    /** Artist → cached photo file, for artists given a photo of their own. */
+    val artistPhotoPaths: StateFlow<Map<String, String>> = artistPhotos.paths
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    /** Artist → cover key of their photo (set even before the file is cached). */
+    val artistPhotoKeys: StateFlow<Map<String, String>> = artistPhotos.keys
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    val canEditArtistPhotos: Boolean get() = artistPhotos.signedIn
+
+    /** Sets the artist's photo from a picked image, or removes it when [uri] is null; [onDone] gets an error message. */
+    fun setArtistPhoto(artist: String, uri: Uri?, onDone: (String?) -> Unit) = viewModelScope.launch {
+        val error = runCatching {
+            val cover = uri?.let { withContext(Dispatchers.IO) { uploads.prepareCover(it) } }
+            artistPhotos.set(artist, cover)
+        }.exceptionOrNull()
+        onDone(error?.message)
+    }
 
     val search = MutableStateFlow("")
     val sortKey = MutableStateFlow(SortKey.ARTIST)

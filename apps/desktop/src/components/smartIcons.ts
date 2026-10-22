@@ -5,6 +5,7 @@ import {
   CircleOff,
   Clock,
   Flame,
+  Globe,
   Heart,
   Languages,
   Tags,
@@ -24,6 +25,7 @@ export const SMART_ICONS: Record<SmartKey, IconType> = {
   artist: Users,
   year: CalendarClock,
   language: Languages,
+  country: Globe,
 };
 
 /** Gradient behind each smart collection's cover tile. */
@@ -37,4 +39,5 @@ export const SMART_GRADIENTS: Record<SmartKey, string> = {
   artist: "from-pink-500 to-violet-600",
   year: "from-amber-500 to-orange-700",
   language: "from-cyan-500 to-blue-700",
+  country: "from-lime-500 to-emerald-700",
 };

@@ -2,6 +2,7 @@ export * from "./types";
 export * from "./lrc";
 export * from "./format";
 export * from "./albums";
+export * from "./artistPhotos";
 export * from "./playlists";
 export * from "./smartPlaylists";
 export * from "./smartRules";

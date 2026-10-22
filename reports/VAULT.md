@@ -49,10 +49,10 @@ reads four secrets: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
 
 | Action | Does |
 |---|---|
-| `sign-get` | GET URLs (1 h) for up to 200 keys. Only the caller's own keys that a live track row references are signed; the rest come back as `denied`. Thumbnails resolve through their full cover. |
+| `sign-get` | GET URLs (1 h) for up to 200 keys. Only the caller's own keys that a live track row references, or (for covers) an artist photo, are signed (`referenced_artwork_keys`, migration 0008); the rest come back as `denied`. Thumbnails resolve through their full cover. |
 | `sign-put` | PUT URL (15 min) for an audio file of one of the caller's track rows (`kind: audio`), or for a cover by its SHA-256 and variant (`kind: art`). Size limits are checked here. |
 | `commit` | After an audio upload: checks the object exists and matches the row's file size (a mismatch deletes it), then records `storage_key` and `uploaded_at` and clears `deleted_at` (a re-uploaded deleted track is revived). |
-| `delete` | "Delete from vault": calls `delete_track`, then removes the audio and the cover if no other track of the user uses it. A stored key outside the caller's own prefix, or of the wrong kind, is logged and never deleted. A failed object delete is logged; the key is unreachable anyway. |
+| `delete` | "Delete from vault": calls `delete_track`, then removes the audio and the cover if no other track of the user and no artist photo uses it. A stored key outside the caller's own prefix, or of the wrong kind, is logged and never deleted. A failed object delete is logged; the key is unreachable anyway. |
 
 Clients: `createSupabaseVaultApi` + `SignedUrlCache` in
 [`packages/core/src/vault.ts`](../packages/core/src/vault.ts) (desktop and web), `VaultApi` over
@@ -114,6 +114,9 @@ The shared orchestration is `uploadTrack` in
 6. **Audio** → `sign-put` + PUT with progress → `commit`.
 7. For a known row, the form's changes are sent as a `track.edit` **after** the commit, because a
    re-uploaded deleted track is a tombstone until the commit revives it.
+8. Desktop: `vault_adopt_upload` copies the file into the auto-cache (pinned while auto-download
+   is on) as `<hash>.<ext>`, hashing it on the way like a download, so the first play on that PC
+   doesn't fetch it back. A file that moved or changed since step 1 is skipped silently.
 
 ## Editing details and covers
 
@@ -123,6 +126,17 @@ laying them over the synced rows. The same rule is implemented three times — S
 (`applyTrackEdit`) and Kotlin (`TrackEdit.apply`) — and pinned by
 [`docs/fixtures/track-edit.golden.json`](../docs/fixtures/track-edit.golden.json). A new cover is
 uploaded first and then set with `artwork_key`; removing a cover sets it to null.
+
+## Artist photos
+
+An artist page's menu sets a photo of the artist instead of their album art. The picture is
+uploaded like a cover (`sign-put`, kind `art`), then stored as a settings row: scope
+`artist_photo`, key = the artist's name, value = the cover key, or JSON null once removed. Settings
+already sync everywhere with last-writer-wins, so photos need no table or sync path of their own
+([core/artistPhotos.ts](../packages/core/src/artistPhotos.ts), Android
+`data/vault/ArtistPhotos.kt`). [0008_artist_photos.sql](../supabase/migrations/0008_artist_photos.sql)
+makes it safe: a trigger accepts only null or the owner's own full cover key, `sign-get` signs
+photo keys through `referenced_artwork_keys`, and `delete_track` keeps a cover a photo still uses.
 
 ## Deleting
 
@@ -140,7 +154,7 @@ its cached or pinned copy (only tombstones the device has pulled count).
 | Library | `projectVault` over the synced rows (`lib/vaultMerge.ts`), ids `vault:<hash>` | `projectRows` (`lib/trackMap.ts`), ids = row ids | `VaultMerge` (`data/vault/VaultMerge.kt`), ids `vault:<hash>` |
 | Play | `ensureVaultLocal`: cached path, else Rust downloads from a signed URL | `resolveTrackAudio`: OPFS hit, else fetch from a signed URL | `VaultDataSource`: pinned file, else signed URL through Media3's cache |
 | Verify | BLAKE3 in Rust while writing | BLAKE3 (`hash-wasm`) while writing | BLAKE3 on pinned downloads |
-| Cache tiers | SQLite `cache_entries` (`vault:<hash>`): auto (LRU, cap) + pinned | OPFS + IndexedDB entries (with the hash): auto + pinned | Media3 SimpleCache (auto) + Room `downloads` (pinned, `vault-<hash>.<ext>`) |
+| Cache tiers | SQLite `cache_entries` (`vault:<hash>`): auto (LRU, cap) + pinned (`<app-data>\downloads`, or the folder picked under Downloads → Download folder) | OPFS + IndexedDB entries (with the hash): auto + pinned | Media3 SimpleCache (auto) + Room `downloads` (pinned, `vault-<hash>.<ext>`) |
 | Pin | track / album / artist / playlist "Download", Downloads → "Download all" | track / collection "Download" | track "Download" (WorkManager job, Wi-Fi/charging options) |
 | Covers | fetched by key into `artwork/vault-<sha>.jpg` | cached in IndexedDB by key | `filesDir/artwork/vault-<sha>.jpg` |
 
@@ -164,6 +178,8 @@ past that, storage is about $0.015 per GB-month.
 
 ## Known gaps
 
+- A replaced or removed artist photo stays in R2: nothing deletes art that no song or photo
+  uses any more.
 - Replacing a track's audio with a better file while keeping its history isn't a feature yet:
   upload the new file, then delete the old one.
 - Android verifies pinned downloads but not the streaming cache (Media3 caches as it plays).

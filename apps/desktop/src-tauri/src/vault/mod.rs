@@ -25,6 +25,8 @@ pub struct VaultState {
     pub download_locks: tokio::sync::Mutex<HashMap<String, Arc<tokio::sync::Mutex<()>>>>,
     /// Cache keys whose in-flight download should stop at the next chunk.
     pub cancelled: std::sync::Mutex<HashSet<String>>,
+    /// Set while pinned downloads move to a new folder, so two moves can't overlap.
+    pub moving: std::sync::atomic::AtomicBool,
 }
 
 impl VaultState {
@@ -33,6 +35,7 @@ impl VaultState {
             http: reqwest::Client::new(),
             download_locks: tokio::sync::Mutex::new(HashMap::new()),
             cancelled: std::sync::Mutex::new(HashSet::new()),
+            moving: std::sync::atomic::AtomicBool::new(false),
         }
     }
 }

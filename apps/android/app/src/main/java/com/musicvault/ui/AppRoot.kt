@@ -258,7 +258,12 @@ fun AppRoot() {
 
     val pad = PaddingValues(bottom = 16.dp)
 
-    CompositionLocalProvider(LocalTrackActions provides trackActions) {
+    val fieldOptions = remember(allTracks) { com.musicvault.ui.components.FieldOptions.of(allTracks) }
+
+    CompositionLocalProvider(
+        LocalTrackActions provides trackActions,
+        com.musicvault.ui.components.LocalFieldOptions provides fieldOptions,
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -328,7 +333,7 @@ fun AppRoot() {
                         composable(Routes.STATS) {
                             StatsScreen(
                                 onArtistClick = { open(Routes.artist(it)) },
-                                onGenreClick = { open(Routes.smart(SmartKey.GENRE)) },
+                                onGroupClick = { open(Routes.smart(it)) },
                                 onHeatmapExpand = { open(Routes.HEATMAP) },
                             )
                         }

@@ -100,13 +100,16 @@ on exit ([lib.rs:205-211](../apps/desktop/src-tauri/src/lib.rs)).
 
 ### Android engine (Media3)
 **Status** ✅ **Files** — [VaultPlayer.kt](../apps/android/app/src/main/java/com/musicvault/playback/VaultPlayer.kt)
-(653 — dual-ExoPlayer for gapless/crossfade),
+(694 lines on 2026-10-22: dual-ExoPlayer for gapless/crossfade),
 [PlaybackService.kt](../apps/android/app/src/main/java/com/musicvault/playback/PlaybackService.kt)
 (MediaSessionService),
 [PlaybackController.kt](../apps/android/app/src/main/java/com/musicvault/playback/PlaybackController.kt),
 [EqController.kt](../apps/android/app/src/main/java/com/musicvault/playback/EqController.kt),
 [QueueState.kt](../apps/android/app/src/main/java/com/musicvault/playback/QueueState.kt),
 [VaultDataSource.kt](../apps/android/app/src/main/java/com/musicvault/playback/VaultDataSource.kt).
+APE and WavPack: extractors in [playback/formats](../apps/android/app/src/main/java/com/musicvault/playback/formats),
+decoded by FFmpeg through the [`:ffmpeg` module](../apps/android/ffmpeg/README.md) (Media3's FFmpeg
+extension, cut down to those two decoders; `FfmpegAudioRenderer` is preferred over MediaCodec).
 
 ### Web engine (Web Audio)
 **Status** ✅ **Files** — [lib/audioEngine.ts](../apps/web/src/lib/audioEngine.ts),
@@ -292,11 +295,12 @@ from the synced `playlist_items`.
 Two distinct systems, easy to confuse:
 
 ### 1. Built-in smart playlists
-**Status** ✅ Nine fixed definitions — `recentlyAdded`, `recentlyPlayed`, `mostPlayed`,
-`favorites`, `neverPlayed` (kind `list`) and `genre`, `artist`, `year`, `language` (kind `group`)
-— at [core/smartPlaylists.ts:23-33](../packages/core/src/smartPlaylists.ts), computed by
-`computeSmartTracks` ([:44-63](../packages/core/src/smartPlaylists.ts)) and `computeSmartGroups`
-([:85-104](../packages/core/src/smartPlaylists.ts)). Kotlin port:
+**Status** ✅ Ten fixed definitions: `recentlyAdded`, `recentlyPlayed`, `mostPlayed`,
+`favorites`, `neverPlayed` (kind `list`) and `artist`, `genre`, `year`, `language`, `country`
+(kind `group`), in [core/smartPlaylists.ts](../packages/core/src/smartPlaylists.ts), computed by
+`computeSmartTracks` and `computeSmartGroups`. A comma in an artist or genre tag separates two
+names (`splitNames`), so a song appears in each of their groups; `hasArtist` matches artist pages
+the same way. Kotlin port:
 [domain/SmartPlaylists.kt](../apps/android/app/src/main/java/com/musicvault/domain/SmartPlaylists.kt).
 
 ### 2. Rule-based smart playlists (Phase 2)
@@ -338,7 +342,8 @@ Public surface:
 | `dedupeEvents` ([:103](../packages/core/src/stats.ts)) | Merge local log + sync shadow by event id |
 | `filterRange` / `rangeForPreset` ([:117, :139](../packages/core/src/stats.ts)) | Presets `last7Days`, `last30Days`, `last90Days`, `thisYear`, `allTime` |
 | `summarize` ([:164](../packages/core/src/stats.ts)) | Range summary |
-| `rankTracks` / `rankGroups` ([:230, :259](../packages/core/src/stats.ts)) | Top tracks/artists/albums/genres, ranked `by: "plays" \| "time"` |
+| `rankTracks` / `rankGroups` ([:230, :259](../packages/core/src/stats.ts)) | Top tracks and top albums, artists, genres, years, languages, countries, ranked `by: "plays" \| "time"`; comma-separated artists and genres each get the play |
+| `rankDevices` | Listening per `play_events.device_id` (the device donut) |
 | `bucketize` ([:307](../packages/core/src/stats.ts)) | Day/month/year buckets → charts + calendar heatmap |
 | `hourHistogram` ([:325](../packages/core/src/stats.ts)) | Listening clock |
 | `computeStreaks` ([:348](../packages/core/src/stats.ts)) | Current/longest streaks |
@@ -358,9 +363,11 @@ unlike `sync_*`. Idempotency is proven by a test —
 inserting the same event id twice leaves one row
 ([db/mod.rs:302-318](../apps/desktop/src-tauri/src/db/mod.rs)).
 
-**On screen**: a range selector, summary cards, an activity chart, the last 6 months as a
-calendar heatmap (26 Saturday-first week columns, month and weekday labels, a Less/More scale),
-a listening clock and top lists. **Expand** opens Listening History: every 6-month block since
+**On screen**: a range selector, summary cards, an activity chart and a listening clock (both
+with a time axis), the last 6 months as a calendar heatmap (26 Saturday-first week columns, month
+and weekday labels, a Less/More scale), top-5 lists two per row (albums and artists, genres and
+years, countries and languages), a play-time-by-device donut and the top tracks, each in its own
+card. Device names come from the `devices` table (id and name only). **Expand** opens Listening History: every 6-month block since
 1 January of the first year with plays, on one shared colour scale
 ([Heatmap.tsx](../apps/desktop/src/components/Heatmap.tsx), the same file on web;
 [HeatmapScreen.kt](../apps/android/app/src/main/java/com/musicvault/ui/screens/HeatmapScreen.kt)).

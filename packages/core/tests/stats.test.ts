@@ -10,6 +10,7 @@ import {
   fixedOffsetZone,
   hourHistogram,
   rangeForPreset,
+  rankDevices,
   rankGroups,
   rankTracks,
   recapYears,
@@ -66,6 +67,7 @@ describe("stats golden fixtures (shared with Kotlin)", () => {
         call.fn === "summarize" ? summarize(events, metaById)
         : call.fn === "rankTracks" ? rankTracks(events, metaById, call.by!, call.limit!)
         : call.fn === "rankGroups" ? rankGroups(events, metaById, call.field!, call.by!, call.limit!)
+        : call.fn === "rankDevices" ? rankDevices(events, call.by!)
         : call.fn === "bucketize" ? bucketize(events, zone, call.unit!)
         : call.fn === "hourHistogram" ? hourHistogram(events, zone)
         : call.fn === "streaks" ? computeStreaks(events, zone, golden.now)
@@ -82,6 +84,18 @@ describe("stats golden fixtures (shared with Kotlin)", () => {
 
 describe("stats engine", () => {
   const zonePlus6 = fixedOffsetZone(360);
+
+  it("rankGroups gives a play to each comma-separated artist and genre", () => {
+    const meta = new Map<string, StatsTrackMeta>([
+      ["t", { id: "t", title: "T", artist: "A, B", album: "X", genre: "Rock,Pop" }],
+    ]);
+    const events: StatsEvent[] = [{ id: "e", trackId: "t", playedAt: 0, durationPlayed: 10, completed: true }];
+    expect(rankGroups(events, meta, "artist", "time", 5).map((g) => g.name)).toEqual(["A", "B"]);
+    expect(rankGroups(events, meta, "genre", "time", 5).map((g) => [g.name, g.listenSeconds])).toEqual([
+      ["Pop", 10],
+      ["Rock", 10],
+    ]);
+  });
 
   it("dedupeEvents keeps the first occurrence of each id across sources", () => {
     const a: StatsEvent = { id: "e1", trackId: "t", playedAt: 0, durationPlayed: 10, completed: false };

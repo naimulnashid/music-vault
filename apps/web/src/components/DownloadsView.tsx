@@ -5,7 +5,7 @@ import { useDownloadStore } from "../store/downloadStore";
 import { useLibraryStore } from "../store/libraryStore";
 import type { Track } from "../types";
 import { ViewHeader } from "./ViewHeader";
-import { TrackList } from "./TrackList";
+import { TrackCollection } from "./TrackCollection";
 import { AlbumArt } from "./AlbumArt";
 import { ProgressRing } from "./DownloadRing";
 import { Button } from "./ui/Button";
@@ -237,14 +237,18 @@ export function DownloadsView() {
         )}
       </div>
 
-      <h2 className="px-6 md:px-8 pb-2 text-xl font-bold">In this browser</h2>
+      {pinned.length === 0 && <h2 className="px-6 md:px-8 pb-2 text-xl font-bold">In this browser</h2>}
       {pinned.length === 0 ? (
         <p className="px-8 pb-10 text-sm text-muted">
           Nothing downloaded yet — choose “Download” on a song, album, artist or playlist.
         </p>
       ) : (
         <>
-          <TrackList tracks={pinnedTracks} />
+          <TrackCollection
+            page="downloads"
+            tracks={pinnedTracks}
+            toolbar={<h2 className="text-xl font-bold">In this browser</h2>}
+          />
           {orphans.map((entry) => (
             <div key={entry.trackId} className="group flex items-center gap-3 mx-4 px-2 h-14 rounded-lg hover:bg-surface-2">
               <span className="flex-1 truncate text-sm text-muted">A song no longer in your vault</span>

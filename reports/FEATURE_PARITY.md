@@ -2,7 +2,8 @@
 
 > Audit date: 2026-07-17 · branch `main` @ `e3b5237`; library, vault, caching, downloads and
 > auth sections updated 2026-10-13 for the vault, which replaced Google Drive and local folders;
-> caching, downloads, statistics, settings and UI rows updated 2026-10-15.
+> caching, downloads, statistics, settings and UI rows updated 2026-10-15; format support updated
+> 2026-10-22.
 > Every feature from [FEATURES.md](FEATURES.md), scored per platform. Legend:
 > **✅ Full** · **⚠️ Partial / behaves differently** · **❌ Missing** · **🚧 Planned — not implemented**
 >
@@ -67,7 +68,7 @@ graph TB
 | Feature | Desktop | Android | Web | Notes / Discrepancy |
 |---|:---:|:---:|:---:|---|
 | Playback engine | ✅ | ✅ | ✅ | Three independent engines by design: Rust Symphonia→EQ→cpal ([audio/](../apps/desktop/src-tauri/src/audio)), Media3 dual-ExoPlayer ([VaultPlayer.kt](../apps/android/app/src/main/java/com/musicvault/playback/VaultPlayer.kt)), Web Audio ([audioEngine.ts](../apps/web/src/lib/audioEngine.ts)). |
-| Format support | ✅ | ⚠️ | ⚠️ | Desktop is the widest: Symphonia (mp3/flac/wav/pcm/ogg/vorbis/isomp4/aac/alac) **plus `.ape`** (`ape-decoder`) and **`.wv`** (vendored libwavpack, [audio/wv.rs](../apps/desktop/src-tauri/src/audio/wv.rs)). Android is limited to ExoPlayer's codecs; web to the browser's. **Impact**: APE and WavPack files play on desktop only — on the other clients they appear in the library (they're in the vault) but fail to play. |
+| Format support | ✅ | ✅ | ⚠️ | Desktop: Symphonia (mp3/flac/wav/pcm/ogg/vorbis/isomp4/aac/alac) **plus `.ape`** (`ape-decoder`) and **`.wv`** (vendored libwavpack, [audio/wv.rs](../apps/desktop/src-tauri/src/audio/wv.rs)). Android (since 2026-10-22): ExoPlayer's codecs plus `.ape` and `.wv`, through APE and WavPack extractors ([playback/formats](../apps/android/app/src/main/java/com/musicvault/playback/formats)) and FFmpeg's two decoders in the [:ffmpeg module](../apps/android/ffmpeg/README.md); the FFmpeg library ships for arm64-v8a, armeabi-v7a and x86_64 only. Web: the browser's codecs. **Impact**: APE and WavPack files play on desktop and Android; on the web they appear in the library (they're in the vault) but fail to play. |
 | Transport (play/pause/seek/volume) | ✅ | ✅ | ✅ | |
 | Queue | ✅ | ⚠️ | ✅ | Desktop/web: [QueuePanel.tsx](../apps/desktop/src/components/QueuePanel.tsx). Android: `QueueSheet` ([PanelSheets.kt:111](../apps/android/app/src/main/java/com/musicvault/ui/player/PanelSheets.kt)) — functionally present, but Android **persists the queue in Room** (`queue_items`, [Entities.kt](../apps/android/app/src/main/java/com/musicvault/data/db/Entities.kt)) while desktop/web do not have that table. **Impact**: Android restores its queue after a cold start from its own DB; the others rely on the synced `queue_state` row. Subtly different behavior offline. |
 | Shuffle & repeat | ✅ | ✅ | ✅ | Shared `RepeatMode` ([core/types.ts:55](../packages/core/src/types.ts)); synced. ⚠️ Only Android unit-tests this logic (14 cases, [QueueStateTest.kt](../apps/android/app/src/test/java/com/musicvault/playback/QueueStateTest.kt)). |
@@ -156,7 +157,7 @@ Full detail: [VAULT.md](VAULT.md).
 
 | Feature | Desktop | Android | Web | Notes |
 |---|:---:|:---:|:---:|---|
-| Built-in smart playlists (9) | ✅ | ✅ | ✅ | [core/smartPlaylists.ts:23-33](../packages/core/src/smartPlaylists.ts) ↔ [SmartPlaylists.kt](../apps/android/app/src/main/java/com/musicvault/domain/SmartPlaylists.kt). |
+| Built-in smart playlists (10) | ✅ | ✅ | ✅ | [core/smartPlaylists.ts:23-33](../packages/core/src/smartPlaylists.ts) ↔ [SmartPlaylists.kt](../apps/android/app/src/main/java/com/musicvault/domain/SmartPlaylists.kt). |
 | Rule-based smart playlists (13 fields, 21 ops) | ✅ | ✅ | ✅ | [core/smartRules.ts](../packages/core/src/smartRules.ts) ↔ [SmartRules.kt](../apps/android/app/src/main/java/com/musicvault/domain/SmartRules.kt), **pinned by [smart-rules.golden.json](../docs/fixtures/smart-rules.golden.json)**. |
 | Rule builder UI | ✅ | ✅ | ✅ | `SmartRulesEditor` ×3, including a 351-line Compose version. |
 

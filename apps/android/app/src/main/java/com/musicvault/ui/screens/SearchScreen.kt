@@ -62,11 +62,12 @@ fun SearchScreen(
     LaunchedEffect(Unit) { focus.requestFocus() }
 
     val q = query.trim().lowercase()
-    val artists = remember(all, q) {
+    val photos by libraryViewModel.artistPhotoPaths.collectAsStateWithLifecycle()
+    val artists = remember(all, q, photos) {
         if (q.isEmpty()) emptyList()
         else all.filter { it.artist.lowercase().contains(q) }
             .groupBy { it.artist }
-            .map { (name, tracks) -> name to (tracks.firstOrNull { it.artworkPath != null }?.artworkPath) }
+            .map { (name, tracks) -> name to (photos[name] ?: tracks.firstOrNull { it.artworkPath != null }?.artworkPath) }
             .take(12)
     }
     val albums = remember(all, q) {

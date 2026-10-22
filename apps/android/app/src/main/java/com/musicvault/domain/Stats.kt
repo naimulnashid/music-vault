@@ -26,6 +26,8 @@ data class StatsEvent(
     val durationPlayed: Double,
     /** True when >= 90% of the track was heard. */
     val completed: Boolean,
+    /** The device that played it (play_events.device_id); null on old local events. */
+    val deviceId: String? = null,
 )
 
 /** The metadata stats needs about a track. Lookup may miss (deleted tracks). */
@@ -36,6 +38,9 @@ data class StatsTrackMeta(
     val artist: String,
     val album: String,
     val genre: String? = null,
+    val year: Int? = null,
+    val language: String? = null,
+    val country: String? = null,
 )
 
 val UNKNOWN_STATS_TRACK = StatsTrackMeta(
@@ -236,7 +241,20 @@ object Stats {
             .take(maxOf(0, limit))
     }
 
-    enum class GroupField { ARTIST, ALBUM, GENRE }
+    enum class GroupField { ARTIST, ALBUM, GENRE, YEAR, LANGUAGE, COUNTRY }
+
+    /** "A, B" is two names (SmartPlaylists.splitNames); each gets the full play. */
+    private fun namesOf(value: String?, unknown: String): List<String> =
+        SmartPlaylists.splitNames(value).ifEmpty { listOf(unknown) }
+
+    private fun groupNames(meta: StatsTrackMeta, field: GroupField): List<String> = when (field) {
+        GroupField.ARTIST -> namesOf(meta.artist, "Unknown Artist")
+        GroupField.ALBUM -> listOf(meta.album)
+        GroupField.GENRE -> namesOf(meta.genre, "Unknown Genre")
+        GroupField.YEAR -> listOf(meta.year?.takeIf { it != 0 }?.toString() ?: "Unknown Year")
+        GroupField.LANGUAGE -> listOf(meta.language?.takeIf { it.isNotEmpty() } ?: "Unknown Language")
+        GroupField.COUNTRY -> listOf(meta.country?.takeIf { it.isNotEmpty() } ?: "Unknown Country")
+    }
 
     fun rankGroups(
         events: List<StatsEvent>,
@@ -250,24 +268,41 @@ object Stats {
         val acc = LinkedHashMap<String, Acc>()
         for (event in events) {
             val meta = metaById[event.trackId] ?: UNKNOWN_STATS_TRACK
-            val name: String
-            var secondary = ""
-            when (field) {
-                GroupField.ARTIST -> name = meta.artist
-                GroupField.ALBUM -> {
-                    name = meta.album
-                    secondary = meta.artist
-                }
-                GroupField.GENRE -> name = meta.genre?.takeIf { it.isNotEmpty() } ?: "Unknown Genre"
+            val secondary = if (field == GroupField.ALBUM) meta.artist else ""
+            for (name in groupNames(meta, field)) {
+                val entry = acc.getOrPut("$name$GROUP_SEP$secondary") { Acc(name, secondary) }
+                entry.plays += 1
+                entry.seconds += event.durationPlayed
             }
-            val entry = acc.getOrPut("$name$GROUP_SEP$secondary") { Acc(name, secondary) }
-            entry.plays += 1
-            entry.seconds += event.durationPlayed
         }
         return acc.values
             .map { RankedGroup(it.name, it.secondary, it.plays, it.seconds) }
             .sortedWith(rankedComparator(by, { it.plays }, { it.listenSeconds }, { "${it.name}$GROUP_SEP${it.secondary}" }))
             .take(maxOf(0, limit))
+    }
+
+    @Serializable
+    data class DeviceTime(
+        /** play_events.device_id; null for plays recorded before the device registered. */
+        val deviceId: String?,
+        val plays: Int,
+        val listenSeconds: Double,
+    )
+
+    /** Listening per device, ranked like the other lists (ties by id, null last). */
+    fun rankDevices(events: List<StatsEvent>, by: RankBy): List<DeviceTime> {
+        data class Acc(var plays: Int = 0, var seconds: Double = 0.0)
+
+        val acc = LinkedHashMap<String?, Acc>()
+        for (event in events) {
+            val entry = acc.getOrPut(event.deviceId) { Acc() }
+            entry.plays += 1
+            entry.seconds += event.durationPlayed
+        }
+        // U+FFFF sorts after any real id, so "unknown device" ends a tie.
+        return acc.entries
+            .map { (id, a) -> DeviceTime(id, a.plays, a.seconds) }
+            .sortedWith(rankedComparator(by, { it.plays }, { it.listenSeconds }, { it.deviceId ?: "￿" }))
     }
 
     // ---- calendar buckets (charts + heatmap) --------------------------------------

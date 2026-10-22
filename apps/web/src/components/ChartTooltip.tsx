@@ -21,8 +21,8 @@ export function useChartTooltip() {
   }, [tip]);
 
   const bind = (text: ReactNode) => ({
-    onMouseEnter: (e: MouseEvent<HTMLElement>) => {
-      const anchor = e.currentTarget.querySelector<HTMLElement>("[data-tip-anchor]") ?? e.currentTarget;
+    onMouseEnter: (e: MouseEvent<Element>) => {
+      const anchor = e.currentTarget.querySelector("[data-tip-anchor]") ?? e.currentTarget;
       const r = anchor.getBoundingClientRect();
       setTip({ x: r.left + r.width / 2, y: r.top, text });
     },
