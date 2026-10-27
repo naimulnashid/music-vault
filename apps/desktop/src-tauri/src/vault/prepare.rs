@@ -152,7 +152,11 @@ pub fn prepare_file(path: &Path, staging_dir: &Path) -> Result<PreparedFile> {
 /// Square-crops, resizes and JPEG-encodes an image into the vault's cover
 /// format, staging `<sha256>.jpg` and `<sha256>.thumb.jpg` in `staging_dir`.
 pub fn prepare_cover(bytes: &[u8], staging_dir: &Path) -> Result<PreparedCover> {
-    let img = image::load_from_memory(bytes).context("not a readable image")?;
+    let img = match image::load_from_memory(bytes) {
+        Ok(img) => img,
+        Err(_) if looks_like_svg(bytes) => render_svg(bytes)?,
+        Err(e) => return Err(e).context("not a readable image"),
+    };
     let (w, h) = (img.width(), img.height());
     let size = w.min(h);
     if size == 0 {
@@ -177,6 +181,36 @@ pub fn prepare_cover(bytes: &[u8], staging_dir: &Path) -> Result<PreparedCover> 
         full_size: full.len() as u64,
         thumb_size: thumb.len() as u64,
     })
+}
+
+/// An SVG file (plain or with an XML prologue / BOM), judged by its start.
+fn looks_like_svg(bytes: &[u8]) -> bool {
+    let head = String::from_utf8_lossy(&bytes[..bytes.len().min(1024)]).to_lowercase();
+    head.contains("<svg")
+}
+
+/// Draws an SVG so its shorter side is the full cover size, on white: a cover
+/// is a JPEG, and a transparent background would otherwise turn black.
+fn render_svg(bytes: &[u8]) -> Result<image::DynamicImage> {
+    use resvg::{tiny_skia, usvg};
+    let mut options = usvg::Options::default();
+    // Text in the SVG needs the system's fonts; only SVG covers pay for loading them.
+    options.fontdb_mut().load_system_fonts();
+    let tree = usvg::Tree::from_data(bytes, &options).context("not a readable SVG")?;
+    let size = tree.size();
+    let short = size.width().min(size.height());
+    if short <= 0.0 {
+        bail!("image has no pixels");
+    }
+    let scale = COVER_MAX_PX as f32 / short;
+    let width = (size.width() * scale).round().clamp(1.0, 8192.0) as u32;
+    let height = (size.height() * scale).round().clamp(1.0, 8192.0) as u32;
+    let mut pixmap = tiny_skia::Pixmap::new(width, height).context("SVG too large to draw")?;
+    pixmap.fill(tiny_skia::Color::WHITE);
+    resvg::render(&tree, tiny_skia::Transform::from_scale(scale, scale), &mut pixmap.as_mut());
+    // Opaque everywhere after the white fill, so premultiplied RGBA is plain RGBA.
+    let rgba = image::RgbaImage::from_raw(width, height, pixmap.take()).context("SVG drawing failed")?;
+    Ok(image::DynamicImage::ImageRgba8(rgba))
 }
 
 fn encode_jpeg(img: &image::DynamicImage, edge: u32) -> Result<Vec<u8>> {
@@ -245,6 +279,17 @@ mod tests {
         let a = prepare_cover(&png(400, 400), &dir).unwrap();
         let b = prepare_cover(&png(400, 400), &dir).unwrap();
         assert_eq!(a.sha256, b.sha256);
+    }
+
+    #[test]
+    fn svg_covers_are_drawn_square_at_full_size() {
+        let dir = temp_dir("svg");
+        let svg = br##"<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 20"><rect width="40" height="20" fill="#7c3aed"/></svg>"##;
+        let cover = prepare_cover(svg, &dir).unwrap();
+        let full = image::open(&cover.full_path).unwrap();
+        assert_eq!((full.width(), full.height()), (COVER_MAX_PX, COVER_MAX_PX));
+        let px = full.to_rgb8().get_pixel(600, 600).0;
+        assert!(px[2] > 200 && px[1] < 100, "the shape is drawn, not left white: {px:?}");
     }
 
     #[test]

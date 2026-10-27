@@ -12,7 +12,7 @@ export async function pickCover(): Promise<PreparedCover | null> {
   const picked = await open({
     multiple: false,
     title: "Choose a cover image",
-    filters: [{ name: "Images", extensions: ["jpg", "jpeg", "png", "webp", "bmp", "gif"] }],
+    filters: [{ name: "Images", extensions: ["jpg", "jpeg", "png", "webp", "bmp", "gif", "svg"] }],
   });
   if (!picked || Array.isArray(picked)) return null;
   return coverFromDto(await vaultPrepareCover(picked));

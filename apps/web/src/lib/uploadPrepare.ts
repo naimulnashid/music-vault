@@ -60,13 +60,44 @@ async function encodeSquare(bitmap: ImageBitmap, crop: { sx: number; sy: number;
   return canvas.convertToBlob({ type: "image/jpeg", quality: COVER_JPEG_QUALITY });
 }
 
-/** Square-crops and resizes an image into the vault's cover format. */
+function isSvg(image: Blob): boolean {
+  return image.type === "image/svg+xml" || (image instanceof File && /\.svg$/i.test(image.name));
+}
+
+/**
+ * createImageBitmap can't read an SVG file, so it goes through an <img>: drawn
+ * with its shorter side at the full cover size, on white (as the desktop app
+ * does), since a cover is a JPEG and transparency would turn black.
+ */
+async function svgBitmap(image: Blob): Promise<ImageBitmap> {
+  const url = URL.createObjectURL(image.type ? image : new Blob([image], { type: "image/svg+xml" }));
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    // An SVG with only a viewBox may report no size; it is then drawn square.
+    const w = img.naturalWidth || 1;
+    const h = img.naturalHeight || 1;
+    const scale = COVER_MAX_PX / Math.min(w, h);
+    const canvas = new OffscreenCanvas(Math.round(w * scale), Math.round(h * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas isn't available in this browser");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return await createImageBitmap(canvas);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/** Square-crops and resizes an image (SVG too) into the vault's cover format. */
 export async function prepareCover(image: Blob): Promise<PreparedCover> {
   let bitmap: ImageBitmap;
   try {
-    bitmap = await createImageBitmap(image);
+    bitmap = isSvg(image) ? await svgBitmap(image) : await createImageBitmap(image);
   } catch {
-    throw new Error("That image couldn't be read — try a JPEG or PNG.");
+    throw new Error("That image couldn't be read — try a JPEG, PNG or SVG.");
   }
   try {
     const crop = squareCrop(bitmap.width, bitmap.height);

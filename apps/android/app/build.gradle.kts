@@ -50,8 +50,8 @@ android {
         applicationId = "com.musicvault"
         minSdk = 28
         targetSdk = 35
-        versionCode = 6
-        versionName = "1.4.0"
+        versionCode = 7
+        versionName = "1.5.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -166,6 +166,8 @@ dependencies {
     implementation(libs.androidx.media3.datasource.okhttp)
 
     implementation(libs.coil.compose)
+    // SVG covers: drawn to a bitmap before the usual square crop and JPEG encode.
+    implementation(libs.androidsvg)
     implementation(libs.jaudiotagger)
     implementation(libs.timber)
     implementation(libs.kotlinx.coroutines.android)

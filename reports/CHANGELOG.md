@@ -11,11 +11,26 @@
 > Format follows [Keep a Changelog](https://keepachangelog.com/) conventions.
 > Releases since: `v1.0.0` and `v1.1.0`, both 2026-10-15, published as source on the public repo
 > (see [Notes on this changelog](#notes-on-this-changelog)); `v1.2.0`, 2026-10-20, published the
-> same way; `v1.3.0`, `v1.3.1` and `v1.4.0`, all 2026-10-21, published the same way.
+> same way; `v1.3.0`, `v1.3.1` and `v1.4.0`, all 2026-10-21, published the same way; `v1.5.0`, 2026-10-27,
+> published the same way.
 
 ---
 
 ## [Unreleased]
+
+### Added
+- Every app: an SVG file can be a cover (song, playlist, group or artist photo). It is drawn with
+  its shorter side at the full cover size on a white background, then cropped and stored as a
+  JPEG like any other cover: `resvg` on Windows, the browser on the web, AndroidSVG on Android.
+  Android picks covers with the system's file picker (images only) instead of the photo picker,
+  which doesn't list SVG files.
+
+## [1.5.0] - 2026-10-27
+
+A Settings page with Backup Music Vault on Windows and Settings on Android, covers for playlists
+and smart groups, statistics that keep a song's details and one device per machine, a light theme
+with visible cards, selectable text, a zoom indicator and a refreshed icon. Versions: 1.5.0
+everywhere; Android `versionCode 7`. Migration 0009 is live (2026-10-27).
 
 ### Added
 - **By Country** smart playlist on every app, after By Language. By Artist now comes before By

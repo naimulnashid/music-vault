@@ -39,9 +39,6 @@ import com.musicvault.ui.components.AlbumArt
 import com.musicvault.ui.components.EmptyMessage
 import com.musicvault.domain.SmartPlaylists
 import com.musicvault.ui.components.TrackList
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.rounded.AddPhotoAlternate
 import androidx.compose.material.icons.rounded.Delete
@@ -83,9 +80,7 @@ fun ArtistScreen(
             if (error != null) android.widget.Toast.makeText(context, "Couldn't set the photo: $error", android.widget.Toast.LENGTH_LONG).show()
         }
     }
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) setPhoto(uri)
-    }
+    val pickPhoto = com.musicvault.ui.vault.rememberCoverPicker { setPhoto(it) }
 
     val artistTracks = remember(tracks, artistName) {
         tracks.filter { SmartPlaylists.hasArtist(it, artistName) }
@@ -139,7 +134,7 @@ fun ArtistScreen(
                                         leadingIcon = { Icon(Icons.Rounded.AddPhotoAlternate, null) },
                                         onClick = {
                                             menuOpen = false
-                                            picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                            pickPhoto()
                                         },
                                     )
                                     if (hasPhoto) {

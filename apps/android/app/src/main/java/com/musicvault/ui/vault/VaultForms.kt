@@ -1,7 +1,6 @@
 package com.musicvault.ui.vault
 
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -174,6 +173,18 @@ private fun DateInput(
     }
 }
 
+/**
+ * Opens the system file picker for one image. Not the photo picker: it only
+ * lists photos, so an SVG cover couldn't be chosen there.
+ */
+@Composable
+fun rememberCoverPicker(onPick: (android.net.Uri) -> Unit): () -> Unit {
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) onPick(uri)
+    }
+    return { launcher.launch(arrayOf("image/*")) }
+}
+
 /** Cover preview (a picked cover, else an existing artwork path) with pick / remove buttons. */
 @Composable
 fun CoverControl(
@@ -185,9 +196,7 @@ fun CoverControl(
     onRemove: (() -> Unit)?,
 ) {
     val colors = LocalVaultColors.current
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) onPick(uri)
-    }
+    val pickCover = rememberCoverPicker(onPick)
     val path = picked?.thumb?.absolutePath ?: existingPath
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Box(
@@ -205,7 +214,7 @@ fun CoverControl(
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(
-                onClick = { launcher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                onClick = pickCover,
                 enabled = enabled,
             ) {
                 Icon(Icons.Rounded.AddPhotoAlternate, null, modifier = Modifier.size(16.dp))

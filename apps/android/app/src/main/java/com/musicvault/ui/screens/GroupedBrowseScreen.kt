@@ -1,8 +1,5 @@
 package com.musicvault.ui.screens
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -173,16 +170,14 @@ private fun CoverMenu(libraryViewModel: LibraryViewModel, collection: String, ex
             if (error != null) android.widget.Toast.makeText(context, "Couldn't set the cover: $error", android.widget.Toast.LENGTH_LONG).show()
         }
     }
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) set(uri)
-    }
+    val pickCover = com.musicvault.ui.vault.rememberCoverPicker { set(it) }
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         DropdownMenuItem(
             text = { Text(if (hasCover) "Change cover" else "Choose cover") },
             leadingIcon = { Icon(Icons.Rounded.AddPhotoAlternate, null) },
             onClick = {
                 onDismiss()
-                picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                pickCover()
             },
         )
         if (hasCover) {

@@ -1,6 +1,6 @@
 [package]
 name = "music-vault"
-version = "1.4.0"
+version = "1.5.0"
 description = "Music Vault — native desktop music player"
 edition = "2021"
 
@@ -50,6 +50,8 @@ crossbeam-channel = "0.5"
 blake3 = "1"
 # Artwork thumbnails (decode common cover formats, encode JPEG thumbs).
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp", "bmp", "gif"] }
+# SVG covers are drawn to pixels before the usual square-crop and JPEG encode.
+resvg = "0.49"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-appender = "0.2"

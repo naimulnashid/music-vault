@@ -251,7 +251,8 @@ class UploadManager @Inject constructor(
             inSampleSize = coverSampleSize(bounds.outWidth, bounds.outHeight, COVER_EDGE)
         }
         val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
-            ?: throw IllegalArgumentException("That image couldn't be read — try a JPEG or PNG.")
+            ?: svgBitmap(bytes)
+            ?: throw IllegalArgumentException("That image couldn't be read — try a JPEG, PNG or SVG.")
         val size = minOf(bitmap.width, bitmap.height)
         val square = Bitmap.createBitmap(bitmap, (bitmap.width - size) / 2, (bitmap.height - size) / 2, size, size)
         if (square !== bitmap) bitmap.recycle()
@@ -269,6 +270,30 @@ class UploadManager @Inject constructor(
         val fullFile = File(staging, "$sha.jpg").apply { writeBytes(full) }
         val thumbFile = File(staging, "$sha.thumb.jpg").apply { writeBytes(thumb) }
         return PreparedCover(sha, fullFile, thumbFile)
+    }
+
+    /**
+     * An SVG drawn with its shorter side at the full cover size, on white (as
+     * the desktop and web apps do): a cover is a JPEG, and transparency would
+     * turn black. Null when the bytes aren't an SVG.
+     */
+    private fun svgBitmap(bytes: ByteArray): Bitmap? {
+        val head = String(bytes, 0, minOf(bytes.size, 1024), Charsets.UTF_8).lowercase()
+        if ("<svg" !in head) return null
+        val svg = runCatching { com.caverock.androidsvg.SVG.getFromInputStream(bytes.inputStream()) }.getOrNull() ?: return null
+        val box = svg.documentViewBox
+        // An SVG with only a viewBox has no document size; one with neither is drawn square.
+        val w = svg.documentWidth.takeIf { it > 0 } ?: box?.width() ?: 1f
+        val h = svg.documentHeight.takeIf { it > 0 } ?: box?.height() ?: 1f
+        val scale = COVER_EDGE / minOf(w, h)
+        val bitmap = Bitmap.createBitmap((w * scale).toInt().coerceIn(1, 8192), (h * scale).toInt().coerceIn(1, 8192), Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(bitmap)
+        canvas.drawColor(android.graphics.Color.WHITE)
+        if (box == null) svg.setDocumentViewBox(0f, 0f, w, h)
+        svg.setDocumentWidth(bitmap.width.toFloat())
+        svg.setDocumentHeight(bitmap.height.toFloat())
+        svg.renderToCanvas(canvas)
+        return bitmap
     }
 
     fun prepareCover(uri: Uri): PreparedCover {
