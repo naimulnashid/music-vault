@@ -157,30 +157,45 @@ fun StatsScreen(
     }
     val hours = remember(ranged) { Stats.hourHistogram(ranged, zone) }
 
-    // Colors follow the device, not its rank: slots go by id over all events.
+    // One slice per device name: a reinstall used to register the same machine
+    // again, and its rows share a name. Colors follow the name, not its rank in
+    // the range: slots go to the most-played names over all events, so the main
+    // devices get their own slice and changing the range never repaints one.
     val palette = deviceColors(colors.isDark)
     val thisDevice = statsViewModel.thisDeviceId
     val deviceSlices = remember(data, ranged, deviceNames, colors.isDark) {
-        val order = data.events.map { it.deviceId }.distinct().sortedWith(nullsLast(naturalOrder()))
-        val slot = order.withIndex().associate { (i, id) -> id to i }
-        val slices = ArrayList<DeviceSlice>()
-        var other = 0.0
-        for (d in Stats.rankDevices(ranged, Stats.RankBy.TIME)) {
-            val i = slot[d.deviceId] ?: palette.size
-            if (i >= palette.size) {
-                other += d.listenSeconds
-                continue
-            }
-            val isThis = d.deviceId != null && d.deviceId == thisDevice
-            val known = d.deviceId?.let { deviceNames[it] }
-            val name = when {
-                known != null && isThis -> "$known (this device)"
-                known != null -> known
-                isThis -> "This device"
-                d.deviceId != null -> "Device"
+        fun nameOf(id: String?): String {
+            val known = id?.let { deviceNames[it] }
+            return when {
+                known != null -> Stats.deviceDisplayName(known)
+                id != null && id == thisDevice -> "This device"
                 else -> "Unknown device"
             }
-            slices += DeviceSlice(d.deviceId ?: "none", name, d.deviceId?.take(8) ?: "", d.listenSeconds, palette[i])
+        }
+        val thisName = thisDevice?.let { nameOf(it) }
+        val allTime = HashMap<String, Double>()
+        for (e in data.events) {
+            val name = nameOf(e.deviceId)
+            allTime[name] = (allTime[name] ?: 0.0) + e.durationPlayed
+        }
+        val order = allTime.keys.sortedWith(
+            compareBy<String> { it == "Unknown device" }.thenByDescending { allTime[it] }.thenBy { it },
+        )
+        val slot = order.withIndex().associate { (i, name) -> name to i }
+        val byName = LinkedHashMap<String, Double>()
+        for (d in Stats.rankDevices(ranged, Stats.RankBy.TIME)) {
+            val name = nameOf(d.deviceId)
+            byName[name] = (byName[name] ?: 0.0) + d.listenSeconds
+        }
+        val slices = ArrayList<DeviceSlice>()
+        var other = 0.0
+        for ((name, seconds) in byName.entries.sortedWith(compareByDescending<Map.Entry<String, Double>> { it.value }.thenBy { it.key })) {
+            val i = slot[name] ?: palette.size
+            if (i >= palette.size) {
+                other += seconds
+                continue
+            }
+            slices += DeviceSlice(name, name, if (name == thisName) "this device" else "", seconds, palette[i])
         }
         if (other > 0) slices += DeviceSlice("other", "Other devices", "", other, colors.subtle)
         slices
@@ -377,12 +392,12 @@ private fun TimeBars(values: List<Double>, labels: List<String>, height: Dp) {
     val colors = LocalVaultColors.current
     val (top, ticks) = timeScale(values.maxOrNull()?.coerceAtLeast(1.0) ?: 1.0)
     val gridColor = colors.border
-    val labelStyle = TextStyle(color = colors.textMuted, fontSize = 9.sp)
+    val labelStyle = TextStyle(color = colors.textMuted, fontSize = 11.sp)
     val measurer = rememberTextMeasurer()
     Column {
         Row {
-            // Axis labels drawn at their tick heights; 44dp holds "12h 30m".
-            Canvas(modifier = Modifier.width(44.dp).height(height)) {
+            // Axis labels drawn at their tick heights; 52dp holds "12h 30m".
+            Canvas(modifier = Modifier.width(52.dp).height(height)) {
                 ticks.forEach { t ->
                     val layout = measurer.measure(if (t == 0.0) "0" else formatHours(t), labelStyle)
                     val y = size.height - (t / top).toFloat() * size.height - layout.size.height / 2f
@@ -428,7 +443,7 @@ private fun TimeBars(values: List<Double>, labels: List<String>, height: Dp) {
         }
         Row(
             horizontalArrangement = Arrangement.spacedBy(2.dp),
-            modifier = Modifier.padding(start = 44.dp).fillMaxWidth(),
+            modifier = Modifier.padding(start = 52.dp).fillMaxWidth(),
         ) {
             labels.forEach { label ->
                 Text(
@@ -489,7 +504,7 @@ private fun DeviceDonut(slices: List<DeviceSlice>) {
         return
     }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(120.dp)) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(140.dp)) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val stroke = 16.dp.toPx()
                 val inset = stroke / 2
@@ -511,8 +526,8 @@ private fun DeviceDonut(slices: List<DeviceSlice>) {
                 }
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(formatHours(total), color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                Text("total", color = colors.textMuted, fontSize = 10.sp)
+                Text(formatHours(total), color = colors.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                Text("total", color = colors.textMuted, fontSize = 12.sp)
             }
         }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
@@ -527,7 +542,7 @@ private fun DeviceDonut(slices: List<DeviceSlice>) {
                                 .filter { it.isNotEmpty() }
                                 .joinToString(" · "),
                             color = colors.textMuted,
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             maxLines = 1,
                         )
                     }

@@ -106,10 +106,13 @@ export default function HelpPage() {
             songs already there move with it; Use default goes back.
           </Li>
           <Li>
-            Library mirror (Downloads view): Choose folder keeps every song there as an ordinary
-            music file, in Artist\Album\Title, with its current details, cover and lyrics written
-            in, so any other player can use it. It updates after each sync; songs deleted from the
-            vault move to a “Removed from vault” folder instead of being deleted.
+            Backup Music Vault (Settings, from the account menu): Choose folder keeps a full copy
+            of the vault there, so nothing is lost if the cloud is: every song as an ordinary music
+            file in Music\Artist\Album\Title with its current details, cover and lyrics written
+            in, every cover in Covers, artist photos in Artist photos, and your songs&apos; details,
+            playlists, favourites, play history and settings as JSON in Database. It updates after
+            each sync; songs deleted from the vault move to a “Removed from vault” folder instead
+            of being deleted.
           </Li>
         </ul>
 

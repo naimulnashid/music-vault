@@ -7,6 +7,7 @@ import { useAuthStore } from "../store/authStore";
 import { AccountMenu } from "./AccountMenu";
 import { IconButton } from "./ui/Button";
 import { Logo } from "./Logo";
+import { ZoomIndicator } from "./ZoomIndicator";
 
 /**
  * Full-width bar above everything: menu + wordmark on the left, the one
@@ -107,6 +108,7 @@ export function TopBar() {
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
+        <ZoomIndicator />
         {signedIn && (
           <button
             onClick={() => openUpload()}

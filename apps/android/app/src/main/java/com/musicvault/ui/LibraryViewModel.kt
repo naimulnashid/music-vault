@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import android.net.Uri
 import com.musicvault.data.vault.ArtistPhotos
+import com.musicvault.data.vault.CollectionCovers
 import com.musicvault.data.vault.DownloadRepository
 import com.musicvault.data.vault.UploadManager
 import com.musicvault.data.repo.HistoryRepository
@@ -32,6 +33,7 @@ class LibraryViewModel @Inject constructor(
     private val historyRepository: HistoryRepository,
     private val downloadRepository: DownloadRepository,
     private val artistPhotos: ArtistPhotos,
+    private val collectionCovers: CollectionCovers,
     private val uploads: UploadManager,
 ) : ViewModel() {
 
@@ -50,6 +52,23 @@ class LibraryViewModel @Inject constructor(
         val error = runCatching {
             val cover = uri?.let { withContext(Dispatchers.IO) { uploads.prepareCover(it) } }
             artistPhotos.set(artist, cover)
+        }.exceptionOrNull()
+        onDone(error?.message)
+    }
+
+    /** Collection key ("country:Bangladesh", "playlist:<id>") → cached cover file. */
+    val collectionCoverPaths: StateFlow<Map<String, String>> = collectionCovers.paths
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    /** Collection key → cover key (set even before the file is cached). */
+    val collectionCoverKeys: StateFlow<Map<String, String>> = collectionCovers.keys
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    /** Sets a collection's cover from a picked image, or back to the default when [uri] is null. */
+    fun setCollectionCover(collection: String, uri: Uri?, onDone: (String?) -> Unit) = viewModelScope.launch {
+        val error = runCatching {
+            val cover = uri?.let { withContext(Dispatchers.IO) { uploads.prepareCover(it) } }
+            collectionCovers.set(collection, cover)
         }.exceptionOrNull()
         onDone(error?.message)
     }

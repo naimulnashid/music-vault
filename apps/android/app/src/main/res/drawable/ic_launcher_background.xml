@@ -4,7 +4,8 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Same diagonal violet gradient as the desktop/web icon, spanning the visible 72dp. -->
+    <!-- Same tile as apps/site/public/favicon.svg: a diagonal violet gradient spanning the
+         visible 72dp, with a soft light from the top left. -->
     <path android:pathData="M0,0 L108,0 L108,108 L0,108 Z">
         <aapt:attr name="android:fillColor">
             <gradient
@@ -13,8 +14,20 @@
                 android:startY="18"
                 android:endX="90"
                 android:endY="90"
-                android:startColor="#A351F4"
-                android:endColor="#722CDC" />
+                android:startColor="#A78BFA"
+                android:endColor="#6D28D9" />
+        </aapt:attr>
+    </path>
+    <path android:pathData="M0,0 L108,0 L108,108 L0,108 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="34"
+                android:centerY="27"
+                android:gradientRadius="61"
+                android:startColor="#4DFFFFFF"
+                android:centerColor="#00FFFFFF"
+                android:endColor="#00FFFFFF" />
         </aapt:attr>
     </path>
 </vector>

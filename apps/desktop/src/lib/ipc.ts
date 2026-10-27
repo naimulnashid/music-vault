@@ -192,6 +192,10 @@ export const vaultMirrorPlan = (account: string, tracks: MirrorTrack[], tombston
 export const vaultMirrorApply = (track: MirrorTrack, relPath: string, audioUrl: string | null) =>
   invoke<{ tagged: boolean }>("vault_mirror_apply", { track, relPath, audioUrl });
 export const vaultMirrorRemove = (trackIds: string[]) => invoke<number>("vault_mirror_remove", { trackIds });
+/** Writes a text file under the backup folder (`Database/…`, `Backup info.json`). */
+export const backupWriteText = (relPath: string, contents: string) => invoke<void>("backup_write_text", { relPath, contents });
+/** Copies a cached cover into the backup folder; true when it copied. */
+export const backupCopyArt = (fileName: string, relPath: string) => invoke<boolean>("backup_copy_art", { fileName, relPath });
 
 // ---- Sync engine storage commands -------------------------------------------
 
@@ -222,6 +226,8 @@ export const syncShadowPut = (entity: string, id: string, payload: string) =>
   invoke<void>("sync_shadow_put", { entity, id, payload });
 export const syncShadowDelete = (entity: string, id: string) =>
   invoke<void>("sync_shadow_delete", { entity, id });
+/** This PC's name (Windows COMPUTERNAME), or null when it can't be read. */
+export const deviceName = () => invoke<string | null>("device_name");
 export const syncShadowAll = (entity: string) => invoke<SyncShadowRow[]>("sync_shadow_all", { entity });
 export const syncClearAll = () => invoke<void>("sync_clear_all");
 

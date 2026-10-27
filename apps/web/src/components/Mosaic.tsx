@@ -1,12 +1,30 @@
 import { ListMusic, Sparkles } from "lucide-react";
 import type { Track } from "../types";
 import { AlbumArt, artKeyOf } from "./AlbumArt";
+import { CustomCover } from "./CustomCover";
+import { useCollectionCoverStore } from "../store/collectionCoverStore";
 
 /**
- * Cover for a collection: one artwork, or a 2×2 grid of the first four
+ * Cover for a collection: the picture picked for it (`collection` is its
+ * core collectionKey), else one artwork, or a 2×2 grid of the first four
  * distinct ones; a gradient tile with an icon when nothing has art.
  */
-export function Mosaic({ tracks, className = "", smart = false }: { tracks: Track[]; className?: string; smart?: boolean }) {
+export function Mosaic({
+  tracks,
+  className = "",
+  smart = false,
+  collection,
+  full = false,
+}: {
+  tracks: Track[];
+  className?: string;
+  smart?: boolean;
+  collection?: string;
+  /** Large heroes load a picked cover at full size. */
+  full?: boolean;
+}) {
+  const custom = useCollectionCoverStore((s) => (collection ? s.covers[collection] : undefined));
+  if (custom) return <CustomCover coverKey={custom} thumb={!full} className={className} />;
   const keys = new Set<string>();
   const arts: Track[] = [];
   for (const t of tracks) {

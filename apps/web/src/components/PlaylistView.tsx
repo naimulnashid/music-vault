@@ -8,10 +8,11 @@ import { DownloadAllButton } from "./DownloadAllButton";
 import { SmartPlaylistDialog } from "./SmartPlaylistDialog";
 import { AddSongsDialog } from "./AddSongsDialog";
 import { evaluateSmartPlaylist } from "../lib/smartEval";
-import { emptySmartRules, formatDurationLong } from "@musicvault/core";
+import { collectionKey, emptySmartRules, formatDurationLong } from "@musicvault/core";
 import type { Track } from "../types";
 import { Hero, PlayShuffleButtons } from "./ViewHeader";
 import { Mosaic } from "./Mosaic";
+import { useCoverMenuItems } from "./CollectionCoverMenu";
 import { artKeyOf } from "./AlbumArt";
 import { NotFound } from "./NotFound";
 import { Button, IconButton } from "./ui/Button";
@@ -37,6 +38,7 @@ export function PlaylistView() {
   const moreRef = useRef<HTMLButtonElement>(null);
 
   const playlist = playlists.find((p) => p.id === activePlaylistId);
+  const coverItems = useCoverMenuItems(collectionKey("playlist", activePlaylistId ?? ""));
 
   const playlistTracks = useMemo(() => {
     if (!playlist) return [];
@@ -74,7 +76,15 @@ export function PlaylistView() {
       <Hero
         kind={playlist.isSmart ? "Smart playlist" : "Playlist"}
         artTrack={playlistTracks.find((t) => artKeyOf(t))}
-        cover={<Mosaic tracks={playlistTracks} smart={playlist.isSmart} className="w-48 h-48 md:w-56 md:h-56 rounded-xl" />}
+        cover={
+          <Mosaic
+            tracks={playlistTracks}
+            smart={playlist.isSmart}
+            collection={collectionKey("playlist", playlist.id)}
+            full
+            className="w-48 h-48 md:w-56 md:h-56 rounded-xl"
+          />
+        }
         title={
           editing ? (
             <input
@@ -127,6 +137,7 @@ export function PlaylistView() {
         onClose={() => setMenuAnchor(null)}
         items={[
           { label: "Rename", icon: <Pencil />, onSelect: startEdit },
+          ...coverItems,
           { label: "Delete playlist", icon: <Trash2 />, danger: true, onSelect: () => void handleDelete() },
         ]}
       />
@@ -156,7 +167,12 @@ export function PlaylistView() {
           page="playlist"
           tracks={playlistTracks}
           draggable
-          onReorder={(reordered) => void reorderPlaylist(playlist.id, reordered.map((t) => t.id))}
+          onReorder={(reordered) =>
+            void reorderPlaylist(
+              playlist.id,
+              reordered.map((t) => t.id),
+            )
+          }
           onRemoveFromPlaylist={(id) => void removeTrackFromPlaylist(playlist.id, id)}
         />
       )}

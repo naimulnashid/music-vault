@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -66,6 +67,7 @@ fun UploadScreen(viewModel: VaultViewModel) {
     val shared by viewModel.shared.collectAsStateWithLifecycle()
     val sharedCover by viewModel.sharedCover.collectAsStateWithLifecycle()
     val running by viewModel.running.collectAsStateWithLifecycle()
+    val lastUploaded by viewModel.lastUploaded.collectAsStateWithLifecycle()
     var coverError by remember { mutableStateOf<String?>(null) }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
@@ -75,7 +77,9 @@ fun UploadScreen(viewModel: VaultViewModel) {
     val done = items.count { it.status == UploadStatus.DONE }
     val withSource = items.count { it.source != null }
 
-    Column(modifier = Modifier.fillMaxSize().background(colors.bg)) {
+    // imePadding: edge-to-edge leaves the keyboard over the content, so the list
+    // shrinks above it and a focused field scrolls into view.
+    Column(modifier = Modifier.fillMaxSize().background(colors.bg).imePadding()) {
         val addFiles = @Composable {
             PillButton(
                 "Add files",
@@ -178,6 +182,7 @@ fun UploadScreen(viewModel: VaultViewModel) {
                 when {
                     running -> "Uploading… $done done"
                     done > 0 -> "$done uploaded"
+                    items.isEmpty() && lastUploaded > 0 -> "$lastUploaded ${if (lastUploaded == 1) "song" else "songs"} uploaded"
                     else -> "$uploadable ready"
                 },
                 color = colors.textMuted,

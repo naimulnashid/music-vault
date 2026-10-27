@@ -33,6 +33,7 @@ No client keeps its own copy of the track list — each projects the synced `tra
 | 0005 | [0005_drop_drive.sql](../supabase/migrations/0005_drop_drive.sql) | 131 | vault M7 | Drops `drive_file_id` / `drive_md5` and their indexes; identity becomes the content hash alone; re-creates `merge_tracks` and `resolve_upload_target` without Drive |
 | 0007 | [0007_artwork_key_guard.sql](../supabase/migrations/0007_artwork_key_guard.sql) | 45 | audit SEC-001 | Applied 2026-10-20. Extends `tracks_protect_vault_columns` to reject a client INSERT or UPDATE that sets `artwork_key` to anything but the row owner's own full cover key |
 | 0008 | [0008_artist_photos.sql](../supabase/migrations/0008_artist_photos.sql) | 122 | artist photos | Applied 2026-10-22. Guards `artist_photo` settings rows (null or the owner's own cover key), adds `referenced_artwork_keys`, and makes `delete_track` keep a cover an artist photo uses |
+| 0009 | [0009_collection_covers.sql](../supabase/migrations/0009_collection_covers.sql) | 111 | playlist covers | Applied 2026-10-27. Extends the three 0008 pieces to `collection_cover` settings rows: the value guard, `referenced_artwork_keys` and `delete_track` |
 
 There is **no migration runner in the repo** — no Supabase CLI config, no `supabase/config.toml`.
 The migrations are applied by hand (the RLS test says "run in the Supabase SQL editor (or psql)"
@@ -327,7 +328,7 @@ deliberately **no update/delete policies** — "append-only by construction"
 | Column | Type | Constraints |
 |---|---|---|
 | `user_id` | uuid | **PK** (composite), FK CASCADE |
-| `scope` | text | **PK** (composite), NOT NULL DEFAULT `'global'` — `'global'`, a device id string, or `'artist_photo'` (key = artist name, value = cover key or null; **0008**) |
+| `scope` | text | **PK** (composite), NOT NULL DEFAULT `'global'` — `'global'`, a device id string, or `'artist_photo'` (key = artist name, value = cover key or null; **0008**), or `'collection_cover'` (key = `<kind>:<id>` such as `country:Bangladesh` or `playlist:<uuid>`, value = cover key or null; **0009**) |
 | `key` | text | **PK** (composite), NOT NULL |
 | `value` | jsonb | NOT NULL |
 | `updated_at` | timestamptz | trigger-maintained |
@@ -459,7 +460,8 @@ sorting away from eviction ([vault/cache.rs](../apps/desktop/src-tauri/src/vault
 `track_id` TEXT PK (the synced row id), `content_hash`, `rel_path` (inside the mirror folder,
 `/`-separated), `digest` (of the details the file was written with), `has_lrc`, `tagged`,
 `written_at`. One row per file in the library mirror ([vault/mirror.rs](../apps/desktop/src-tauri/src/vault/mirror.rs)).
-Settings beside it: `mirror_dir` (the folder while the mirror is on), `mirror_entries_dir` and
+Settings beside it: `backup_dir` (the backup folder while backups are on; the rows' paths are
+inside its `Music` folder; `mirror_dir` before 2026-10-27), `mirror_entries_dir` and
 `mirror_entries_account` (the folder and account the rows describe; another one clears them).
 
 ### `sync_outbox` / `sync_cursors` / `sync_shadow` (v4)

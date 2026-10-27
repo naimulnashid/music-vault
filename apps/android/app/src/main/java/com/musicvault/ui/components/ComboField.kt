@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.sp
 import com.musicvault.domain.SmartPlaylists
 import com.musicvault.domain.model.Track
 
-/** Distinct library values per field, sorted; artists and genres split at commas (web lib/fieldOptions.ts). */
+/** Distinct library values per field, sorted; artists, genres, languages and countries split at commas (web lib/fieldOptions.ts). */
 class FieldOptions(private val lists: Map<String, List<String>>) {
     operator fun get(field: String): List<String> = lists[field].orEmpty()
 
@@ -32,7 +32,7 @@ class FieldOptions(private val lists: Map<String, List<String>>) {
 
         /** Short lists show everything when opened; long ones show matches while typing. */
         val SHOW_ALL = setOf("language", "country")
-        val MULTI = setOf("artist", "genre")
+        val MULTI = setOf("artist", "genre", "language", "country")
         val FIELDS = setOf("title", "artist", "album", "genre", "language", "country")
 
         fun of(tracks: List<Track>): FieldOptions {
@@ -42,8 +42,8 @@ class FieldOptions(private val lists: Map<String, List<String>>) {
                 if (t.artist != "Unknown Artist") sets.getValue("artist").addAll(SmartPlaylists.splitNames(t.artist))
                 if (t.album.isNotBlank() && t.album != "Unknown Album") sets.getValue("album").add(t.album)
                 sets.getValue("genre").addAll(SmartPlaylists.splitNames(t.genre))
-                t.language?.takeIf { it.isNotBlank() }?.let { sets.getValue("language").add(it) }
-                t.country?.takeIf { it.isNotBlank() }?.let { sets.getValue("country").add(it) }
+                sets.getValue("language").addAll(SmartPlaylists.splitNames(t.language))
+                sets.getValue("country").addAll(SmartPlaylists.splitNames(t.country))
             }
             return FieldOptions(sets.mapValues { it.value.toList() })
         }

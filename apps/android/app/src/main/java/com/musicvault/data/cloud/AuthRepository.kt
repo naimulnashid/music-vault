@@ -10,6 +10,8 @@ import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import timber.log.Timber
@@ -91,11 +93,13 @@ class AuthRepository @Inject constructor(
     /**
      * Registers this install in the devices table (or refreshes last_seen_at).
      * The device id is persisted so statistics can attribute play events.
+     * One registration at a time: startup and sign-in can both ask at once,
+     * which used to add the same phone two or three times.
      */
-    suspend fun registerDevice() {
-        val c = client ?: return
-        val userId = c.auth.currentUserOrNull()?.id ?: return
-        val name = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
+    suspend fun registerDevice() = registerLock.withLock {
+        val c = client ?: return@withLock
+        val userId = c.auth.currentUserOrNull()?.id ?: return@withLock
+        val name = deviceLabel()
         try {
             val storedId = prefs.getString(KEY_DEVICE_ID, null)
             if (storedId != null) {
@@ -106,8 +110,26 @@ class AuthRepository @Inject constructor(
                     select()
                     filter { eq("id", storedId) }
                 }.decodeSingleOrNull<DeviceRow>()
-                if (updated != null) return
+                if (updated != null) return@withLock
                 // stored id no longer exists — fall through and re-register
+            }
+            // A reinstall loses the stored id; the same phone comes back under
+            // the same name and takes its old row (core supabase/devices.ts).
+            val same = c.from("devices").select {
+                filter {
+                    eq("user_id", userId)
+                    eq("name", name)
+                    eq("platform", "android")
+                }
+                order("last_seen_at", io.github.jan.supabase.postgrest.query.Order.DESCENDING)
+                limit(1)
+            }.decodeList<DeviceRow>().firstOrNull()
+            if (same != null) {
+                c.from("devices").update({ set("last_seen_at", Instant.now().toString()) }) {
+                    filter { eq("id", same.id) }
+                }
+                prefs.edit { putString(KEY_DEVICE_ID, same.id) }
+                return@withLock
             }
             val created = c.from("devices").insert(
                 NewDevice(userId = userId, name = name, platform = "android")
@@ -116,6 +138,15 @@ class AuthRepository @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "device registration failed")
         }
+    }
+
+    /** "Nothing A001"; an emulator says so instead of naming its build. */
+    private fun deviceLabel(): String {
+        val model = android.os.Build.MODEL
+        val emulator = android.os.Build.FINGERPRINT.startsWith("generic") ||
+            android.os.Build.FINGERPRINT.contains("emulator") ||
+            model.startsWith("sdk_gphone") || model.contains("Emulator")
+        return if (emulator) "Android emulator" else "${android.os.Build.MANUFACTURER} $model"
     }
 
     fun deviceId(): String? = prefs.getString(KEY_DEVICE_ID, null)
@@ -134,6 +165,8 @@ class AuthRepository @Inject constructor(
             emptyMap()
         }
     }
+
+    private val registerLock = Mutex()
 
     private companion object {
         const val KEY_DEVICE_ID = "device_id"

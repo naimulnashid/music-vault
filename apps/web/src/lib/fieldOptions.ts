@@ -22,8 +22,8 @@ function build(tracks: ReturnType<typeof useLibraryStore.getState>["tracks"]): L
     if (t.artist !== "Unknown Artist") for (const name of splitNames(t.artist)) sets.artist.add(name);
     if (t.album && t.album !== "Unknown Album") sets.album.add(t.album);
     for (const name of splitNames(t.genre)) sets.genre.add(name);
-    if (t.language) sets.language.add(t.language);
-    if (t.country) sets.country.add(t.country);
+    for (const name of splitNames(t.language)) sets.language.add(name);
+    for (const name of splitNames(t.country)) sets.country.add(name);
   }
   const sorted = (s: Set<string>) => [...s].sort((a, b) => a.localeCompare(b));
   return {
@@ -36,7 +36,7 @@ function build(tracks: ReturnType<typeof useLibraryStore.getState>["tracks"]): L
   };
 }
 
-/** Distinct values of a field across the library, sorted; artists and genres split at commas. */
+/** Distinct values of a field across the library, sorted; artists, genres, languages and countries split at commas. */
 export function useFieldOptions(field: OptionField): string[] {
   const tracks = useLibraryStore((s) => s.tracks);
   let lists = cache.get(tracks);
@@ -53,6 +53,6 @@ export const OPTION_MODE: Record<OptionField, { show: "all" | "matches"; multi: 
   artist: { show: "matches", multi: true },
   album: { show: "matches", multi: false },
   genre: { show: "matches", multi: true },
-  language: { show: "all", multi: false },
-  country: { show: "all", multi: false },
+  language: { show: "all", multi: true },
+  country: { show: "all", multi: true },
 };

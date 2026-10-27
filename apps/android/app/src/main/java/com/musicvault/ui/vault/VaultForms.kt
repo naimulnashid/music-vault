@@ -15,15 +15,26 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AddPhotoAlternate
+import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -85,18 +96,82 @@ fun FieldInput(
         )
         return
     }
+    if (isDate) {
+        DateInput(value, { onChange(field, it) }, label, hint, fieldColors, modifier)
+        return
+    }
     OutlinedTextField(
         value = value,
-        onValueChange = { onChange(field, if (isDate) TrackForm.maskReleaseDate(value, it) else it) },
+        onValueChange = { onChange(field, it) },
         label = label,
         placeholder = hint,
         singleLine = !multiline,
         minLines = if (multiline) 3 else 1,
         maxLines = if (multiline) 8 else 1,
-        keyboardOptions = if (isDate) KeyboardOptions(keyboardType = KeyboardType.Number) else KeyboardOptions.Default,
         colors = fieldColors,
         modifier = modifier.fillMaxWidth(),
     )
+}
+
+/**
+ * Release date (YYYY, YYYY-MM or YYYY-MM-DD) typed as digits, with the dashes
+ * added as you go, or picked from a calendar. The field keeps its own cursor:
+ * with a plain String the cursor stayed where it was when a dash went in, so
+ * the next digit landed before the dash ("2026-09-09" became "2026-90-90").
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DateInput(
+    value: String,
+    onChange: (String) -> Unit,
+    label: @Composable () -> Unit,
+    hint: (@Composable () -> Unit)?,
+    fieldColors: androidx.compose.material3.TextFieldColors,
+    modifier: Modifier,
+) {
+    var text by remember { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
+    // A value set from outside (a shared field, a reset) replaces what is shown.
+    if (text.text != value) text = TextFieldValue(value, TextRange(value.length))
+    var picking by remember { mutableStateOf(false) }
+    OutlinedTextField(
+        value = text,
+        onValueChange = { next ->
+            val masked = TrackForm.maskReleaseDate(text.text, next.text)
+            text = TextFieldValue(masked, TextRange(masked.length))
+            onChange(masked)
+        },
+        label = label,
+        placeholder = hint,
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        trailingIcon = {
+            IconButton(onClick = { picking = true }) {
+                Icon(Icons.Rounded.CalendarMonth, "Pick a date")
+            }
+        },
+        colors = fieldColors,
+        modifier = modifier.fillMaxWidth(),
+    )
+    if (picking) {
+        val initial = runCatching { java.time.LocalDate.parse(value) }.getOrNull()
+        val state = rememberDatePickerState(
+            initialSelectedDateMillis = initial?.atStartOfDay(java.time.ZoneOffset.UTC)?.toInstant()?.toEpochMilli(),
+        )
+        DatePickerDialog(
+            onDismissRequest = { picking = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    state.selectedDateMillis?.let { ms ->
+                        onChange(java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneOffset.UTC).toLocalDate().toString())
+                    }
+                    picking = false
+                }) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = { picking = false }) { Text("Cancel") } },
+        ) {
+            DatePicker(state = state)
+        }
+    }
 }
 
 /** Cover preview (a picked cover, else an existing artwork path) with pick / remove buttons. */

@@ -125,9 +125,19 @@ export const useStatsStore = create<StatsState>((set, get) => ({
 
         // The local log doesn't record the device: it is this one, or what
         // the synced copy says when the event was recorded under another sign-in.
-        const shadowDevice = new Map(shadowEvents.map((e) => [e.id, e.deviceId ?? null]));
+        // It keys the song by its library id (`vault:<content hash>`), which is
+        // gone once the song is deleted or replaced; the synced copy keeps the
+        // track row, whose details the shadow still has, so it names the song.
+        const synced = new Map(shadowEvents.map((e) => [e.id, e]));
         const thisDevice = useAuthStore.getState().deviceId;
-        const localWithDevice = localEvents.map((e) => ({ ...e, deviceId: shadowDevice.get(e.id) ?? e.deviceId ?? thisDevice }));
+        const localWithDevice = localEvents.map((e) => {
+          const copy = synced.get(e.id);
+          return {
+            ...e,
+            trackId: copy && !metaById.has(e.trackId) ? copy.trackId : e.trackId,
+            deviceId: copy?.deviceId ?? e.deviceId ?? thisDevice,
+          };
+        });
 
         // Local first: this device's copy of an event wins the dedupe.
         set({ events: dedupeEvents(localWithDevice, shadowEvents), metaById, loaded: true });
@@ -147,12 +157,24 @@ export const useStatsStore = create<StatsState>((set, get) => ({
   },
 }));
 
-/** Called by the sync store after a pull that added play events. */
 /** Sign-out: drop the previous account's events; the next open reloads from what this device keeps. */
 export function resetStats(): void {
   useStatsStore.setState({ events: [], metaById: new Map(), devices: new Map(), loaded: false });
 }
 
+/** Called by the sync store after a pull that added play events. */
 export function refreshStatsIfLoaded(): void {
   if (useStatsStore.getState().loaded) void useStatsStore.getState().load();
 }
+
+// Edited details reach the charts without reopening Statistics. Pulls and
+// edits come in bursts, so a reload waits for a quiet second.
+let libraryTimer: ReturnType<typeof setTimeout> | null = null;
+useLibraryStore.subscribe((state, prev) => {
+  if (state.vaultRows === prev.vaultRows && state.pendingEdits === prev.pendingEdits) return;
+  if (libraryTimer) clearTimeout(libraryTimer);
+  libraryTimer = setTimeout(() => {
+    libraryTimer = null;
+    refreshStatsIfLoaded();
+  }, 1000);
+});

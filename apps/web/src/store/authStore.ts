@@ -43,6 +43,21 @@ interface AuthState {
 
 function deviceName(): string {
   const ua = navigator.userAgent;
+  // Automated and embedded browsers (tests, an app's built-in browser) report
+  // as Chrome; named apart, their plays don't pass for the owner's own browser.
+  if (navigator.webdriver) return "Web (test browser)";
+  if (/Electron\//.test(ua)) return "Web (built-in app browser)";
+  const os = /Windows/.test(ua)
+    ? "Windows"
+    : /Android/.test(ua)
+      ? "Android"
+      : /iPhone|iPad/.test(ua)
+        ? "iOS"
+        : /Mac OS X/.test(ua)
+          ? "macOS"
+          : /Linux/.test(ua)
+            ? "Linux"
+            : null;
   const browser = /Edg\//.test(ua)
     ? "Edge"
     : /Firefox\//.test(ua)
@@ -52,7 +67,7 @@ function deviceName(): string {
         : /Safari\//.test(ua)
           ? "Safari"
           : "Browser";
-  return `Web (${browser})`;
+  return os ? `Web (${browser} on ${os})` : `Web (${browser})`;
 }
 
 async function ensureDeviceRegistered(session: Session): Promise<string | null> {

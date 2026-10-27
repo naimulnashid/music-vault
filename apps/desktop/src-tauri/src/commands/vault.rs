@@ -7,7 +7,7 @@ use crate::commands::AppPaths;
 use crate::db::models::CacheEntryRow;
 use crate::db::{queries, Db};
 use crate::vault::cache::{self, CacheStats};
-use crate::vault::{mirror, prepare, transfer};
+use crate::vault::{backup, mirror, prepare, transfer};
 
 /// Where prepared covers wait for upload: inside the artwork dir, so the
 /// upload form can preview them through the (artwork-scoped) asset protocol.
@@ -191,6 +191,30 @@ pub async fn vault_mirror_remove(app: AppHandle, track_ids: Vec<String>) -> Resu
     tauri::async_runtime::spawn_blocking(move || mirror::remove(&db, &track_ids).map_err(|e| e.to_string()))
         .await
         .map_err(|e| e.to_string())?
+}
+
+/// Writes a database export or the backup info file into the backup folder.
+#[tauri::command]
+pub async fn backup_write_text(app: AppHandle, rel_path: String, contents: String) -> Result<(), String> {
+    let db = Db(app.state::<Db>().0.clone());
+    tauri::async_runtime::spawn_blocking(move || {
+        let conn = db.0.lock().expect("db lock");
+        backup::write_text(&conn, &rel_path, &contents).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Copies a cached cover (`vault-<sha256>.jpg`) into the backup folder; true when it copied.
+#[tauri::command]
+pub async fn backup_copy_art(app: AppHandle, file_name: String, rel_path: String) -> Result<bool, String> {
+    let db = Db(app.state::<Db>().0.clone());
+    tauri::async_runtime::spawn_blocking(move || {
+        let conn = db.0.lock().expect("db lock");
+        backup::copy_art(&conn, &app.state::<AppPaths>(), &file_name, &rel_path).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 /// Downloads a cover into the artwork cache (no-op when already there).

@@ -9,6 +9,7 @@ import {
   type Session,
 } from "@musicvault/core";
 import { supabase } from "../lib/supabase";
+import { deviceName } from "../lib/ipc";
 
 const DEVICE_ID_KEY = "mv.deviceId";
 /** True while our own signOut runs, so its SIGNED_OUT event counts as the user's. */
@@ -47,10 +48,11 @@ async function ensureDeviceRegistered(session: Session): Promise<string | null> 
   if (!supabase) return null;
   try {
     const stored = localStorage.getItem(DEVICE_ID_KEY) ?? undefined;
+    const pc = await deviceName().catch(() => null);
     const device = await registerDevice(
       supabase,
       session.user.id,
-      { name: `Desktop (${navigator.platform || "Windows"})`, platform: "desktop" },
+      { name: pc ? `${pc} (Windows app)` : "Windows app", platform: "desktop" },
       stored,
     );
     localStorage.setItem(DEVICE_ID_KEY, device.id);

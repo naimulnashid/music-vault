@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { dedupeEvents, type PlayEventRow, type StatsEvent, type StatsTrackMeta } from "@musicvault/core";
+import { dedupeEvents, type PlayEventRow, type StatsEvent, type StatsTrackMeta, type TrackRow } from "@musicvault/core";
 import { allPlayEvents } from "../lib/playEventLog";
 import { IdbSyncStorage } from "../lib/syncStorage";
 import { useLibraryStore } from "./libraryStore";
@@ -55,9 +55,10 @@ export const useStatsStore = create<StatsState>((set, get) => ({
     loadInFlight = (async () => {
       try {
         const storage = new IdbSyncStorage();
-        const [localEvents, shadowEventRows] = await Promise.all([
+        const [localEvents, shadowEventRows, shadowTrackRows] = await Promise.all([
           allPlayEvents(),
           storage.shadowAll("play_events").catch(() => []),
+          storage.shadowAll("tracks").catch(() => []),
         ]);
 
         const shadowEvents: StatsEvent[] = shadowEventRows.map(({ payload }) => {
@@ -85,6 +86,22 @@ export const useStatsStore = create<StatsState>((set, get) => ({
             country: track.country ?? null,
           });
         }
+        // A deleted song leaves the library but its row stays in the shadow,
+        // so its plays keep their details instead of counting as "Unknown".
+        for (const { id, payload } of shadowTrackRows) {
+          if (metaById.has(id)) continue;
+          const row = JSON.parse(payload) as TrackRow;
+          metaById.set(id, {
+            id,
+            title: row.title,
+            artist: row.artist,
+            album: row.album,
+            genre: row.genre,
+            year: row.year,
+            language: row.language,
+            country: row.country,
+          });
+        }
 
         // The local log doesn't record the device: it is this one, or what
         // the synced copy says when the event was recorded under another sign-in.
@@ -110,12 +127,24 @@ export const useStatsStore = create<StatsState>((set, get) => ({
   },
 }));
 
-/** Called by the sync store after a pull that added play events. */
 /** Sign-out: drop the previous account's events; the next open reloads from what this device keeps. */
 export function resetStats(): void {
   useStatsStore.setState({ events: [], metaById: new Map(), devices: new Map(), loaded: false });
 }
 
+/** Called by the sync store after a pull that added play events. */
 export function refreshStatsIfLoaded(): void {
   if (useStatsStore.getState().loaded) void useStatsStore.getState().load();
 }
+
+// Edited details reach the charts without reopening Statistics. Pulls and
+// edits come in bursts, so a reload waits for a quiet second.
+let libraryTimer: ReturnType<typeof setTimeout> | null = null;
+useLibraryStore.subscribe((state, prev) => {
+  if (state.tracks === prev.tracks) return;
+  if (libraryTimer) clearTimeout(libraryTimer);
+  libraryTimer = setTimeout(() => {
+    libraryTimer = null;
+    refreshStatsIfLoaded();
+  }, 1000);
+});

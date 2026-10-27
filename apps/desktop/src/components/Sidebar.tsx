@@ -1,19 +1,13 @@
 import { useMemo, useState } from "react";
-import {
-  BarChart3,
-  ChevronDown,
-  Disc3,
-  Download,
-  Library,
-  Plus,
-  Sparkles,
-  X,
-} from "lucide-react";
+import { BarChart3, ChevronDown, Disc3, Download, Library, Plus, Sparkles, X } from "lucide-react";
 import { motion } from "motion/react";
 import { useLibraryStore } from "../store/libraryStore";
 import { useUiStore } from "../store/uiStore";
-import { SMART_PLAYLISTS, sortPlaylists } from "@musicvault/core";
+import { SMART_PLAYLISTS, collectionKey, sortPlaylists } from "@musicvault/core";
 import { SMART_ICONS, type IconType } from "./smartIcons";
+import { CustomCover } from "./CustomCover";
+import { useCoverContextMenu } from "./CollectionCoverMenu";
+import { useCollectionCoverStore } from "../store/collectionCoverStore";
 import type { Playlist } from "../types";
 import { AlbumArt, artKeyOf } from "./AlbumArt";
 import { Logo } from "./Logo";
@@ -58,7 +52,12 @@ export function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
   const nav: { label: string; icon: Icon; active: boolean; onClick: () => void }[] = [
     { label: "Library", icon: Library, active: mainView === "tracks", onClick: showTracks },
     { label: "Albums", icon: Disc3, active: mainView === "albums" || mainView === "album", onClick: showAlbums },
-    { label: "Statistics", icon: BarChart3, active: mainView === "stats" || mainView === "recap" || mainView === "heatmap", onClick: showStats },
+    {
+      label: "Statistics",
+      icon: BarChart3,
+      active: mainView === "stats" || mainView === "recap" || mainView === "heatmap",
+      onClick: showStats,
+    },
     { label: "Downloads", icon: Download, active: mainView === "downloads", onClick: showDownloads },
   ];
 
@@ -74,7 +73,10 @@ export function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
                 item.active ? "bg-surface-2 text-fg" : "text-muted hover:bg-surface-2/60 hover:text-fg"
               }`}
             >
-              <item.icon className={`w-6 h-6 ${item.active ? "text-accent" : ""}`} strokeWidth={item.active ? 2.2 : 1.8} />
+              <item.icon
+                className={`w-6 h-6 ${item.active ? "text-accent" : ""}`}
+                strokeWidth={item.active ? 2.2 : 1.8}
+              />
               {item.label}
             </button>
           ))}
@@ -83,20 +85,14 @@ export function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
           <>
             <div className="my-3 w-10 h-px shrink-0 bg-line" />
             <div className="flex-1 min-h-0 w-full overflow-y-auto mv-quiet-scroll flex flex-col items-center gap-2 pb-1">
-              {playlists.map((p) => {
-                const active = mainView === "playlist" && activePlaylistId === p.id;
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => showPlaylist(p.id)}
-                    title={p.name}
-                    aria-label={p.name}
-                    className={`shrink-0 rounded-xl p-1 transition-colors ${active ? "bg-surface-2" : "hover:bg-surface-2/60"}`}
-                  >
-                    <PlaylistCover playlist={p} className={`w-11 h-11 ${active ? "ring-2 ring-accent" : ""}`} />
-                  </button>
-                );
-              })}
+              {playlists.map((p) => (
+                <RailPlaylist
+                  key={p.id}
+                  playlist={p}
+                  active={mainView === "playlist" && activePlaylistId === p.id}
+                  onClick={() => showPlaylist(p.id)}
+                />
+              ))}
             </div>
           </>
         )}
@@ -215,7 +211,9 @@ export function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
 
         {playlists.length > 0 && (
           <>
-            <div className="mt-5 mb-1 px-3 text-[11px] font-bold uppercase tracking-[0.08em] text-subtle">Your playlists</div>
+            <div className="mt-5 mb-1 px-3 text-[11px] font-bold uppercase tracking-[0.08em] text-subtle">
+              Your playlists
+            </div>
             <nav className="space-y-0.5">
               {playlists.map((p) => (
                 <PlaylistItem
@@ -272,11 +270,13 @@ function NavItem({
  * its name (smart playlists such as one per language read best by letter).
  */
 function PlaylistCover({ playlist, className = "" }: { playlist: Playlist; className?: string }) {
+  const custom = useCollectionCoverStore((s) => s.covers[collectionKey("playlist", playlist.id)]);
   const firstTrack = useLibraryStore((s) => {
     if (playlist.isSmart || playlist.trackIds.length === 0) return undefined;
     const first = s.tracks.find((t) => t.id === playlist.trackIds[0]);
     return first && artKeyOf(first) ? first : undefined;
   });
+  if (custom) return <CustomCover coverKey={custom} className={`relative rounded-lg shrink-0 ${className}`} />;
   if (firstTrack) {
     return <AlbumArt track={firstTrack} thumb className={`relative rounded-lg object-cover shrink-0 ${className}`} />;
   }
@@ -305,28 +305,54 @@ function coverLetters(name: string): string {
   return qualifier && initial(qualifier) ? `${head}(${initial(qualifier)})` : head;
 }
 
-function PlaylistItem({ playlist, active, onClick }: { playlist: Playlist; active: boolean; onClick: () => void }) {
+/** A playlist on the collapsed rail: its cover alone, with the same right-click menu. */
+function RailPlaylist({ playlist, active, onClick }: { playlist: Playlist; active: boolean; onClick: () => void }) {
+  const context = useCoverContextMenu(collectionKey("playlist", playlist.id));
   return (
-    <button
-      onClick={onClick}
-      className={`relative w-full flex items-center gap-3 h-12 px-2 rounded-xl text-sm text-left transition-colors duration-150 ${
-        active ? "text-fg font-semibold" : "text-muted hover:text-fg hover:bg-surface-2/60"
-      }`}
-    >
-      {active && (
-        <motion.span
-          layoutId="sidebar-active"
-          className="absolute inset-0 rounded-xl bg-surface-2"
-          transition={{ type: "spring", stiffness: 500, damping: 40 }}
-        />
-      )}
-      <PlaylistCover playlist={playlist} className="w-9 h-9" />
-      <span className="relative min-w-0 flex-1">
-        <span className="block truncate">{playlist.name}</span>
-        <span className="block truncate text-xs font-normal text-subtle">
-          {playlist.isSmart ? "Smart playlist" : `${playlist.trackIds.length} ${playlist.trackIds.length === 1 ? "song" : "songs"}`}
+    <>
+      <button
+        onClick={onClick}
+        onContextMenu={context.onContextMenu}
+        title={playlist.name}
+        aria-label={playlist.name}
+        className={`shrink-0 rounded-xl p-1 transition-colors ${active ? "bg-surface-2" : "hover:bg-surface-2/60"}`}
+      >
+        <PlaylistCover playlist={playlist} className={`w-11 h-11 ${active ? "ring-2 ring-accent" : ""}`} />
+      </button>
+      {context.menu}
+    </>
+  );
+}
+
+function PlaylistItem({ playlist, active, onClick }: { playlist: Playlist; active: boolean; onClick: () => void }) {
+  const context = useCoverContextMenu(collectionKey("playlist", playlist.id));
+  return (
+    <>
+      <button
+        onClick={onClick}
+        onContextMenu={context.onContextMenu}
+        className={`relative w-full flex items-center gap-3 h-12 px-2 rounded-xl text-sm text-left transition-colors duration-150 ${
+          active ? "text-fg font-semibold" : "text-muted hover:text-fg hover:bg-surface-2/60"
+        }`}
+      >
+        {active && (
+          <motion.span
+            layoutId="sidebar-active"
+            className="absolute inset-0 rounded-xl bg-surface-2"
+            transition={{ type: "spring", stiffness: 500, damping: 40 }}
+          />
+        )}
+        <PlaylistCover playlist={playlist} className="w-9 h-9" />
+        <span className="relative min-w-0 flex-1">
+          <span className="block truncate">{playlist.name}</span>
+          <span className="block truncate text-xs font-normal text-subtle">
+            {playlist.isSmart
+              ? "Smart playlist"
+              : `${playlist.trackIds.length} ${playlist.trackIds.length === 1 ? "song" : "songs"}`}
+          </span>
         </span>
-      </span>
-    </button>
+      </button>
+      {context.menu}
+    </>
   );
 }

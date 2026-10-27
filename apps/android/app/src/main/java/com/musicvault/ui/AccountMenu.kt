@@ -23,6 +23,7 @@ import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
@@ -72,13 +73,14 @@ fun Avatar(email: String?, size: Int = 34) {
 /**
  * The account menu, dropping down under the avatar at the top right like the
  * desktop one: account and sync, Upload (the phone's top bar has no Upload
- * button), appearance, then Sign out.
+ * button), appearance, Settings, then Sign out.
  */
 @Composable
 fun AccountMenu(
     expanded: Boolean,
     mainViewModel: MainViewModel,
     onUpload: (() -> Unit)?,
+    onSettings: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val colors = LocalVaultColors.current
@@ -156,6 +158,11 @@ fun AccountMenu(
                 onCheckedChange = { mainViewModel.setAmoled(it) },
                 colors = SwitchDefaults.colors(checkedTrackColor = colors.accent, checkedThumbColor = Color.White),
             )
+        }
+        Hairline()
+        MenuRow(Icons.Rounded.Settings, "Settings") {
+            onDismiss()
+            onSettings()
         }
         if (authState is AuthState.SignedIn) {
             Hairline()

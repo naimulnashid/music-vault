@@ -13,6 +13,7 @@ export type MainView =
   | "album"
   | "artist"
   | "downloads"
+  | "settings"
   | "search";
 
 /** Where the main area is: one entry of the back stack. */
@@ -74,6 +75,7 @@ interface UiState extends Location {
   /** All-time listening heatmap (expanded from Statistics). */
   showHeatmap: () => void;
   showDownloads: () => void;
+  showSettings: () => void;
   showAlbum: (key: string) => void;
   showArtist: (name: string) => void;
   showSearch: () => void;
@@ -152,6 +154,7 @@ export const useUiStore = create<UiState>((set, get) => {
     showRecap: () => go({ mainView: "recap" }),
     showHeatmap: () => go({ mainView: "heatmap" }),
     showDownloads: () => go({ mainView: "downloads" }),
+    showSettings: () => go({ mainView: "settings" }),
     showAlbum: (key) => go({ mainView: "album", activeAlbumKey: key }),
     showArtist: (name) => go({ mainView: "artist", activeArtist: name }),
     showSearch: () => {

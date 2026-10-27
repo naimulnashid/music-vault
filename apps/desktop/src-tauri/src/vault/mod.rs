@@ -12,6 +12,7 @@
 //! - [`mirror`]: keep a folder of plain, tagged music files in step with the
 //!   vault, with [`retag`] writing the details into each copy.
 
+pub mod backup;
 pub mod cache;
 pub mod mirror;
 pub mod prepare;

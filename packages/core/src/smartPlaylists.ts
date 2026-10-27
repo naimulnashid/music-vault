@@ -70,8 +70,9 @@ export interface SmartGroup<T extends Track = Track> {
 }
 
 /**
- * The names in an artist or genre tag. A comma separates two names ("A, B"
- * is A and B), so a song shows up under each of them. Duplicates are dropped.
+ * The names in an artist, genre, language or country tag. A comma separates
+ * two names ("A, B" is A and B), so a song shows up under each of them.
+ * Duplicates are dropped.
  */
 export function splitNames(value: string | null | undefined): string[] {
   const out: string[] = [];
@@ -97,9 +98,9 @@ function groupsOf(key: SmartKey, track: Track): string[] {
     case "year":
       return [track.year ? String(track.year) : "Unknown Year"];
     case "language":
-      return [track.language || "Unknown Language"];
+      return or(splitNames(track.language), "Unknown Language");
     case "country":
-      return [track.country || "Unknown Country"];
+      return or(splitNames(track.country), "Unknown Country");
     default:
       return [];
   }

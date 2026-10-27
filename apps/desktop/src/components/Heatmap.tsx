@@ -132,20 +132,20 @@ function HeatmapPlot({ block, max }: { block: Block; max: number }) {
         style={{
           // Fluid columns: the six months always span the full width, cells stay square.
           gridTemplateColumns: `auto repeat(${WEEKS}, minmax(11px, 1fr))`,
-          gridTemplateRows: "15px repeat(7, auto)",
+          gridTemplateRows: "18px repeat(7, auto)",
         }}
       >
         {block.months.map((m) => (
           <span
             key={`${m.label}-${m.column}`}
-            className="self-end whitespace-nowrap text-xs text-muted"
+            className="self-end whitespace-nowrap text-sm text-muted"
             style={{ gridColumn: m.column + 2, gridRow: 1 }}
           >
             {m.label}
           </span>
         ))}
         {DAY_LABELS.map((d, i) => (
-          <span key={d} className="pr-2 text-[11px] leading-none text-muted" style={{ gridColumn: 1, gridRow: i + 2 }}>
+          <span key={d} className="pr-2 text-xs leading-none text-muted" style={{ gridColumn: 1, gridRow: i + 2 }}>
             {d}
           </span>
         ))}

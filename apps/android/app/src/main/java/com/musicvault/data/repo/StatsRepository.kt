@@ -94,10 +94,14 @@ class StatsRepository @Inject constructor(
 
         // The local log doesn't record the device: it is this one, or what the
         // synced copy says when the event was recorded under another sign-in.
-        val shadowDevice = shadowEvents.associate { it.id to it.deviceId }
+        // Its track id is gone once the song is deleted or replaced; the synced
+        // copy keeps the track row, whose details the shadow still has.
+        val synced = shadowEvents.associateBy { it.id }
         val thisDevice = authRepository.deviceId()
         val localEvents = localRows.map {
-            StatsEvent(it.id, it.trackId, it.playedAt, it.durationPlayed, it.completed, shadowDevice[it.id] ?: thisDevice)
+            val copy = synced[it.id]
+            val trackId = if (copy != null && it.trackId !in metaById) copy.trackId else it.trackId
+            StatsEvent(it.id, trackId, it.playedAt, it.durationPlayed, it.completed, copy?.deviceId ?: thisDevice)
         }
 
         // Local first: this device's copy of an event wins the dedupe.

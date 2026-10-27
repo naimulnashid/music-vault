@@ -143,6 +143,7 @@ export function UploadDialog() {
   const shared = useUploadStore((s) => s.shared);
   const sharedCover = useUploadStore((s) => s.sharedCover);
   const running = useUploadStore((s) => s.running);
+  const lastUploaded = useUploadStore((s) => s.lastUploaded);
   const { addFiles, setShared, setSharedCover, close, start, clearFinished } = useUploadStore.getState();
   const [coverError, setCoverError] = useState<string | null>(null);
   const picker = useRef<HTMLInputElement>(null);
@@ -248,7 +249,9 @@ export function UploadDialog() {
               ? `Uploading… ${done} of ${done + uploadable.length + items.filter((i) => i.status === "uploading" || i.status === "queued").length} done`
               : done > 0
                 ? `${done} uploaded`
-                : `${uploadable.length} ready`}
+                : items.length === 0 && lastUploaded > 0
+                  ? `${lastUploaded} ${lastUploaded === 1 ? "song" : "songs"} uploaded`
+                  : `${uploadable.length} ready`}
           </span>
           {done > 0 && !running && (
             <button onClick={clearFinished} className="h-10 px-4 rounded-full text-sm font-semibold text-muted hover:text-fg hover:bg-surface-2 transition-colors">

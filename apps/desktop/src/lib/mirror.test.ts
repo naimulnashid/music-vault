@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TrackRow as RemoteTrackRow } from "@musicvault/core";
-import { mirrorTracks, runSummary, spaceShortfall, tombstonedIds } from "./mirror";
+import { coverFileName, mirrorTracks, runSummary, safeFileName, spaceShortfall, tombstonedIds } from "./mirror";
 
 const UID = "00000000-0000-4000-8000-00000000000a";
 const H1 = "1".repeat(64);
@@ -89,14 +89,27 @@ describe("mirror messages", () => {
     expect(spaceShortfall(5 * 1024 ** 3, null)).toBeNull();
     expect(spaceShortfall(100, 200)).toBeNull();
     expect(spaceShortfall(5 * 1024 ** 3, 2 * 1024 ** 3)).toBe(
-      "Not enough space on the mirror folder's drive: 5.0 GB needed, 2.0 GB free.",
+      "Not enough space on the backup folder's drive: 5.0 GB needed, 2.0 GB free.",
     );
   });
 
   it("sums up a run", () => {
-    expect(runSummary({ total: 1040, failed: 0, untagged: 0, firstError: null })).toBe("1,040 songs in the folder");
+    expect(runSummary({ total: 1040, failed: 0, untagged: 0, firstError: null })).toBe("1,040 songs backed up");
     expect(runSummary({ total: 3, failed: 1, untagged: 1, firstError: "x" })).toBe(
-      "3 songs in the folder • 1 song couldn't be written and will be tried again • 1 song copied without details (their format can't be tagged)",
+      "3 songs backed up • 1 song couldn't be written and will be tried again • 1 song copied without details (their format can't be tagged)",
     );
+  });
+});
+
+describe("backup file names", () => {
+  it("keeps names Windows accepts", () => {
+    expect(safeFileName("AC/DC: Live?", "x")).toBe("AC_DC_ Live_");
+    expect(safeFileName("Trailing dots...", "x")).toBe("Trailing dots");
+    expect(safeFileName("CON", "artist")).toBe("artist");
+    expect(safeFileName("   ", "artist")).toBe("artist");
+  });
+
+  it("names a cover by its hash", () => {
+    expect(coverFileName(`users/u1/art/${"a".repeat(64)}.jpg`)).toBe(`${"a".repeat(64)}.jpg`);
   });
 });

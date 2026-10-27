@@ -1,4 +1,4 @@
-# <img src="apps/site/public/favicon.svg" alt="Music Vault app icon: two white music notes joined by a beam on a violet rounded square" width="40" height="40" align="absmiddle"> Music Vault
+# <img src="apps/site/public/favicon.svg" alt="Music Vault app icon: two white music notes joined by a beam over a faint record on a violet rounded square" width="40" height="40" align="absmiddle"> Music Vault
 
 [![CI](https://github.com/naimulnashid/music-vault/actions/workflows/ci.yml/badge.svg)](https://github.com/naimulnashid/music-vault/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/naimulnashid/music-vault)](https://github.com/naimulnashid/music-vault/releases/latest)
@@ -123,9 +123,11 @@ On Android: an album and Downloads.
   later.
 - Windows: choose the folder downloads are kept in (Downloads → Download folder); the songs
   already there move with it, with progress.
-- Windows: a library mirror keeps every song in a folder you choose as an ordinary file
-  (`Artist\Album\Title`), with its current details, cover and lyrics written in, for any other
-  player. It updates itself after each sync; songs deleted from the vault move to a
+- Windows: Backup Music Vault (Settings) keeps a full copy of the vault in a folder you choose,
+  so nothing is lost if the cloud database or storage is: every song as an ordinary file
+  (`Music\Artist\Album\Title`) with its current details, cover and lyrics written in, every
+  cover, the artist photos, and the account's rows (songs, playlists, favourites, play history,
+  settings) as JSON. It updates itself after each sync; songs deleted from the vault move to a
   `Removed from vault` folder instead of being deleted.
 - Every download is checked against the song's BLAKE3 hash before it is kept.
 
@@ -234,8 +236,8 @@ Every variable, what reads it and how exposed it is:
    the player.
 4. **Keep music offline.** Use Download on a song, album, artist or playlist, or switch on
    "Download all songs automatically" on the Downloads page. On Windows, Change folder there
-   picks where downloads are kept, and Library mirror → Choose folder keeps a copy of the whole
-   library as plain music files.
+   picks where downloads are kept, and Settings (in the account menu) → Backup Music Vault →
+   Choose folder keeps a full copy of the vault on the PC.
 5. **Organize.** Make playlists and drag songs to reorder them; smart playlists fill themselves
    from rules such as genre, language or play count.
 
@@ -317,7 +319,8 @@ for anything larger, open an issue first. See [CONTRIBUTING.md](CONTRIBUTING.md)
   downloaded: in the app's data folder on Windows (downloads in the folder you choose),
   app-private storage on Android and the browser's storage on the web. The apps don't encrypt
   these copies, so anyone with access to the device's files can play them. The same goes for the
-  Windows library mirror, whose files also carry each song's details and lyrics. On Android, only the
+  Windows backup folder, which also holds every song's details, your playlists and your play
+  history as plain JSON. On Android, only the
   system, Android Auto and apps you give notification access can browse your library or control
   playback through its media service.
 - **Integrity.** Every download is checked against the song's BLAKE3 hash before it is kept.

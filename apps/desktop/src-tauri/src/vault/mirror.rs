@@ -1,5 +1,5 @@
-//! The library mirror: a folder on this PC kept as plain music files, one per
-//! vault track, each carrying the track's current online details and cover
+//! The music half of Backup Music Vault ([`super::backup`]): the backup
+//! folder's `Music` folder kept as plain music files, one per vault track, each carrying the track's current online details and cover
 //! ([`super::retag`]) under `Artist/Album/Title.ext`, with synced lyrics as a
 //! `.lrc` beside it. Any player can use the folder without the app.
 //!
@@ -26,8 +26,12 @@ use crate::commands::AppPaths;
 use crate::db::models::MirrorEntryRow;
 use crate::db::{queries, Db};
 
-/// The mirror folder while the mirror is on. Kept in this device's database only.
-pub const SETTING_MIRROR_DIR: &str = "mirror_dir";
+/// The backup folder while backups are on. Kept in this device's database only.
+/// Builds before 2026-10-27 kept a bare music mirror under "mirror_dir"; that
+/// folder is left as it is, and a backup starts in a folder the owner picks.
+pub const SETTING_MIRROR_DIR: &str = "backup_dir";
+/// The backup folder's subfolder the songs go in.
+pub const MUSIC_DIR: &str = "Music";
 /// The folder `mirror_entries` describes. It outlives turning the mirror off,
 /// so turning it on again with the same folder carries on where it stopped.
 const SETTING_ENTRIES_DIR: &str = "mirror_entries_dir";
@@ -41,8 +45,8 @@ const TEMP_DIR: &str = ".musicvault-temp";
 const WRITE_FORMAT: &str = "mirror-v1";
 const MAX_NAME_CHARS: usize = 100;
 
-pub const OVERLAPS_MIRROR: &str = "That folder overlaps the library mirror folder. Choose a separate one.";
-pub const UNAVAILABLE: &str = "The mirror folder can't be found. Plug in its drive, or choose the folder again.";
+pub const OVERLAPS_MIRROR: &str = "That folder overlaps the backup folder. Choose a separate one.";
+pub const UNAVAILABLE: &str = "The backup folder can't be found. Plug in its drive, or choose the folder again.";
 
 /// One live vault track as the mirror writes it.
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -110,7 +114,7 @@ fn setting(conn: &Connection, key: &str) -> Option<String> {
     queries::get_setting(conn, key).ok().flatten().filter(|s| !s.is_empty())
 }
 
-/// The mirror folder, while the mirror is on.
+/// The backup folder, while backups are on.
 pub fn active_dir(conn: &Connection) -> Option<PathBuf> {
     setting(conn, SETTING_MIRROR_DIR).map(PathBuf::from)
 }
@@ -281,11 +285,15 @@ fn cached_copy(conn: &Connection, content_hash: &str) -> Option<PathBuf> {
     Some(PathBuf::from(entry.path)).filter(|p| p.exists())
 }
 
+/// The backup folder's `Music` folder, made on first use. The backup folder
+/// itself must be there: a missing one is an unplugged drive, not a folder to make.
 fn ready_dir(conn: &Connection) -> Result<PathBuf> {
-    let dir = active_dir(conn).ok_or_else(|| anyhow!("the library mirror is off"))?;
-    if !dir.is_dir() {
+    let root = active_dir(conn).ok_or_else(|| anyhow!("backups are off"))?;
+    if !root.is_dir() {
         bail!(UNAVAILABLE);
     }
+    let dir = root.join(MUSIC_DIR);
+    std::fs::create_dir_all(&dir)?;
     Ok(dir)
 }
 
@@ -677,15 +685,16 @@ mod tests {
 
     #[test]
     fn removing_moves_files_and_keeps_paths() {
-        let dir = std::env::temp_dir().join(format!("mv-mirror-remove-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
+        let root = std::env::temp_dir().join(format!("mv-mirror-remove-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let dir = root.join(MUSIC_DIR);
         std::fs::create_dir_all(dir.join("A/B")).unwrap();
         std::fs::write(dir.join("A/B/C.mp3"), b"song").unwrap();
         std::fs::write(dir.join("A/B/C.lrc"), b"[00:01.00]hi").unwrap();
-        let db = crate::db::open(&dir.join("t.db")).unwrap();
+        let db = crate::db::open(&root.join("t.db")).unwrap();
         {
             let conn = db.0.lock().unwrap();
-            queries::set_setting(&conn, SETTING_MIRROR_DIR, &dir.to_string_lossy()).unwrap();
+            queries::set_setting(&conn, SETTING_MIRROR_DIR, &root.to_string_lossy()).unwrap();
             queries::upsert_mirror_entry(&conn, &entry("a", "A/B/C.mp3")).unwrap();
         }
         assert_eq!(remove(&db, &["a".into(), "unknown".into()]).unwrap(), 1);
@@ -694,6 +703,6 @@ mod tests {
         assert!(!dir.join("A").exists(), "empty folders go");
         assert!(queries::get_mirror_entry(&db.0.lock().unwrap(), "a").unwrap().is_none());
         drop(db);
-        let _ = std::fs::remove_dir_all(&dir);
+        let _ = std::fs::remove_dir_all(&root);
     }
 }

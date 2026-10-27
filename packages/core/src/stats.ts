@@ -282,9 +282,9 @@ function groupNames(meta: StatsTrackMeta, field: GroupField): string[] {
     case "year":
       return [meta.year ? String(meta.year) : "Unknown Year"];
     case "language":
-      return [meta.language || "Unknown Language"];
+      return namesOf(meta.language, "Unknown Language");
     case "country":
-      return [meta.country || "Unknown Country"];
+      return namesOf(meta.country, "Unknown Country");
   }
 }
 
@@ -315,6 +315,17 @@ export function rankGroups(
       compareRanked(by, a, b, `${a.name}${GROUP_SEP}${a.secondary}`, `${b.name}${GROUP_SEP}${b.secondary}`),
     )
     .slice(0, Math.max(0, limit));
+}
+
+/**
+ * A device row's name as the charts show it. Builds before 2026-10-27 named
+ * every PC "Desktop (Win32)" and the emulator by its build
+ * ("Google sdk_gphone…"); newer ones register the PC's own name.
+ */
+export function deviceDisplayName(name: string, platform: string): string {
+  if (/sdk_gphone|emulator/i.test(name)) return "Android emulator";
+  if (platform === "desktop" && /^Desktop \(/.test(name)) return "Windows app (earlier installs)";
+  return name;
 }
 
 export interface DeviceTime {

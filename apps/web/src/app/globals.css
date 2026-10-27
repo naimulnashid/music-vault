@@ -80,12 +80,14 @@
   }
 }
 
+/* Cards are white on a grey page, the way the dark theme lifts them off its
+   background; a near-white page made them disappear. */
 [data-theme="light"] {
-  --color-bg: #f6f6f9;
+  --color-bg: #ececf1;
   --color-surface: #ffffff;
-  --color-surface-2: #ececf1;
-  --color-surface-3: #dfdfe6;
-  --color-line: rgb(20 20 40 / 0.09);
+  --color-surface-2: #e3e3ea;
+  --color-surface-3: #d5d5de;
+  --color-line: rgb(20 20 40 / 0.12);
   --color-fg: #141419;
   --color-muted: #5d5d6b;
   --color-subtle: #8c8c99;
@@ -135,14 +137,17 @@ body {
   font-family: var(--font-sans);
   font-feature-settings: "ss01", "tnum" 0;
   -webkit-font-smoothing: antialiased;
-  user-select: none;
 }
 
-input,
-textarea,
-select,
-[contenteditable] {
-  user-select: text;
+/* Text can be selected anywhere, as on a web page. Controls and pictures
+   can't, so clicking or dragging them never highlights them. */
+button,
+[role="button"],
+[role="slider"],
+[role="tab"],
+img,
+svg {
+  user-select: none;
 }
 
 button {

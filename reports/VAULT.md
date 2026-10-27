@@ -138,6 +138,13 @@ already sync everywhere with last-writer-wins, so photos need no table or sync p
 makes it safe: a trigger accepts only null or the owner's own full cover key, `sign-get` signs
 photo keys through `referenced_artwork_keys`, and `delete_track` keeps a cover a photo still uses.
 
+Playlists and smart groups (By Genre, Year, Language, Country) take a picked cover the same way:
+scope `collection_cover`, key `<kind>:<id>` (`playlist:<uuid>`, `country:Bangladesh`), value the
+cover key or JSON null for the default cover again
+([core/collectionCovers.ts](../packages/core/src/collectionCovers.ts)).
+[0009_collection_covers.sql](../supabase/migrations/0009_collection_covers.sql) extends the trigger,
+`referenced_artwork_keys` and `delete_track` to that scope (applied 2026-10-27).
+
 ## Deleting
 
 "Delete from vault" is on every client (track menu and multi-select), behind a confirmation that
@@ -160,11 +167,27 @@ its cached or pinned copy (only tombstones the device has pulled count).
 
 A cached copy is used offline; the first play of a track needs to be online and signed in.
 
-## Library mirror (desktop)
+## Backup Music Vault (desktop)
 
-Downloads → Library mirror keeps a folder of ordinary music files, one per live track, that any
-player can use without the app. The vault's objects keep the bytes as uploaded; the mirror is
-where the online details reach the files.
+Settings → Backup Music Vault keeps one folder on the PC holding what it takes to rebuild the
+library without Supabase or R2 ([vault/backup.rs](../apps/desktop/src-tauri/src/vault/backup.rs)):
+
+| Folder | Holds |
+|---|---|
+| `Music` | Every live song as an ordinary music file any player can use (the mirror, below). |
+| `Covers` | Every live song's cover and every picked playlist cover at full size, `<sha256>.jpg`, the name in its artwork key. |
+| `Artist photos` | The photos picked for artists, `<artist>.jpg`. |
+| `Database` | The account's rows as of the last sync, one JSON array per table: `tracks`, `playlists`, `playlist_items`, `favorites`, `ratings`, `play_events`, `settings`, `queue`, read from the sync shadow (no download), and `devices`. |
+| `Backup info.json` | When the last run finished and what it wrote. |
+
+A run follows the songs with the pictures (fetched into the artwork cache where missing, copied
+only when the copy's size differs) and then the database. Edits not yet synced are in the songs'
+tags but not in `Database` until they sync.
+
+### The songs
+
+The `Music` folder holds ordinary music files, one per live track. The vault's objects keep the
+bytes as uploaded; this is where the online details reach the files.
 
 | | |
 |---|---|
@@ -173,9 +196,9 @@ where the online details reach the files.
 | Source | This PC's cached or downloaded copy when there is one (hash-checked), else a signed download straight into the mirror; the cache isn't filled. |
 | Updates | After each sync (5 s debounce), once the session's first pull is in. `mirror_entries` holds each file's path and a digest of what it was written with, so a run only writes new songs, retags edited ones and renames moved ones, each through a temp file and one rename. |
 | Deletions | Only a tombstone removes a song: its file moves to `Removed from vault\<same path>`. A song merely missing from the list is left alone. |
-| Safety | A run that needs more space than the drive has doesn't start. The folder can't overlap the app's data folder or the download folder. Turning the mirror off or choosing another folder leaves the files as they are; the same folder again carries on where it stopped. An unplugged drive pauses the mirror. |
+| Safety | A run that needs more space than the drive has doesn't start. The folder can't overlap the app's data folder or the download folder. Turning backups off or choosing another folder leaves the files as they are; the same folder again carries on where it stopped. An unplugged drive pauses backups. |
 
-Flow: [store/mirrorStore.ts](../apps/desktop/src/store/mirrorStore.ts) sends every live row
+Flow: [store/backupStore.ts](../apps/desktop/src/store/backupStore.ts) sends every live row
 ([lib/mirror.ts](../apps/desktop/src/lib/mirror.ts)) to `vault_mirror_plan`, removes tombstoned
 songs with `vault_mirror_remove`, then runs `vault_mirror_apply` two songs at a time with links
 signed 50 at a time ([vault/mirror.rs](../apps/desktop/src-tauri/src/vault/mirror.rs)).

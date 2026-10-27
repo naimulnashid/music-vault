@@ -49,6 +49,7 @@ class VaultViewModel @Inject constructor(
     val shared: StateFlow<Map<String, String>> = uploads.shared
     val sharedCover: StateFlow<SharedCover> = uploads.sharedCover
     val running: StateFlow<Boolean> = uploads.running
+    val lastUploaded: StateFlow<Int> = uploads.lastUploaded
 
     fun addUris(uris: List<Uri>) = uploads.addUris(uris)
     fun setValue(id: String, field: String, value: String) = uploads.setValue(id, field, value)

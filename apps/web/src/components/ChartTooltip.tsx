@@ -33,7 +33,7 @@ export function useChartTooltip() {
     ? createPortal(
         <div
           role="tooltip"
-          className="pointer-events-none fixed z-[100] -translate-x-1/2 -translate-y-full px-2 py-1 rounded-md bg-surface-3 text-fg text-[11px] font-semibold tabular-nums shadow-lg whitespace-nowrap"
+          className="pointer-events-none fixed z-[100] -translate-x-1/2 -translate-y-full px-2.5 py-1.5 rounded-md bg-surface-3 text-fg text-xs font-semibold tabular-nums shadow-lg whitespace-nowrap"
           style={{ left: Math.min(Math.max(tip.x, 64), window.innerWidth - 64), top: tip.y - 12 }}
         >
           {tip.text}

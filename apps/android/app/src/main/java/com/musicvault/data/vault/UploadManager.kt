@@ -125,6 +125,10 @@ class UploadManager @Inject constructor(
     private val _running = MutableStateFlow(false)
     val running: StateFlow<Boolean> = _running.asStateFlow()
 
+    /** Songs the last run uploaded, for the empty screen it leaves behind. */
+    private val _lastUploaded = MutableStateFlow(0)
+    val lastUploaded: StateFlow<Int> = _lastUploaded.asStateFlow()
+
     private fun patch(id: String, f: (UploadItem) -> UploadItem) =
         _items.update { list -> list.map { if (it.id == id) f(it) else it } }
 
@@ -148,6 +152,7 @@ class UploadManager @Inject constructor(
         if (uris.isEmpty()) return
         val placeholders = uris.map { uri -> UploadItem(UUID.randomUUID().toString(), displayName(uri), UploadStatus.PREPARING) }
         _items.update { it + placeholders }
+        _lastUploaded.value = 0
         scope.launch {
             val prepared = uris.zip(placeholders).map { (uri, ph) ->
                 async(Dispatchers.IO) { ph.id to runCatching { prepare(uri, ph.name) } }
@@ -305,6 +310,16 @@ class UploadManager @Inject constructor(
                     async { permits.withPermit { runOne(item.id, userId) } }
                 }.awaitAll()
             } finally {
+                // Uploaded songs leave the list, and once nothing is left the batch
+                // fields empty too, so the screen is ready for the next upload.
+                // Failed songs stay, with what was typed, to be tried again.
+                val before = _items.value.size
+                _items.update { list -> list.filter { it.status != UploadStatus.DONE } }
+                _lastUploaded.value = before - _items.value.size
+                if (_items.value.isEmpty()) {
+                    _shared.value = emptyMap()
+                    _sharedCover.value = SharedCover.Keep
+                }
                 _running.value = false
                 syncManager.syncNow() // pull the new rows (with storage keys) into the library
             }

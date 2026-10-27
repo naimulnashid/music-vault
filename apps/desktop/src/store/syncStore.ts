@@ -25,6 +25,7 @@ import { useSettingsStore } from "./settingsStore";
 import { usePlayerStore } from "./playerStore";
 import { refreshStatsIfLoaded, resetStats } from "./statsStore";
 import { useArtistPhotoStore } from "./artistPhotoStore";
+import { useCollectionCoverStore } from "./collectionCoverStore";
 import { useDownloadStore } from "./downloadStore";
 import { forgetSignedUrls } from "../lib/vault";
 
@@ -187,6 +188,7 @@ function clearAccountPlayback(): void {
   if (queued.size > 0) void cancelDownloads([...queued]);
   resetStats();
   useArtistPhotoStore.getState().reset();
+  useCollectionCoverStore.getState().reset();
 }
 
 /**
@@ -257,6 +259,7 @@ async function applyChanges(changes: RemoteChanges): Promise<void> {
   for (const { scope, key, value } of changes.settings) {
     settings.applyRemoteSetting(scope, key, value);
     useArtistPhotoStore.getState().applyRemote(scope, key, value);
+    useCollectionCoverStore.getState().applyRemote(scope, key, value);
   }
   if (changes.queue) useSyncStore.setState({ remoteQueue: changes.queue });
   if (changes.playEventsAdded > 0) refreshStatsIfLoaded();
@@ -430,4 +433,5 @@ async function hydrateFromShadow(): Promise<void> {
     useLibraryStore.getState().setCloudUserState(cloudState);
   }
   await useArtistPhotoStore.getState().hydrate(storage);
+  await useCollectionCoverStore.getState().hydrate(storage);
 }

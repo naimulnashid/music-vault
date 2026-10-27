@@ -76,12 +76,14 @@ fun vaultColors(theme: ThemeMode, amoled: Boolean = false): VaultColors {
             danger = Color(0xFFF87171),
             isDark = true,
         )
+        // Cards are white on a grey page (web/desktop index.css), the way the
+        // dark theme lifts them off its background.
         else -> VaultColors(
-            bg = Color(0xFFF6F6F9),
+            bg = Color(0xFFECECF1),
             surface = Color(0xFFFFFFFF),
-            surface2 = Color(0xFFECECF1),
-            surface3 = Color(0xFFDFDFE6),
-            border = Color(0x17141428),
+            surface2 = Color(0xFFE3E3EA),
+            surface3 = Color(0xFFD5D5DE),
+            border = Color(0x1F141428),
             text = Color(0xFF141419),
             textMuted = Color(0xFF5D5D6B),
             subtle = Color(0xFF8C8C99),

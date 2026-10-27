@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CloudDownload, Download, FolderOpen, FolderSync, HardDrive, RefreshCw, Trash2, X } from "lucide-react";
+import { CloudDownload, Download, FolderOpen, HardDrive, Trash2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useDownloadStore } from "../store/downloadStore";
-import { useMirrorStore } from "../store/mirrorStore";
 import { useLibraryStore } from "../store/libraryStore";
 import type { Track } from "../types";
 import { ViewHeader } from "./ViewHeader";
@@ -24,77 +23,6 @@ function formatSpeed(bytesPerSec: number): string {
   if (bytesPerSec >= 1024 ** 2) return `${(bytesPerSec / 1024 ** 2).toFixed(1)} MB/s`;
   if (bytesPerSec >= 1024) return `${(bytesPerSec / 1024).toFixed(0)} KB/s`;
   return `${Math.round(bytesPerSec)} B/s`;
-}
-
-/** The library mirror: a folder of plain, tagged copies of every song, for any player. */
-function MirrorCard() {
-  const dir = useMirrorStore((s) => s.dir);
-  const running = useMirrorStore((s) => s.running);
-  const summary = useMirrorStore((s) => s.summary);
-  const problem = useMirrorStore((s) => s.problem);
-  const chooseDir = useMirrorStore((s) => s.chooseDir);
-  const turnOff = useMirrorStore((s) => s.turnOff);
-  const runNow = useMirrorStore((s) => s.runNow);
-
-  return (
-    <section className="rounded-2xl bg-surface border border-line p-5">
-      <div className="flex flex-wrap items-center gap-3">
-        <FolderSync className="w-5 h-5 text-muted" />
-        <div className="flex-1 min-w-0">
-          <div className="font-bold">Library mirror</div>
-          {dir ? (
-            <div className="text-sm text-muted truncate" title={dir}>
-              {dir}
-            </div>
-          ) : (
-            <div className="text-sm text-muted">
-              Keeps every song in a folder as an ordinary file with its details and cover, for any player.
-            </div>
-          )}
-        </div>
-        {dir && (
-          <>
-            <Button
-              variant="secondary"
-              onClick={() => void runNow()}
-              disabled={running !== null}
-              icon={<RefreshCw className="w-4 h-4" />}
-            >
-              Mirror now
-            </Button>
-            <Button variant="secondary" onClick={() => void turnOff()} title="Stop updating the folder. Its files stay.">
-              Turn off
-            </Button>
-          </>
-        )}
-        <Button
-          variant={dir ? "secondary" : "primary"}
-          onClick={() => void chooseDir()}
-          disabled={running !== null}
-          icon={<FolderOpen className="w-4 h-4" />}
-          title={dir ? "Mirror into another folder. This one is left as it is." : undefined}
-        >
-          {dir ? "Change folder" : "Choose folder"}
-        </Button>
-      </div>
-      {dir && running && running.total > 0 && (
-        <>
-          <div className="mt-4 h-2 rounded-full bg-surface-3 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-accent transition-[width] duration-300"
-              style={{ width: `${Math.min(100, (running.done / running.total) * 100)}%` }}
-            />
-          </div>
-          <p className="text-xs text-muted mt-3 tabular-nums">
-            Writing {running.done.toLocaleString()} of {running.total.toLocaleString()}{" "}
-            {running.total === 1 ? "song" : "songs"}
-          </p>
-        </>
-      )}
-      {dir && !running && problem && <p className="text-xs text-danger mt-3">{problem}</p>}
-      {dir && !running && !problem && summary && <p className="text-xs text-muted mt-3">{summary}</p>}
-    </section>
-  );
 }
 
 /** 0 turns the auto-cache off; 10 GB is the most it may use. */
@@ -386,8 +314,6 @@ export function DownloadsView() {
             )}
           </section>
         )}
-
-        <MirrorCard />
       </div>
 
       {pinned.length === 0 && <h2 className="px-6 md:px-8 pb-2 text-xl font-bold">On this device</h2>}

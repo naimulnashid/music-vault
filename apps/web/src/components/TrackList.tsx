@@ -86,6 +86,8 @@ const TrackRow = memo(function TrackRow({
         onMenu({ x: e.clientX, y: e.clientY }, track);
       }}
       onDoubleClick={() => handlePlay(index)}
+      // Double-click plays; without this it would also select a word.
+      onMouseDown={(e) => e.detail > 1 && e.preventDefault()}
       className={`group flex items-center gap-3 mx-2 md:mx-4 px-2 h-14 rounded-lg transition-colors duration-100 ${
         selected ? "bg-accent-soft" : menuOpen ? "bg-surface-2" : "hover:bg-surface-2"
       } ${isDragging ? "relative z-10 bg-surface-3 shadow-xl" : ""}`}

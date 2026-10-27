@@ -1,5 +1,5 @@
 ---
-/** The app mark, as drawn in docs/social-preview.html. */
+/** The app mark, as drawn in public/favicon.svg (the icon's source). */
 import { nextId } from '../lib/ids';
 
 interface Props {
@@ -7,25 +7,35 @@ interface Props {
 }
 
 const { size = 32 } = Astro.props;
-// Each instance needs its own gradient id: the logo appears twice on the page.
+// Each instance needs its own gradient ids: the logo appears twice on the page.
 const id = nextId('logo');
+const gloss = nextId('logo');
 ---
 
-<svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" class="logo">
+<svg width={size} height={size} viewBox="0 0 512 512" aria-hidden="true" class="logo">
   <defs>
     <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#a78bfa"></stop>
-      <stop offset="1" stop-color="#7c3aed"></stop>
+      <stop offset="1" stop-color="#6d28d9"></stop>
     </linearGradient>
+    <radialGradient id={gloss} cx=".22" cy=".12" r=".85">
+      <stop offset="0" stop-color="#fff" stop-opacity=".3"></stop>
+      <stop offset=".55" stop-color="#fff" stop-opacity="0"></stop>
+    </radialGradient>
   </defs>
-  <rect width="32" height="32" rx="8" fill={`url(#${id})`}></rect>
-  <path
-    d="M13 21.5V10.2l9-1.9v11.1"
-    fill="none"
-    stroke="#fff"
-    stroke-width="2.2"
-    stroke-linecap="round"
-    stroke-linejoin="round"></path>
-  <ellipse cx="10.9" cy="21.6" rx="2.6" ry="2.1" fill="#fff"></ellipse>
-  <ellipse cx="19.9" cy="19.6" rx="2.6" ry="2.1" fill="#fff"></ellipse>
+  <rect width="512" height="512" rx="120" fill={`url(#${id})`}></rect>
+  <rect width="512" height="512" rx="120" fill={`url(#${gloss})`}></rect>
+  <circle cx="256" cy="256" r="184" fill="#4c1d95" fill-opacity=".3"></circle>
+  <circle cx="256" cy="256" r="152" fill="none" stroke="#fff" stroke-opacity=".12" stroke-width="7"></circle>
+  <circle cx="256" cy="256" r="118" fill="none" stroke="#fff" stroke-opacity=".12" stroke-width="7"></circle>
+  <g transform="translate(8 12)" fill="#2e1065" fill-opacity=".4" stroke="#2e1065" stroke-opacity=".4">
+    <path d="M214 340V166l140-30v170" fill="none" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"></path>
+    <ellipse cx="180" cy="342" rx="44" ry="35" transform="rotate(-20 180 342)" stroke="none"></ellipse>
+    <ellipse cx="320" cy="310" rx="44" ry="35" transform="rotate(-20 320 310)" stroke="none"></ellipse>
+  </g>
+  <g fill="#fff" stroke="#fff">
+    <path d="M214 340V166l140-30v170" fill="none" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"></path>
+    <ellipse cx="180" cy="342" rx="44" ry="35" transform="rotate(-20 180 342)" stroke="none"></ellipse>
+    <ellipse cx="320" cy="310" rx="44" ry="35" transform="rotate(-20 320 310)" stroke="none"></ellipse>
+  </g>
 </svg>

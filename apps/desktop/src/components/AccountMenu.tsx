@@ -1,19 +1,20 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertTriangle, Bell, CloudOff, LogIn, LogOut, RefreshCw, UserRound, WifiOff } from "lucide-react";
+import { AlertTriangle, CloudOff, LogIn, LogOut, RefreshCw, Settings, UserRound, WifiOff } from "lucide-react";
 import { useAuthStore } from "../store/authStore";
 import { describeSyncStatus } from "@musicvault/core";
 import { useSyncStore } from "../store/syncStore";
 import { ThemeSwitcher } from "./ThemeSwitcher";
-import { NotificationToggle } from "./NotificationToggle";
+import { useUiStore } from "../store/uiStore";
 import { Dialog } from "./ui/Dialog";
 import { Button } from "./ui/Button";
 
-/** Top-bar avatar: account, sync state and app settings (theme, notifications). */
+/** Top-bar avatar: account, sync state, theme and the way to Settings. */
 export function AccountMenu() {
   const status = useAuthStore((s) => s.status);
   const session = useAuthStore((s) => s.session);
   const signOut = useAuthStore((s) => s.signOut);
+  const showSettings = useUiStore((s) => s.showSettings);
   const [open, setOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -97,11 +98,16 @@ export function AccountMenu() {
             <div className="border-t border-line py-2">
               <SectionLabel>Appearance</SectionLabel>
               <ThemeSwitcher />
-              <SectionLabel>
-                <Bell className="w-3.5 h-3.5" /> Notifications
-              </SectionLabel>
-              <NotificationToggle />
             </div>
+            <button
+              onClick={() => {
+                setOpen(false);
+                showSettings();
+              }}
+              className="w-full flex items-center gap-3 px-4 h-12 border-t border-line text-sm text-muted hover:text-fg hover:bg-surface-2 transition-colors"
+            >
+              <Settings className="w-4 h-4" /> Settings
+            </button>
             {signedIn && (
               <button
                 onClick={() => {

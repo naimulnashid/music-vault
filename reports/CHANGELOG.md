@@ -22,18 +22,26 @@
   Genre.
 - Statistics: Top Years, Top Countries and Top Languages, and a Play Time by Device donut. Play
   events already carried the device that played them; the charts name each device from the
-  account's device list (with the first 8 characters of its id) and fold a sixth device and
-  beyond into "Other devices".
+  account's device list, show devices of the same name as one slice, give the five most-played
+  devices their own slice and fold the rest into "Other devices".
 - Web and desktop: a list or cover view on Library, Downloads, the built-in smart playlists,
   playlists, artist pages and genre/year/language/country groups. The choice is kept per page on
   that device.
-- Desktop: Ctrl+plus, Ctrl+minus and Ctrl+0 zoom the window, as in a browser.
+- Desktop: Ctrl+plus, Ctrl+minus, Ctrl+0 and Ctrl+mouse wheel zoom the window, as in a browser.
+  The top bar shows the level for a moment after each change, with minus and plus buttons, and
+  keeps a small "110%" button while the window isn't at 100% (click it to reset). The level is
+  kept for the next start.
 - Desktop: a song uploaded from the PC is copied into the auto-cache once its upload commits
   (into downloads while "Download all songs automatically" is on), checked against its BLAKE3
   hash as a download is, so its first play there doesn't download it back. A file moved or
   re-saved since it was added is skipped, and nothing is kept while the auto-cache is off.
-- Desktop: a Library mirror on the Downloads page keeps every song in a folder you choose as an
-  ordinary file, `Artist\Album\Title.ext`, with its current details, cover and ReplayGain written
+- Desktop: Backup Music Vault, on a new Settings page (account menu → Settings), keeps a full
+  copy of the vault in a folder you choose, so the library survives losing the Supabase database
+  or R2: `Music` holds every song, `Covers` every cover at full size (`<sha256>.jpg`), `Artist
+  photos` the picked photos, `Database` the account's rows from the sync shadow as JSON (tracks,
+  playlists, playlist items, favourites, ratings, play events, settings, queue, devices) and
+  `Backup info.json` when it last finished and what it holds. The songs are ordinary files,
+  `Music\Artist\Album\Title.ext`, with its current details, cover and ReplayGain written
   into it and synced lyrics as a `.lrc` beside it, so any player can use the folder without the
   app. It updates itself after each sync: new songs are written, edited ones retagged or renamed,
   and songs deleted from the vault move to `Removed from vault` (nothing is deleted). Songs this
@@ -42,6 +50,10 @@
   and Opus Vorbis comments, M4A/MP4 iTunes tags and WavPack/APE APE tags; a format that can't be
   tagged (Ogg FLAC) is copied as it is. Uploading a mirror copy of a song still in the vault is
   refused; a copy of a deleted song uploads as new. Desktop SQLite v10 adds `mirror_entries`.
+  The setting moved from `mirror_dir` to `backup_dir`, so a folder set up while this was the
+  Downloads page's Library mirror is left as it is and a backup starts in the folder you pick.
+- Desktop: a Settings page, opened from the account menu. Song change notifications moved there
+  from the account menu, beside Backup Music Vault and the zoom level.
 - Desktop: a Download folder setting on the Downloads page. Change folder picks another folder
   and Use default goes back; the downloads already kept move there with progress (a rename on
   the same drive, a hash-checked copy across drives), and new ones follow. The folder is
@@ -61,8 +73,36 @@
   grows by 1.6 MiB, each library being stored uncompressed (arm64-v8a 554 KiB, armeabi-v7a
   460 KiB, x86_64 585 KiB).
 
+- Web and desktop: any playlist, and every group of By Genre, By Year, By Language and By
+  Country, can take a cover picture instead of its song artwork, the way an artist takes a photo.
+  "Choose cover" / "Change cover" and "Use default cover" sit in the page's "⋯" menu, and also
+  outside it: right-click a playlist in the sidebar, or right-click a group's card or use the
+  "⋯" that appears on it. The default cover is unchanged. Covers sync as settings rows (scope
+  `collection_cover`); migration 0009, live since 2026-10-27, lets other devices read them.
+
 ### Changed
-- The web Help page's Desktop extras cover the Download folder setting and the Library mirror.
+- Every app: a refreshed icon. The violet tile and beamed notes stay; a faint record now sits
+  behind the notes, with a soft light from the top left and a shadow under the notes. One source,
+  `apps/site/public/favicon.svg`, and `node scripts/make-icons.mjs` renders the web and Windows
+  icon files from it; Android's adaptive icon is its vector twin, with a notes-only themed icon.
+- Android: By Artist, By Genre, By Year, By Language and By Country show a card per group with
+  its cover, as on desktop and web, instead of one long list of expanding rows. A group opens on
+  its own page (header with Play, Shuffle and Download, then its songs); artists still open their
+  artist page. A long press on a group's card, or the ⋮ on its page, chooses a cover or goes back
+  to the default one, and playlists show a cover picked on any device.
+- Android: the Library page no longer has Play and Shuffle buttons at the top; tapping a song
+  plays from there, as before.
+- Android: a Settings page, opened from the account menu, with the notification state and a way
+  to the system's notification settings, and the app version. Appearance stays in the menu.
+- Statistics: larger chart text, axis labels and tooltips, and a bigger Play Time by Device
+  donut.
+- Web and desktop: the upload screen clears itself when an upload finishes. Uploaded songs
+  leave the list (the footer says how many went up), and once nothing is left the batch fields
+  and cover are emptied for the next upload. Songs that failed stay, with what was typed, to be
+  tried again.
+- Every app: the light theme puts white cards on a grey page with firmer borders, so sections
+  such as the Downloads page's cards stand out as they do in the dark theme.
+- The web Help page's Desktop extras cover the Download folder setting and Backup Music Vault.
 - A comma in an artist or genre tag separates two names: "A, B" is listed under both A and B in
   By Artist and By Genre, and the song shows on both artist pages.
 - Language and Country in the upload form and track editor list every value when opened, even
@@ -85,6 +125,27 @@
 - The README title starts with the app icon.
 - The landing page hero shows the library screenshot again; the demo video loop is switched off
   for now. The loop files stay in `apps/site/public/video/` and in the video project, unused.
+
+### Fixed
+- Android upload: the screen moves above the keyboard so the field being typed in stays in
+  view; the release date keeps its cursor after each digit (typing 2026-09-09 used to give
+  2026-90-90) and has a calendar button; and the screen clears itself when an upload finishes,
+  as on web and desktop.
+- Web and desktop: text can be selected and copied anywhere (song details, statistics, lyrics,
+  dialogs). Buttons and pictures still don't highlight when clicked, and double-clicking a song
+  plays it without selecting a word.
+- Every app: a comma in Country or Language now separates two values, as it does for artists and
+  genres, so "Bangladesh, India" lists the song under Bangladesh and under India (By Country, By
+  Language, Statistics) instead of making a third country. The field suggestions split them too.
+- Statistics: plays of a song that was later deleted or replaced counted as "Unknown" track,
+  album, year and language on the PC, because its local play log keyed them by a file that no
+  longer exists. They now keep the song's details from the synced copy, and edited details reach
+  the charts without reopening Statistics.
+- Every app registers one device per machine: a reinstall or cleared storage takes the
+  account's existing device of the same name instead of adding another, and Android no longer
+  registers the same phone two or three times at once. The PC now registers under its own name
+  ("<PC name> (Windows app)"), the web app as browser and system ("Web (Edge on Windows)", with
+  test and built-in browsers named apart), and the Android emulator as "Android emulator".
 
 ## [1.4.0] - 2026-10-21
 

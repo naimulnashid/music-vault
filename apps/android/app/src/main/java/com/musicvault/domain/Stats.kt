@@ -243,6 +243,17 @@ object Stats {
 
     enum class GroupField { ARTIST, ALBUM, GENRE, YEAR, LANGUAGE, COUNTRY }
 
+    /**
+     * A device row's name as the charts show it (core stats.ts deviceDisplayName).
+     * Builds before 2026-10-27 named every PC "Desktop (Win32)" and the emulator
+     * by its build ("Google sdk_gphone…").
+     */
+    fun deviceDisplayName(name: String): String = when {
+        Regex("sdk_gphone|emulator", RegexOption.IGNORE_CASE).containsMatchIn(name) -> "Android emulator"
+        name.startsWith("Desktop (") -> "Windows app (earlier installs)"
+        else -> name
+    }
+
     /** "A, B" is two names (SmartPlaylists.splitNames); each gets the full play. */
     private fun namesOf(value: String?, unknown: String): List<String> =
         SmartPlaylists.splitNames(value).ifEmpty { listOf(unknown) }
@@ -252,8 +263,8 @@ object Stats {
         GroupField.ALBUM -> listOf(meta.album)
         GroupField.GENRE -> namesOf(meta.genre, "Unknown Genre")
         GroupField.YEAR -> listOf(meta.year?.takeIf { it != 0 }?.toString() ?: "Unknown Year")
-        GroupField.LANGUAGE -> listOf(meta.language?.takeIf { it.isNotEmpty() } ?: "Unknown Language")
-        GroupField.COUNTRY -> listOf(meta.country?.takeIf { it.isNotEmpty() } ?: "Unknown Country")
+        GroupField.LANGUAGE -> namesOf(meta.language, "Unknown Language")
+        GroupField.COUNTRY -> namesOf(meta.country, "Unknown Country")
     }
 
     fun rankGroups(

@@ -13,6 +13,7 @@ import { StatsView } from "./components/StatsView";
 import { RecapView } from "./components/RecapView";
 import { HeatmapView } from "./components/Heatmap";
 import { DownloadsView } from "./components/DownloadsView";
+import { SettingsView } from "./components/SettingsView";
 import { PlaylistView } from "./components/PlaylistView";
 import { SmartPlaylistView } from "./components/SmartPlaylistView";
 import { GroupedBrowseView } from "./components/GroupedBrowseView";
@@ -29,6 +30,7 @@ import { useAudioEngine } from "./hooks/useAudioEngine";
 import { useMiniBridge } from "./hooks/useMiniBridge";
 import { useTheme } from "./hooks/useTheme";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { useZoom } from "./hooks/useZoom";
 import { useSmtc } from "./hooks/useSmtc";
 import { useNotifications } from "./hooks/useNotifications";
 import { useFileDrop } from "./hooks/useFileDrop";
@@ -60,6 +62,7 @@ function App() {
   useTheme();
   useMiniBridge();
   useKeyboardShortcuts();
+  useZoom();
   useSmtc();
   useNotifications();
   const dragOver = useFileDrop();
@@ -182,6 +185,7 @@ function App() {
                 {mainView === "recap" && <RecapView />}
                 {mainView === "heatmap" && <HeatmapView />}
                 {mainView === "downloads" && <DownloadsView />}
+                {mainView === "settings" && <SettingsView />}
                 {mainView === "playlist" && <PlaylistView />}
                 {mainView === "search" && <SearchView />}
                 {mainView === "smart" && smartKey && smartIsGroup && <GroupedBrowseView smartKey={smartKey} />}

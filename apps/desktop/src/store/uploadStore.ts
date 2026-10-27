@@ -83,6 +83,8 @@ interface UploadState {
   /** A cover for the whole batch (undefined = each file keeps its own). */
   sharedCover: PreparedCover | null | undefined;
   running: boolean;
+  /** Songs the last run uploaded, for the empty screen it leaves behind. */
+  lastUploaded: number;
   openWith: (paths?: string[]) => void;
   pickFiles: () => Promise<void>;
   addPaths: (paths: string[]) => Promise<void>;
@@ -224,6 +226,7 @@ export const useUploadStore = create<UploadState>((set, get) => ({
   shared: {},
   sharedCover: undefined,
   running: false,
+  lastUploaded: 0,
 
   openWith: (paths) => {
     set({ open: true });
@@ -249,7 +252,7 @@ export const useUploadStore = create<UploadState>((set, get) => ({
       values: {},
       cover: null,
     }));
-    set((s) => ({ items: [...s.items, ...placeholders] }));
+    set((s) => ({ items: [...s.items, ...placeholders], lastUploaded: 0 }));
     const ids = new Set(placeholders.map((p) => p.id));
     try {
       const results = await vaultPrepareFiles(paths);
@@ -352,7 +355,18 @@ export const useUploadStore = create<UploadState>((set, get) => ({
     try {
       await Promise.all(Array.from({ length: Math.min(CONCURRENCY, queue.length) }, worker));
     } finally {
-      set({ running: false });
+      // Uploaded songs leave the list, and once nothing is left the batch
+      // fields empty too, so the screen is ready for the next upload.
+      // Failed songs stay, with what was typed, to be tried again.
+      set((s) => {
+        const items = s.items.filter((i) => i.status !== "done");
+        return {
+          running: false,
+          items,
+          lastUploaded: s.items.length - items.length,
+          ...(items.length === 0 ? { shared: {}, sharedCover: undefined } : {}),
+        };
+      });
       // Pull the new rows (with their storage keys) into the library.
       void useSyncStore.getState().syncNow();
     }

@@ -9,7 +9,7 @@ import App from './App.tsx'
 import { initPaths } from './lib/paths'
 import { useAuthStore } from './store/authStore'
 import { useDownloadStore } from './store/downloadStore'
-import { useMirrorStore } from './store/mirrorStore'
+import { useBackupStore } from './store/backupStore'
 
 // The mini player window shares this bundle but boots a minimal remote-control
 // UI: no auth/sync/download initialization — the main window (hidden while mini
@@ -54,7 +54,7 @@ if (isMini) {
   void useDownloadStore.getState().init()
 
   // The library mirror runs after library changes once sync has pulled.
-  void useMirrorStore.getState().init()
+  void useBackupStore.getState().init()
 
   // Resolve app directories (artwork cache) before first paint so album art
   // URLs can be built synchronously during render.

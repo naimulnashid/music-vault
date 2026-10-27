@@ -52,8 +52,9 @@ object SmartPlaylists {
     }
 
     /**
-     * The names in an artist or genre tag. A comma separates two names ("A, B"
-     * is A and B), so a song shows up under each of them. Duplicates are dropped.
+     * The names in an artist, genre, language or country tag. A comma separates
+     * two names ("A, B" is A and B), so a song shows up under each of them.
+     * Duplicates are dropped.
      */
     fun splitNames(value: String?): List<String> =
         (value ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }.distinct()
@@ -68,8 +69,8 @@ object SmartPlaylists {
             SmartKey.GENRE -> splitNames(track.genre).or("Unknown Genre")
             SmartKey.ARTIST -> splitNames(track.artist).or("Unknown Artist")
             SmartKey.YEAR -> listOf(track.year?.toString() ?: "Unknown Year")
-            SmartKey.LANGUAGE -> listOf(track.language?.takeIf { it.isNotBlank() } ?: "Unknown Language")
-            SmartKey.COUNTRY -> listOf(track.country?.takeIf { it.isNotBlank() } ?: "Unknown Country")
+            SmartKey.LANGUAGE -> splitNames(track.language).or("Unknown Language")
+            SmartKey.COUNTRY -> splitNames(track.country).or("Unknown Country")
             else -> emptyList()
         }
     }

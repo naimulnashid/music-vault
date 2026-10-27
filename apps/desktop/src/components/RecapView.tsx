@@ -138,7 +138,7 @@ export function RecapView() {
                       className="w-full rounded-t bg-accent/70 group-hover:bg-accent transition-colors"
                       style={{ height: `${Math.max(seconds > 0 ? 4 : 0, (seconds / maxMonth) * 100)}%` }}
                     />
-                    <span className="text-[10px] text-muted">{MONTHS[i]}</span>
+                    <span className="text-xs text-muted">{MONTHS[i]}</span>
                   </div>
                 ))}
               </div>

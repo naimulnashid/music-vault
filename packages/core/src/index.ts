@@ -3,6 +3,7 @@ export * from "./lrc";
 export * from "./format";
 export * from "./albums";
 export * from "./artistPhotos";
+export * from "./collectionCovers";
 export * from "./playlists";
 export * from "./smartPlaylists";
 export * from "./smartRules";

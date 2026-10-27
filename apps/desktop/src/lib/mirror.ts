@@ -42,11 +42,11 @@ function formatGb(bytes: number): string {
 /** Why a run can't start for lack of space, or null when it fits. */
 export function spaceShortfall(bytesNeeded: number, freeBytes: number | null): string | null {
   if (freeBytes === null || bytesNeeded <= freeBytes) return null;
-  return `Not enough space on the mirror folder's drive: ${formatGb(bytesNeeded)} needed, ${formatGb(freeBytes)} free.`;
+  return `Not enough space on the backup folder's drive: ${formatGb(bytesNeeded)} needed, ${formatGb(freeBytes)} free.`;
 }
 
 export interface MirrorRunResult {
-  /** Songs in the mirror when the run ended. */
+  /** Songs in the backup when the run ended. */
   total: number;
   failed: number;
   untagged: number;
@@ -54,10 +54,30 @@ export interface MirrorRunResult {
   firstError: string | null;
 }
 
-/** The card's line after a run. */
+/** The music part of the card's line after a run. */
 export function runSummary(r: MirrorRunResult): string {
-  const parts = [`${songs(r.total)} in the folder`];
+  const parts = [`${songs(r.total)} backed up`];
   if (r.failed > 0) parts.push(`${songs(r.failed)} couldn't be written and will be tried again`);
   if (r.untagged > 0) parts.push(`${songs(r.untagged)} copied without details (their format can't be tagged)`);
   return parts.join(" • ");
+}
+
+/**
+ * A name Windows accepts as a file name: reserved characters become "_",
+ * trailing dots and spaces go, and it is cut to 100 characters.
+ */
+export function safeFileName(raw: string, fallback: string): string {
+  const cleaned = [...raw]
+    .map((c) => (/[<>:"/\|?*]/.test(c) || c.charCodeAt(0) < 32 ? "_" : c))
+    .join("")
+    .trim()
+    .replace(/[. ]+$/, "")
+    .slice(0, 100)
+    .trim();
+  return /^(con|prn|aux|nul|com\d|lpt\d)$/i.test(cleaned) || cleaned === "" ? fallback : cleaned;
+}
+
+/** "users/<id>/art/<sha256>.jpg" → "<sha256>.jpg". */
+export function coverFileName(artworkKey: string): string {
+  return artworkKey.slice(artworkKey.lastIndexOf("/") + 1);
 }

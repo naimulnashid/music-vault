@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -36,7 +37,6 @@ import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.LibraryMusic
-import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -55,7 +55,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -83,6 +82,8 @@ import com.musicvault.ui.player.PlayerViewModel
 import com.musicvault.ui.screens.AlbumScreen
 import com.musicvault.ui.screens.ArtistScreen
 import com.musicvault.ui.screens.CollectionsScreen
+import com.musicvault.ui.screens.GroupScreen
+import com.musicvault.ui.screens.SettingsScreen
 import com.musicvault.ui.screens.DownloadsScreen
 import com.musicvault.ui.screens.GroupedBrowseScreen
 import com.musicvault.ui.screens.LibraryScreen
@@ -103,8 +104,10 @@ object Routes {
     const val HEATMAP = "heatmap"
     const val DOWNLOADS = "downloads"
     const val SEARCH = "search"
+    const val SETTINGS = "settings"
 
     fun smart(key: SmartKey) = "smart/${key.name}"
+    fun group(key: SmartKey, name: String) = "group/${key.name}/${URLEncoder.encode(name, "UTF-8")}"
     fun playlist(id: String) = "playlist/${URLEncoder.encode(id, "UTF-8")}"
     fun album(key: String) = "album/${URLEncoder.encode(key, "UTF-8")}"
     fun artist(name: String) = "artist/${URLEncoder.encode(name, "UTF-8")}"
@@ -275,7 +278,11 @@ fun AppRoot() {
                         isTopLevel = isTopLevel,
                         email = (authState as? AuthState.SignedIn)?.email,
                         signedIn = authState is AuthState.SignedIn,
-                        title = if (currentRoute == Routes.UPLOAD) "Upload to your vault" else null,
+                        title = when (currentRoute) {
+                            Routes.UPLOAD -> "Upload to your vault"
+                            Routes.SETTINGS -> "Settings"
+                            else -> null
+                        },
                         onBack = { navController.popBackStack() },
                         onSearch = { open(Routes.SEARCH) },
                         onAccount = { settingsOpen = true },
@@ -284,6 +291,7 @@ fun AppRoot() {
                                 expanded = settingsOpen,
                                 mainViewModel = mainViewModel,
                                 onUpload = if (signedIn) ({ open(Routes.UPLOAD) }) else null,
+                                onSettings = { open(Routes.SETTINGS) },
                                 onDismiss = { settingsOpen = false },
                             )
                         },
@@ -323,6 +331,9 @@ fun AppRoot() {
                                 onAlbumClick = { open(Routes.album(it)) },
                                 contentPadding = pad,
                             )
+                        }
+                        composable(Routes.SETTINGS) {
+                            SettingsScreen(contentPadding = pad)
                         }
                         composable(Routes.UPLOAD) {
                             com.musicvault.ui.vault.UploadScreen(vaultViewModel)
@@ -370,15 +381,32 @@ fun AppRoot() {
                                 onArtistClick = { open(Routes.artist(it)) },
                             )
                         }
+                        composable("group/{key}/{name}") { entry ->
+                            val key = entry.arguments?.getString("key")
+                                ?.let { name -> SmartKey.entries.firstOrNull { it.name == name } }
+                                ?: SmartKey.GENRE
+                            GroupScreen(
+                                smartKey = key,
+                                name = Routes.decode(entry.arguments?.getString("name").orEmpty()),
+                                libraryViewModel = libraryViewModel,
+                                playerViewModel = playerViewModel,
+                                onArtistClick = { open(Routes.artist(it)) },
+                                contentPadding = pad,
+                            )
+                        }
                         composable("smart/{key}") { entry ->
                             val key = entry.arguments?.getString("key")
                                 ?.let { name -> SmartKey.entries.firstOrNull { it.name == name } }
                                 ?: SmartKey.RECENTLY_ADDED
                             val def = com.musicvault.domain.SmartPlaylists.def(key)
                             if (def.kind == com.musicvault.domain.SmartKind.GROUP) {
-                                GroupedBrowseScreen(key, libraryViewModel, playerViewModel) { artist ->
-                                    open(Routes.artist(artist))
-                                }
+                                GroupedBrowseScreen(
+                                    smartKey = key,
+                                    libraryViewModel = libraryViewModel,
+                                    onGroupClick = { name -> open(Routes.group(key, name)) },
+                                    onArtistClick = { artist -> open(Routes.artist(artist)) },
+                                    contentPadding = pad,
+                                )
                             } else {
                                 SmartPlaylistScreen(key, libraryViewModel, playerViewModel) { artist ->
                                     open(Routes.artist(artist))
@@ -475,14 +503,24 @@ private fun TopBar(
     ) {
         if (isTopLevel) {
             Spacer(Modifier.width(12.dp))
+            // The launcher icon's own layers: the foreground's visible part is its middle
+            // 72 of 108dp, so it is drawn at 108/72 of the tile and clipped to it.
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .size(30.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Brush.linearGradient(listOf(Color(0xFFA78BFA), Color(0xFF7C3AED)))),
+                    .clip(RoundedCornerShape(7.dp)),
             ) {
-                Icon(Icons.Rounded.MusicNote, null, tint = Color.White, modifier = Modifier.size(19.dp))
+                androidx.compose.foundation.Image(
+                    androidx.compose.ui.res.painterResource(com.musicvault.R.drawable.ic_launcher_background),
+                    null,
+                    modifier = Modifier.requiredSize(45.dp),
+                )
+                androidx.compose.foundation.Image(
+                    androidx.compose.ui.res.painterResource(com.musicvault.R.drawable.ic_launcher_foreground),
+                    null,
+                    modifier = Modifier.requiredSize(45.dp),
+                )
             }
             Spacer(Modifier.width(10.dp))
             Text("Music Vault", color = colors.text, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold)

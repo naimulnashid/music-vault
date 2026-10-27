@@ -17,9 +17,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.CloudUpload
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -45,7 +43,7 @@ import com.musicvault.ui.components.TrackList
 import com.musicvault.ui.player.PlayerViewModel
 import com.musicvault.ui.theme.LocalVaultColors
 
-/** Library tab: every song, with Play/Shuffle and sort chips. */
+/** Library tab: every song, with sort chips; tapping a song plays from there. */
 @Composable
 fun LibraryScreen(
     libraryViewModel: LibraryViewModel,
@@ -119,31 +117,7 @@ fun LibraryScreen(
                     "Library",
                     subtitle = "${allTracks.size} ${if (allTracks.size == 1) "song" else "songs"} • ${Format.formatDurationLong(totalMs / 1000)}",
                 )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                ) {
-                    PillButton(
-                        "Play",
-                        onClick = {
-                            if (playback.shuffle) playerViewModel.toggleShuffle()
-                            playerViewModel.playQueue(allTracks, 0)
-                        },
-                        icon = Icons.Rounded.PlayArrow,
-                        primary = true,
-                        modifier = Modifier.weight(1f),
-                    )
-                    PillButton(
-                        "Shuffle",
-                        onClick = {
-                            if (!playback.shuffle) playerViewModel.toggleShuffle()
-                            playerViewModel.playQueue(allTracks, allTracks.indices.random())
-                        },
-                        icon = Icons.Rounded.Shuffle,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(4.dp))
                 ChipRow(
                     options = SortKey.entries.map { it to it.label },
                     selected = sortKey,

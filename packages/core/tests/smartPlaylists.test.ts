@@ -81,6 +81,15 @@ describe("computeSmartGroups", () => {
     const groups = computeSmartGroups("country", [track({ id: "x", country: "India" }), track({ id: "y" })]);
     expect(groups.map((g) => g.name)).toEqual(["India", "Unknown Country"]);
   });
+
+  it("lists a song under each comma-separated country and language", () => {
+    const shared = [track({ id: "x", country: "Bangladesh, India", language: "Bengali,Hindi" }), track({ id: "y", country: "India" })];
+    expect(computeSmartGroups("country", shared).map((g) => [g.name, g.tracks.map((t) => t.id)])).toEqual([
+      ["Bangladesh", ["x"]],
+      ["India", ["x", "y"]],
+    ]);
+    expect(computeSmartGroups("language", shared).map((g) => g.name)).toEqual(["Bengali", "Hindi", "Unknown Language"]);
+  });
 });
 
 describe("splitNames", () => {

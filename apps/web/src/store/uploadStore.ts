@@ -58,6 +58,8 @@ interface UploadState {
   shared: FormValues;
   sharedCover: PreparedCover | null | undefined;
   running: boolean;
+  /** Songs the last run uploaded, for the empty screen it leaves behind. */
+  lastUploaded: number;
   openWith: (files?: File[]) => void;
   addFiles: (files: File[]) => Promise<void>;
   setValue: (id: string, field: keyof FormValues, value: string) => void;
@@ -161,6 +163,7 @@ export const useUploadStore = create<UploadState>((set, get) => ({
   shared: {},
   sharedCover: undefined,
   running: false,
+  lastUploaded: 0,
 
   openWith: (files) => {
     set({ open: true });
@@ -181,7 +184,7 @@ export const useUploadStore = create<UploadState>((set, get) => ({
       values: {},
       cover: null,
     }));
-    set((s) => ({ items: [...s.items, ...placeholders] }));
+    set((s) => ({ items: [...s.items, ...placeholders], lastUploaded: 0 }));
 
     const prepared: { id: string; source?: WebSource; error?: string }[] = [];
     let cursor = 0;
@@ -271,7 +274,18 @@ export const useUploadStore = create<UploadState>((set, get) => ({
     try {
       await Promise.all(Array.from({ length: Math.min(CONCURRENCY, queue.length) }, worker));
     } finally {
-      set({ running: false });
+      // Uploaded songs leave the list, and once nothing is left the batch
+      // fields empty too, so the screen is ready for the next upload.
+      // Failed songs stay, with what was typed, to be tried again.
+      set((s) => {
+        const items = s.items.filter((i) => i.status !== "done");
+        return {
+          running: false,
+          items,
+          lastUploaded: s.items.length - items.length,
+          ...(items.length === 0 ? { shared: {}, sharedCover: undefined } : {}),
+        };
+      });
       void useSyncStore.getState().syncNow();
     }
   },

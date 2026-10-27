@@ -111,6 +111,7 @@ fun CollectionsScreen(
     val albums = remember(tracks) { Albums.groupAlbums(tracks) }
     val byId = remember(tracks) { tracks.associateBy { it.id } }
     val history by libraryViewModel.history.collectAsStateWithLifecycle()
+    val covers by libraryViewModel.collectionCoverPaths.collectAsStateWithLifecycle()
     // Covers come from each playlist's songs; a smart playlist's are the ones its rules match.
     val playlistTracks = remember(playlists, tracks, history) {
         val inputs by lazy {
@@ -185,7 +186,7 @@ fun CollectionsScreen(
         if (playlists.isNotEmpty()) {
             item(span = { GridItemSpan(maxLineSpan) }) { SectionTitle("Your playlists") }
             items(playlists, key = { "p-${it.id}" }) { playlist ->
-                PlaylistCard(playlist, playlistTracks[playlist.id].orEmpty()) { onPlaylistClick(playlist.id) }
+                PlaylistCard(playlist, playlistTracks[playlist.id].orEmpty(), covers["playlist:${playlist.id}"]) { onPlaylistClick(playlist.id) }
             }
         }
 
@@ -235,7 +236,7 @@ fun CollectionsScreen(
 }
 
 @Composable
-private fun PlaylistCard(playlist: Playlist, tracks: List<Track>, onClick: () -> Unit) {
+private fun PlaylistCard(playlist: Playlist, tracks: List<Track>, customCover: String?, onClick: () -> Unit) {
     val colors = LocalVaultColors.current
     Column(
         modifier = Modifier
@@ -244,7 +245,9 @@ private fun PlaylistCard(playlist: Playlist, tracks: List<Track>, onClick: () ->
             .clickable(onClick = onClick),
     ) {
         val arts = mosaicArts(tracks)
-        if (arts.isEmpty()) {
+        if (customCover != null) {
+            AlbumArt(customCover, modifier = Modifier.fillMaxWidth().aspectRatio(1f), shape = RoundedCornerShape(12.dp))
+        } else if (arts.isEmpty()) {
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
