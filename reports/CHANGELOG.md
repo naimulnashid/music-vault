@@ -19,6 +19,12 @@
 ## [Unreleased]
 
 ### Added
+- Landing page: How it works animates as it scrolls in. The diagram's parts appear in order,
+  each connection draws out from the devices, dots then keep flowing along the connections (out
+  and back for sync and for audio) and Cloudflare R2 glows softly; the three cards lift on
+  hover. Visitors who prefer reduced motion, or have scripts off, see it still.
+- Landing page: FAQ questions light up under the pointer (a raised row, the question in violet,
+  the plus turning a quarter) in both themes.
 - Every app: an SVG file can be a cover (song, playlist, group or artist photo). It is drawn with
   its shorter side at the full cover size on a white background, then cropped and stored as a
   JPEG like any other cover: `resvg` on Windows, the browser on the web, AndroidSVG on Android.
@@ -96,6 +102,12 @@ everywhere; Android `versionCode 7`. Migration 0009 is live (2026-10-27).
   `collection_cover`); migration 0009, live since 2026-10-27, lets other devices read them.
 
 ### Changed
+- Landing page: the hero's paragraphs and every section's lead use the full content width, and
+  headings and paragraphs fill each line before wrapping instead of balancing into shorter lines.
+  Run your own puts its heading and lead across the full width, then the four steps on the left
+  and What you need on the right.
+- Landing page light theme: white cards with a soft shadow on a grey page, with firmer borders,
+  so boxes no longer blend into the background.
 - Every app: a refreshed icon. The violet tile and beamed notes stay; a faint record now sits
   behind the notes, with a soft light from the top left and a shadow under the notes. One source,
   `apps/site/public/favicon.svg`, and `node scripts/make-icons.mjs` renders the web and Windows

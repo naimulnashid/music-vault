@@ -47,41 +47,61 @@ const apps = [
           </marker>
         </defs>
 
-        <rect class="d-group" x="1" y="1" width="250" height="398" rx="18"></rect>
-        <text class="d-kicker" x="20" y="28">YOUR DEVICES</text>
+        <g class="d-step" style="--d: 0">
+          <rect class="d-group" x="1" y="1" width="250" height="398" rx="18"></rect>
+          <text class="d-kicker" x="20" y="28">YOUR DEVICES</text>
+        </g>
         {
           apps.map((app, i) => (
-            <g>
+            <g class="d-step" style={`--d: ${i + 1}`}>
               <rect class="d-box" x="16" y={44 + i * 104} width="220" height="88" rx="12" />
               <text class="d-title" x="34" y={80 + i * 104}>{app.name}</text>
               <text class="d-sub" x="34" y={106 + i * 104}>{app.stack}</text>
             </g>
           ))
         }
-        <text class="d-note" x="126" y="378" text-anchor="middle">Each keeps a local copy and works offline</text>
+        <text class="d-note d-step" style="--d: 4" x="126" y="378" text-anchor="middle">Each keeps a local copy and works offline</text>
 
-        <line class="d-edge" x1="252" y1="60" x2="498" y2="60" marker-start={`url(#${wide})`} marker-end={`url(#${wide})`}></line>
-        <text class="d-label" x="375" y="48" text-anchor="middle">sync</text>
-        <line class="d-edge" x1="252" y1="200" x2="498" y2="200" marker-end={`url(#${wide})`}></line>
-        <text class="d-label" x="375" y="188" text-anchor="middle">ask for a signed URL</text>
-        <line class="d-edge d-edge-accent" x1="252" y1="340" x2="498" y2="340" marker-start={`url(#${wideAccent})`} marker-end={`url(#${wideAccent})`}></line>
-        <text class="d-label" x="375" y="328" text-anchor="middle">upload and download audio</text>
+        <g class="d-step d-grow" style="--d: 5">
+          <line class="d-edge" x1="252" y1="60" x2="498" y2="60" marker-start={`url(#${wide})`} marker-end={`url(#${wide})`}></line>
+          <line class="d-flow d-flow-both" x1="266" y1="60" x2="484" y2="60"></line>
+          <text class="d-label" x="375" y="48" text-anchor="middle">sync</text>
+        </g>
+        <g class="d-step d-grow" style="--d: 6">
+          <line class="d-edge" x1="252" y1="200" x2="498" y2="200" marker-end={`url(#${wide})`}></line>
+          <line class="d-flow" x1="266" y1="200" x2="484" y2="200"></line>
+          <text class="d-label" x="375" y="188" text-anchor="middle">ask for a signed URL</text>
+        </g>
+        <g class="d-step d-grow" style="--d: 7">
+          <line class="d-edge d-edge-accent" x1="252" y1="340" x2="498" y2="340" marker-start={`url(#${wideAccent})`} marker-end={`url(#${wideAccent})`}></line>
+          <line class="d-flow d-flow-both" x1="266" y1="340" x2="484" y2="340"></line>
+          <text class="d-label" x="375" y="328" text-anchor="middle">upload and download audio</text>
+        </g>
 
-        <rect class="d-box" x="500" y="0" width="259" height="120" rx="12"></rect>
-        <text class="d-title" x="520" y="36">Supabase</text>
-        <text class="d-sub" x="520" y="64">account · song details · playlists</text>
-        <text class="d-sub" x="520" y="88">play history · sync state</text>
+        <g class="d-step" style="--d: 6">
+          <rect class="d-box" x="500" y="0" width="259" height="120" rx="12"></rect>
+          <text class="d-title" x="520" y="36">Supabase</text>
+          <text class="d-sub" x="520" y="64">account · song details · playlists</text>
+          <text class="d-sub" x="520" y="88">play history · sync state</text>
+        </g>
 
-        <rect class="d-box" x="500" y="160" width="259" height="80" rx="12"></rect>
-        <text class="d-title" x="520" y="194">vault function</text>
-        <text class="d-sub" x="520" y="220">signs short-lived URLs</text>
+        <g class="d-step" style="--d: 7">
+          <rect class="d-box" x="500" y="160" width="259" height="80" rx="12"></rect>
+          <text class="d-title" x="520" y="194">vault function</text>
+          <text class="d-sub" x="520" y="220">signs short-lived URLs</text>
+        </g>
 
-        <line class="d-edge" x1="630" y1="242" x2="630" y2="292" marker-end={`url(#${wide})`}></line>
-        <text class="d-label" x="642" y="272">holds the R2 keys</text>
+        <g class="d-step d-grow d-down" style="--d: 8">
+          <line class="d-edge" x1="630" y1="242" x2="630" y2="292" marker-end={`url(#${wide})`}></line>
+          <line class="d-flow" x1="630" y1="250" x2="630" y2="282"></line>
+          <text class="d-label" x="642" y="272">holds the R2 keys</text>
+        </g>
 
-        <rect class="d-box d-box-accent" x="500" y="296" width="259" height="88" rx="12"></rect>
-        <text class="d-title" x="520" y="332">Cloudflare R2</text>
-        <text class="d-sub" x="520" y="358">your audio and covers</text>
+        <g class="d-step d-pulse" style="--d: 8">
+          <rect class="d-box d-box-accent" x="500" y="296" width="259" height="88" rx="12"></rect>
+          <text class="d-title" x="520" y="332">Cloudflare R2</text>
+          <text class="d-sub" x="520" y="358">your audio and covers</text>
+        </g>
       </svg>
 
       <svg
@@ -103,42 +123,56 @@ const apps = [
           </marker>
         </defs>
 
-        <rect class="d-group" x="1" y="1" width="358" height="152" rx="16"></rect>
-        <text class="d-kicker" x="14" y="24">YOUR DEVICES</text>
+        <g class="d-step" style="--d: 0">
+          <rect class="d-group" x="1" y="1" width="358" height="152" rx="16"></rect>
+          <text class="d-kicker" x="14" y="24">YOUR DEVICES</text>
+        </g>
         {
           apps.map((app, i) => (
-            <g>
+            <g class="d-step" style={`--d: ${i + 1}`}>
               <rect class="d-box" x={12 + i * 116} y="36" width="104" height="72" rx="10" />
               <text class="d-title d-small" x={64 + i * 116} y="68" text-anchor="middle">{app.short}</text>
               <text class="d-sub d-small" x={64 + i * 116} y="90" text-anchor="middle">{app.shortStack}</text>
             </g>
           ))
         }
-        <text class="d-note" x="180" y="136" text-anchor="middle">Each keeps a local copy and works offline</text>
+        <text class="d-note d-step" style="--d: 4" x="180" y="136" text-anchor="middle">Each keeps a local copy and works offline</text>
 
-        <line class="d-edge" x1="24" y1="154" x2="24" y2="508"></line>
+        <g class="d-step d-grow d-down" style="--d: 4">
+          <line class="d-edge" x1="24" y1="154" x2="24" y2="508"></line>
+          <line class="d-flow" x1="24" y1="164" x2="24" y2="500"></line>
+        </g>
 
-        <line class="d-edge" x1="24" y1="236" x2="46" y2="236" marker-end={`url(#${narrow})`}></line>
-        <rect class="d-box" x="48" y="184" width="311" height="104" rx="12"></rect>
-        <text class="d-kicker" x="64" y="208">SYNC BOTH WAYS</text>
-        <text class="d-title" x="64" y="234">Supabase</text>
-        <text class="d-sub d-small" x="64" y="256">account · song details · playlists</text>
-        <text class="d-sub d-small" x="64" y="276">play history · sync state</text>
+        <g class="d-step" style="--d: 5">
+          <line class="d-edge" x1="24" y1="236" x2="46" y2="236" marker-end={`url(#${narrow})`}></line>
+          <rect class="d-box" x="48" y="184" width="311" height="104" rx="12"></rect>
+          <text class="d-kicker" x="64" y="208">SYNC BOTH WAYS</text>
+          <text class="d-title" x="64" y="234">Supabase</text>
+          <text class="d-sub d-small" x="64" y="256">account · song details · playlists</text>
+          <text class="d-sub d-small" x="64" y="276">play history · sync state</text>
+        </g>
 
-        <line class="d-edge" x1="24" y1="368" x2="46" y2="368" marker-end={`url(#${narrow})`}></line>
-        <rect class="d-box" x="48" y="324" width="311" height="88" rx="12"></rect>
-        <text class="d-kicker" x="64" y="348">ASK FOR A SIGNED URL</text>
-        <text class="d-title" x="64" y="374">vault function</text>
-        <text class="d-sub d-small" x="64" y="396">signs short-lived URLs</text>
+        <g class="d-step" style="--d: 6">
+          <line class="d-edge" x1="24" y1="368" x2="46" y2="368" marker-end={`url(#${narrow})`}></line>
+          <rect class="d-box" x="48" y="324" width="311" height="88" rx="12"></rect>
+          <text class="d-kicker" x="64" y="348">ASK FOR A SIGNED URL</text>
+          <text class="d-title" x="64" y="374">vault function</text>
+          <text class="d-sub d-small" x="64" y="396">signs short-lived URLs</text>
+        </g>
 
-        <line class="d-edge" x1="204" y1="414" x2="204" y2="458" marker-end={`url(#${narrow})`}></line>
-        <text class="d-label d-small" x="214" y="441">holds the R2 keys</text>
+        <g class="d-step d-grow d-down" style="--d: 7">
+          <line class="d-edge" x1="204" y1="414" x2="204" y2="458" marker-end={`url(#${narrow})`}></line>
+          <line class="d-flow" x1="204" y1="420" x2="204" y2="450"></line>
+          <text class="d-label d-small" x="214" y="441">holds the R2 keys</text>
+        </g>
 
-        <line class="d-edge d-edge-accent" x1="24" y1="508" x2="46" y2="508" marker-end={`url(#${narrowAccent})`}></line>
-        <rect class="d-box d-box-accent" x="48" y="462" width="311" height="96" rx="12"></rect>
-        <text class="d-kicker" x="64" y="486">UPLOAD AND DOWNLOAD</text>
-        <text class="d-title" x="64" y="512">Cloudflare R2</text>
-        <text class="d-sub d-small" x="64" y="534">your audio and covers</text>
+        <g class="d-step d-pulse" style="--d: 8">
+          <line class="d-edge d-edge-accent" x1="24" y1="508" x2="46" y2="508" marker-end={`url(#${narrowAccent})`}></line>
+          <rect class="d-box d-box-accent" x="48" y="462" width="311" height="96" rx="12"></rect>
+          <text class="d-kicker" x="64" y="486">UPLOAD AND DOWNLOAD</text>
+          <text class="d-title" x="64" y="512">Cloudflare R2</text>
+          <text class="d-sub d-small" x="64" y="534">your audio and covers</text>
+        </g>
       </svg>
     </figure>
 
@@ -172,6 +206,25 @@ const apps = [
     </p>
   </div>
 </section>
+
+<script>
+  // Reveals the diagram when it scrolls in. Arming happens here, so without
+  // scripts, or for a visitor who prefers less motion, it simply shows.
+  const diagram = document.querySelector<HTMLElement>('#how .diagram');
+  if (diagram && 'IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    diagram.classList.add('armed');
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          diagram.classList.add('in-view');
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.35 },
+    );
+    observer.observe(diagram);
+  }
+</script>
 
 <style>
   .diagram {
@@ -276,12 +329,101 @@ const apps = [
     fill: var(--accent);
   }
 
+  /* Dots that travel along a connection, drawn over its line. */
+  .d-flow {
+    stroke: var(--accent);
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-dasharray: 0.1 22;
+    opacity: 0;
+  }
+
+  /*
+   * Motion, only for visitors who haven't asked for less of it. The script
+   * above arms the diagram (hiding its parts) only once it can reveal them,
+   * so without it the diagram simply shows. On scroll-in the parts appear in
+   * order (--d), each connection draws out from the devices, then dots flow
+   * along the connections and R2 glows softly.
+   */
+  @media (prefers-reduced-motion: no-preference) {
+    .diagram.armed .d-step {
+      opacity: 0;
+      transform: translateY(10px);
+      transform-box: fill-box;
+      transition:
+        opacity 0.5s var(--ease),
+        transform 0.6s var(--ease);
+      transition-delay: calc(var(--d) * 110ms);
+    }
+
+    .diagram.armed .d-grow {
+      transform: scaleX(0.15);
+      transform-origin: left center;
+    }
+
+    .diagram.armed .d-down {
+      transform: scaleY(0.15);
+      transform-origin: center top;
+    }
+
+    .diagram.armed.in-view .d-step {
+      opacity: 1;
+      transform: none;
+    }
+
+    .diagram.in-view .d-flow {
+      opacity: 0.95;
+      transition: opacity 0.4s 1.2s;
+      animation: d-flow 1.4s linear 1.2s infinite;
+    }
+
+    /* Both ways: the dots run out and back. */
+    .diagram.in-view .d-flow-both {
+      animation: d-flow-both 4s ease-in-out 1.2s infinite alternate;
+    }
+
+    .diagram.in-view .d-pulse .d-box-accent {
+      animation: d-pulse 2.8s ease-in-out 1.4s infinite;
+    }
+  }
+
+  @keyframes d-flow {
+    to {
+      stroke-dashoffset: -22.1;
+    }
+  }
+
+  @keyframes d-flow-both {
+    to {
+      stroke-dashoffset: -110.5;
+    }
+  }
+
+  @keyframes d-pulse {
+    50% {
+      filter: drop-shadow(0 0 10px rgb(139 92 246 / 0.55));
+    }
+  }
+
   .points {
     display: grid;
     gap: 18px;
     margin: 0;
     padding: 0;
     list-style: none;
+  }
+
+  .points li {
+    transition:
+      transform 0.25s var(--ease),
+      border-color 0.25s var(--ease),
+      box-shadow 0.25s var(--ease);
+  }
+
+  .points li:hover {
+    transform: translateY(-4px);
+    border-color: var(--accent);
+    box-shadow: 0 18px 40px -22px rgb(124 58 237 / 0.55);
   }
 
   .points h3 {

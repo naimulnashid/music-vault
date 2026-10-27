@@ -31,6 +31,7 @@
   --glow-2: rgb(192 38 211 / 0.18);
   --shadow: 0 40px 90px -30px rgb(0 0 0 / 0.85);
   --header-bg: rgb(13 13 16 / 0.9);
+  --card-shadow: none;
 
   --font: 'Figtree Variable', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
   --radius: 18px;
@@ -41,17 +42,20 @@
 }
 
 /* Light: the system setting unless the visitor chose dark, or the visitor's
-   own choice. The two rules carry the same tokens; keep them in step. */
+   own choice. The two rules carry the same tokens; keep them in step. Cards
+   are white on a grey page with a soft shadow, the way the dark theme lifts
+   them off its background; a near-white page made them disappear. */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme='dark']) {
     color-scheme: light;
 
-    --bg: #f6f6f9;
+    --bg: #ececf1;
     --surface: #ffffff;
-    --surface-2: #ececf1;
-    --surface-3: #dfdfe6;
-    --line: rgb(20 20 40 / 0.09);
-    --line-strong: rgb(20 20 40 / 0.16);
+    --surface-2: #e3e3ea;
+    --surface-3: #d5d5de;
+    --line: rgb(20 20 40 / 0.12);
+    --line-strong: rgb(20 20 40 / 0.2);
+    --card-shadow: 0 1px 2px rgb(20 20 40 / 0.05), 0 10px 28px -14px rgb(40 30 80 / 0.18);
     --fg: #141419;
     --muted: #55556a;
     --accent-text: #6d28d9;
@@ -59,19 +63,20 @@
     --glow-1: rgb(139 92 246 / 0.22);
     --glow-2: rgb(192 38 211 / 0.1);
     --shadow: 0 40px 80px -36px rgb(40 30 80 / 0.35);
-    --header-bg: rgb(246 246 249 / 0.92);
+    --header-bg: rgb(236 236 241 / 0.92);
   }
 }
 
 :root[data-theme='light'] {
   color-scheme: light;
 
-  --bg: #f6f6f9;
+  --bg: #ececf1;
   --surface: #ffffff;
-  --surface-2: #ececf1;
-  --surface-3: #dfdfe6;
-  --line: rgb(20 20 40 / 0.09);
-  --line-strong: rgb(20 20 40 / 0.16);
+  --surface-2: #e3e3ea;
+  --surface-3: #d5d5de;
+  --line: rgb(20 20 40 / 0.12);
+  --line-strong: rgb(20 20 40 / 0.2);
+  --card-shadow: 0 1px 2px rgb(20 20 40 / 0.05), 0 10px 28px -14px rgb(40 30 80 / 0.18);
   --fg: #141419;
   --muted: #55556a;
   --accent-text: #6d28d9;
@@ -79,7 +84,7 @@
   --glow-1: rgb(139 92 246 / 0.22);
   --glow-2: rgb(192 38 211 / 0.1);
   --shadow: 0 40px 80px -36px rgb(40 30 80 / 0.35);
-  --header-bg: rgb(246 246 249 / 0.92);
+  --header-bg: rgb(236 236 241 / 0.92);
 }
 
 @media (min-width: 640px) {
@@ -141,11 +146,14 @@ h2,
 h3 {
   line-height: 1.1;
   letter-spacing: -0.025em;
-  text-wrap: balance;
 }
 
+/* Lines fill the full width before wrapping (no balancing into shorter lines). */
+h1,
+h2,
+h3,
 p {
-  text-wrap: pretty;
+  text-wrap: wrap;
 }
 
 a {
@@ -212,8 +220,7 @@ code {
   border-top: 1px solid var(--line);
 }
 
-/* Headings use the full content width so they stay on one line on wide
-   screens; the lead paragraph keeps a readable measure (about 70 characters). */
+/* Headings and lead paragraphs use the full content width. */
 .section-head {
   margin-bottom: clamp(36px, 5vw, 56px);
 }
@@ -234,7 +241,6 @@ code {
 }
 
 .lead {
-  max-width: 46rem;
   margin-top: 18px;
   color: var(--muted);
   font-size: clamp(1.0625rem, 1.6vw, 1.1875rem);
@@ -304,6 +310,7 @@ code {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: clamp(22px, 3vw, 30px);
+  box-shadow: var(--card-shadow);
 }
 
 .card h3 {

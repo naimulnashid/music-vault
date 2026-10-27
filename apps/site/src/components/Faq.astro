@@ -67,8 +67,23 @@ const faqs = [
     border-top: 1px solid var(--line);
   }
 
+  /* Each question is a row that lights up under the pointer: a raised
+     surface (white in the light theme), the question in the accent colour and
+     the plus turning a quarter. */
   details {
     border-bottom: 1px solid var(--line);
+    transition:
+      background-color 0.2s var(--ease),
+      box-shadow 0.2s var(--ease),
+      border-radius 0.2s var(--ease);
+  }
+
+  details:hover,
+  details[open] {
+    border-radius: var(--radius-sm);
+    border-bottom-color: transparent;
+    background: var(--surface);
+    box-shadow: var(--card-shadow);
   }
 
   summary {
@@ -76,11 +91,20 @@ const faqs = [
     align-items: center;
     justify-content: space-between;
     gap: 20px;
-    padding: 22px 4px;
+    padding: 22px 18px;
     font-size: 1.125rem;
     font-weight: 700;
     cursor: pointer;
     list-style: none;
+    transition: color 0.2s var(--ease);
+  }
+
+  summary:hover {
+    color: var(--accent-text);
+  }
+
+  summary:hover::after {
+    transform: rotate(90deg);
   }
 
   summary::-webkit-details-marker {
@@ -106,7 +130,7 @@ const faqs = [
 
   details p {
     max-width: 760px;
-    padding: 0 4px 24px;
+    padding: 0 18px 24px;
     color: var(--muted);
   }
 

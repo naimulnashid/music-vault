@@ -34,17 +34,17 @@ const needs = [
 ---
 
 <section class="section" id="run" aria-labelledby="run-title">
-  <div class="container run">
-    <div>
-      <div class="section-head reveal">
-        <p class="eyebrow">Run your own</p>
-        <h2 id="run-title">Four steps, each with its own guide.</h2>
-        <p class="lead">
-          Music Vault has no shared server, so there is nothing to sign up for. You set up your own
-          backend once, on free tiers, and every app you build connects to it.
-        </p>
-      </div>
+  <div class="container">
+    <div class="section-head reveal">
+      <p class="eyebrow">Run your own</p>
+      <h2 id="run-title">Four steps, each with its own guide.</h2>
+      <p class="lead">
+        Music Vault has no shared server, so there is nothing to sign up for. You set up your own
+        backend once, on free tiers, and every app you build connects to it.
+      </p>
+    </div>
 
+    <div class="run">
       <ol class="steps">
         {
           steps.map((step, i) => (
@@ -64,30 +64,30 @@ const needs = [
           ))
         }
       </ol>
-    </div>
 
-    <aside class="side reveal" aria-labelledby="needs-title">
-      <div class="card">
-        <h3 id="needs-title">What you need</h3>
-        <ul class="ticks">
-          {needs.map((need) => <li>{need}</li>)}
-        </ul>
-        <p class="side-note">
-          <strong>No prebuilt installers.</strong> Every build carries the Supabase project it was
-          made for, so you build your own. The guides walk through it.
-        </p>
-        <div class="buttons">
-          <a class="button button-primary" href={LINKS.setup}>
-            Start the setup guide
-            <Icon name="arrowRight" />
-          </a>
-          <a class="button button-secondary" href={LINKS.repo}>
-            <Icon name="github" />
-            Source code
-          </a>
+      <aside class="side reveal" aria-labelledby="needs-title">
+        <div class="card">
+          <h3 id="needs-title">What you need</h3>
+          <ul class="ticks">
+            {needs.map((need) => <li>{need}</li>)}
+          </ul>
+          <p class="side-note">
+            <strong>No prebuilt installers.</strong> Every build carries the Supabase project it was
+            made for, so you build your own. The guides walk through it.
+          </p>
+          <div class="buttons">
+            <a class="button button-primary" href={LINKS.setup}>
+              Start the setup guide
+              <Icon name="arrowRight" />
+            </a>
+            <a class="button button-secondary" href={LINKS.repo}>
+              <Icon name="github" />
+              Source code
+            </a>
+          </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+    </div>
   </div>
 </section>
 
