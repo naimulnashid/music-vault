@@ -34,6 +34,7 @@ No client keeps its own copy of the track list — each projects the synced `tra
 | 0007 | [0007_artwork_key_guard.sql](../supabase/migrations/0007_artwork_key_guard.sql) | 45 | audit SEC-001 | Applied 2026-10-20. Extends `tracks_protect_vault_columns` to reject a client INSERT or UPDATE that sets `artwork_key` to anything but the row owner's own full cover key |
 | 0008 | [0008_artist_photos.sql](../supabase/migrations/0008_artist_photos.sql) | 122 | artist photos | Applied 2026-10-22. Guards `artist_photo` settings rows (null or the owner's own cover key), adds `referenced_artwork_keys`, and makes `delete_track` keep a cover an artist photo uses |
 | 0009 | [0009_collection_covers.sql](../supabase/migrations/0009_collection_covers.sql) | 111 | playlist covers | Applied 2026-10-27. Extends the three 0008 pieces to `collection_cover` settings rows: the value guard, `referenced_artwork_keys` and `delete_track` |
+| 0010 | [0010_song_details.sql](../supabase/migrations/0010_song_details.sql) | 106 | song details | Applied 2026-10-27. Adds `featured_artists`, `subgenre`, `secondary_genres`, `mood` and `vocals` to `tracks` and makes `apply_track_edit` accept them |
 
 There is **no migration runner in the repo** — no Supabase CLI config, no `supabase/config.toml`.
 The migrations are applied by hand (the RLS test says "run in the Supabase SQL editor (or psql)"
@@ -207,6 +208,11 @@ client's library is a projection of these rows.
 | `genre`, `language`, `country`, `codec` | text | nullable (`country`: **0006**) |
 | `release_date` | text | **0006** — "2019", "2019-05" or "2019-05-14" (check constraint) |
 | `year` | int | nullable — follows `release_date` (trigger `tracks_sync_year`, **0006**) |
+| `featured_artists` | text | nullable — guest artists, comma-separated (**0010**) |
+| `subgenre` | text | nullable — a narrower genre than `genre` (**0010**) |
+| `secondary_genres` | text | nullable — other genres, comma-separated (**0010**) |
+| `mood` | text | nullable — how the song feels, comma-separated (**0010**) |
+| `vocals` | text | nullable — "Male", "Female", "Male and Female" or "Instrumental" (**0010**) |
 | `sample_rate`, `bit_depth`, `channels` | int | nullable |
 | `replaygain_track_db`, `replaygain_album_db` | real | nullable |
 | `album_artist`, `composer`, `track_no`, `disc_no`, `bpm` | | legacy, unused since **0006** (kept so older builds can still insert) |

@@ -60,3 +60,8 @@ video/remotion/public/music/
 # Audit captures of the real library, and npm cache logs left by the audit tool
 private/audit/ux-screenshots/
 private/audit/evidence/npm-cache/
+
+# The owner's real library metadata and the research files that built it:
+# private data, never committed or exported.
+music_metadata.json
+reports/*music_metadata*

@@ -1,5 +1,5 @@
 {
-  "$comment": "Golden cases for field-level last-writer-wins track edits. Consumed by packages/core/tests/trackFields.test.ts (applyTrackEdit, TypeScript) and apps/android TrackEditGoldenTest (TrackEdit.apply, Kotlin); both mirror public.apply_track_edit (latest definition: supabase/migrations/0006_release_date_country.sql). `year` is not editable: writing release_date also sets year to its first four digits (null when cleared). For each case: start from `row` overridden by the case's `row`, apply `edits` in order. With `expected`, the result must equal the starting row overridden by `expected` (field_edited_at included as a whole object). With `error`, the (single) edit must fail with that code and change nothing. Timestamps compare as instants. Do not change semantics in one engine without the others AND these fixtures.",
+  "$comment": "Golden cases for field-level last-writer-wins track edits. Consumed by packages/core/tests/trackFields.test.ts (applyTrackEdit, TypeScript) and apps/android TrackEditGoldenTest (TrackEdit.apply, Kotlin); both mirror public.apply_track_edit (latest definition: supabase/migrations/0010_song_details.sql). `year` is not editable: writing release_date also sets year to its first four digits (null when cleared). For each case: start from `row` overridden by the case's `row`, apply `edits` in order. With `expected`, the result must equal the starting row overridden by `expected` (field_edited_at included as a whole object). With `error`, the (single) edit must fail with that code and change nothing. Timestamps compare as instants. Do not change semantics in one engine without the others AND these fixtures.",
   "row": {
     "user_id": "00000000-0000-4000-8000-00000000000a",
     "title": "Original",
@@ -8,6 +8,11 @@
     "genre": "Pop",
     "language": null,
     "country": null,
+    "featured_artists": null,
+    "subgenre": null,
+    "secondary_genres": null,
+    "mood": null,
+    "vocals": null,
     "release_date": "2001",
     "year": 2001,
     "lyrics_text": null,
@@ -237,8 +242,37 @@
     },
     {
       "name": "an unknown field is rejected",
-      "edits": [{ "patch": { "mood": "happy" }, "editedAt": "2026-10-11T12:00:00.000Z" }],
+      "edits": [{ "patch": { "rating": 5 }, "editedAt": "2026-10-11T12:00:00.000Z" }],
       "error": "not_editable"
+    },
+    {
+      "name": "the song details from 0010 are set as given",
+      "edits": [
+        {
+          "patch": {
+            "featured_artists": "Guest One, Guest Two",
+            "subgenre": "Film ballad",
+            "secondary_genres": "Bollywood, Indian pop",
+            "mood": "Romantic, Yearning",
+            "vocals": "Male and Female"
+          },
+          "editedAt": "2026-10-11T12:00:00.000Z"
+        }
+      ],
+      "expected": {
+        "featured_artists": "Guest One, Guest Two",
+        "subgenre": "Film ballad",
+        "secondary_genres": "Bollywood, Indian pop",
+        "mood": "Romantic, Yearning",
+        "vocals": "Male and Female",
+        "field_edited_at": {
+          "featured_artists": "2026-10-11T12:00:00.000Z",
+          "subgenre": "2026-10-11T12:00:00.000Z",
+          "secondary_genres": "2026-10-11T12:00:00.000Z",
+          "mood": "2026-10-11T12:00:00.000Z",
+          "vocals": "2026-10-11T12:00:00.000Z"
+        }
+      }
     },
     {
       "name": "a rejected patch changes nothing, not even its valid fields",

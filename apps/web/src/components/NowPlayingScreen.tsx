@@ -175,8 +175,13 @@ function TrackDetails({ track }: { track: Track }) {
   const rows: [string, string | undefined][] = [
     ["Title", track.title],
     ["Artist", track.artist],
+    ["Featured artists", track.featuredArtists],
     ["Album", track.album],
     ["Genre", track.genre],
+    ["Subgenre", track.subgenre],
+    ["Secondary genres", track.secondaryGenres],
+    ["Mood", track.mood],
+    ["Vocals", track.vocals],
     ["Language", track.language],
     ["Country", track.country],
     ["Released", track.releaseDate],

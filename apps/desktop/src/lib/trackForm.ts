@@ -19,15 +19,29 @@ export type FormValues = Partial<Record<EditableTrackField, string>>;
 export const UPLOAD_FORM_FIELDS: EditableTrackField[] = [
   "title",
   "artist",
+  "featured_artists",
   "album",
   "genre",
+  "subgenre",
+  "secondary_genres",
+  "mood",
+  "vocals",
   "language",
   "country",
   "release_date",
 ];
 
 /** Fields that can be set once for a whole batch / album. */
-export const SHARED_FIELDS: EditableTrackField[] = ["artist", "album", "genre", "language", "country", "release_date"];
+export const SHARED_FIELDS: EditableTrackField[] = [
+  "artist",
+  "album",
+  "genre",
+  "subgenre",
+  "secondary_genres",
+  "language",
+  "country",
+  "release_date",
+];
 
 /** Fields shown in the track editor (the cover has its own control). */
 export const EDITOR_FIELDS: EditableTrackField[] = [...UPLOAD_FORM_FIELDS, "lyrics_text", "lyrics_synced"];
@@ -60,7 +74,12 @@ export function valuesFromTrack(t: Track): FormValues {
     title: t.title,
     artist: t.artist === "Unknown Artist" ? "" : t.artist,
     album: t.album === "Unknown Album" ? "" : t.album,
+    featured_artists: str(t.featuredArtists),
     genre: str(t.genre),
+    subgenre: str(t.subgenre),
+    secondary_genres: str(t.secondaryGenres),
+    mood: str(t.mood),
+    vocals: str(t.vocals),
     language: str(t.language),
     country: str(t.country),
     release_date: str(t.releaseDate),
@@ -75,7 +94,12 @@ export function valuesFromRow(row: RemoteTrackRow): FormValues {
     title: row.title,
     artist: row.artist,
     album: row.album,
+    featured_artists: str(row.featured_artists),
     genre: str(row.genre),
+    subgenre: str(row.subgenre),
+    secondary_genres: str(row.secondary_genres),
+    mood: str(row.mood),
+    vocals: str(row.vocals),
     language: str(row.language),
     country: str(row.country),
     release_date: str(row.release_date),

@@ -77,6 +77,11 @@ data class RuleTrackInput(
     val genre: String? = null,
     val language: String? = null,
     val country: String? = null,
+    val featuredArtists: String? = null,
+    val subgenre: String? = null,
+    val secondaryGenres: String? = null,
+    val mood: String? = null,
+    val vocals: String? = null,
     val year: Int? = null,
     val duration: Double = 0.0,
     val playCount: Int = 0,
@@ -98,6 +103,11 @@ object SmartRulesEngine {
         "genre" to FieldType.STRING,
         "language" to FieldType.STRING,
         "country" to FieldType.STRING,
+        "featuredArtists" to FieldType.STRING,
+        "subgenre" to FieldType.STRING,
+        "secondaryGenres" to FieldType.STRING,
+        "mood" to FieldType.STRING,
+        "vocals" to FieldType.STRING,
         "year" to FieldType.NUMBER,
         "duration" to FieldType.NUMBER,
         "playCount" to FieldType.NUMBER,
@@ -113,6 +123,11 @@ object SmartRulesEngine {
         "genre" -> track.genre ?: ""
         "language" -> track.language ?: ""
         "country" -> track.country ?: ""
+        "featuredArtists" -> track.featuredArtists ?: ""
+        "subgenre" -> track.subgenre ?: ""
+        "secondaryGenres" -> track.secondaryGenres ?: ""
+        "mood" -> track.mood ?: ""
+        "vocals" -> track.vocals ?: ""
         else -> ""
     }
 
@@ -262,6 +277,11 @@ object SmartRulesEngine {
             genre = track.genre,
             language = track.language,
             country = track.country,
+            featuredArtists = track.featuredArtists,
+            subgenre = track.subgenre,
+            secondaryGenres = track.secondaryGenres,
+            mood = track.mood,
+            vocals = track.vocals,
             year = track.year,
             duration = track.durationMs / 1000.0,
             playCount = playCount,

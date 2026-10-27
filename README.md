@@ -96,8 +96,10 @@ On Android: an album and Downloads.
 - Upload songs from any app: pick files (or drop them on the Windows and web windows, or share
   them to the Android app), review each song's details, then upload. Tags only pre-fill the form.
 - Edit a song's details and cover online from any app, one song or several at once: title, artist,
-  album, genre, language, country, release date and lyrics.
-- Browse by song, album, artist, genre, year, language and country; search across all of them.
+  featured artists, album, genre, subgenre, secondary genres, mood, vocals, language, country,
+  release date and lyrics.
+- Browse by song, album, artist, genre, year, language, country, mood and vocals; search across
+  all of them.
   Songs show as a list or as covers on Windows and the web. Give an artist a photo of their own.
 - Playlists with drag-and-drop ordering, favorites, and smart playlists: built-in ones (Recently
   Added, Most Played, Never Played…) and your own, built from rules.

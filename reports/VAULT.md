@@ -8,8 +8,9 @@
 ## Role
 
 The vault is a single **private Cloudflare R2 bucket** (`musicvault`) holding each user's audio
-and cover images. It holds bytes only. Everything that describes a track — title, artist, album,
-genre, language, country, release date, lyrics (plain and synced)
+and cover images. It holds bytes only. Everything that describes a track — title, artist,
+featured artists, album, genre, subgenre, secondary genres, mood, vocals, language, country,
+release date, lyrics (plain and synced)
 and which cover it uses — lives in the track's Supabase row and is **edited online** from any app.
 A file's own tags only pre-fill the upload form.
 

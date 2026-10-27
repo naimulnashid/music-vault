@@ -38,6 +38,16 @@ export type TrackRow = {
   genre: string | null;
   language: string | null;
   country: string | null;
+  /** Guest artists, comma-separated (0010). */
+  featured_artists: string | null;
+  /** A narrower genre than `genre` (0010). */
+  subgenre: string | null;
+  /** Other genres, comma-separated (0010). */
+  secondary_genres: string | null;
+  /** How the song feels, comma-separated (0010). */
+  mood: string | null;
+  /** "Male", "Female", "Male and Female" or "Instrumental" (0010). */
+  vocals: string | null;
   /** "2019", "2019-05" or "2019-05-14" (0006). */
   release_date: string | null;
   /** Follows release_date (a trigger keeps it in step). */
@@ -181,6 +191,11 @@ export type Database = {
           | "year"
           | "language"
           | "country"
+          | "featured_artists"
+          | "subgenre"
+          | "secondary_genres"
+          | "mood"
+          | "vocals"
           | "release_date"
           | "composer"
           | "track_no"

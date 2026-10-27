@@ -31,9 +31,12 @@ class FieldOptions(private val lists: Map<String, List<String>>) {
         val EMPTY = FieldOptions(emptyMap())
 
         /** Short lists show everything when opened; long ones show matches while typing. */
-        val SHOW_ALL = setOf("language", "country")
-        val MULTI = setOf("artist", "genre", "language", "country")
-        val FIELDS = setOf("title", "artist", "album", "genre", "language", "country")
+        val SHOW_ALL = setOf("language", "country", "mood", "vocals")
+        val MULTI = setOf("artist", "featured_artists", "genre", "secondary_genres", "mood", "language", "country")
+        val FIELDS = setOf(
+            "title", "artist", "featured_artists", "album", "genre", "subgenre", "secondary_genres",
+            "mood", "vocals", "language", "country",
+        )
 
         fun of(tracks: List<Track>): FieldOptions {
             val sets = FIELDS.associateWith { sortedSetOf(String.CASE_INSENSITIVE_ORDER) }
@@ -42,6 +45,16 @@ class FieldOptions(private val lists: Map<String, List<String>>) {
                 if (t.artist != "Unknown Artist") sets.getValue("artist").addAll(SmartPlaylists.splitNames(t.artist))
                 if (t.album.isNotBlank() && t.album != "Unknown Album") sets.getValue("album").add(t.album)
                 sets.getValue("genre").addAll(SmartPlaylists.splitNames(t.genre))
+                // Guest artists are artists too: either field suggests from both.
+                SmartPlaylists.splitNames(t.featuredArtists).let {
+                    sets.getValue("featured_artists").addAll(it)
+                    sets.getValue("artist").addAll(it)
+                }
+                if (t.artist != "Unknown Artist") sets.getValue("featured_artists").addAll(SmartPlaylists.splitNames(t.artist))
+                t.subgenre?.takeIf { it.isNotBlank() }?.let { sets.getValue("subgenre").add(it) }
+                sets.getValue("secondary_genres").addAll(SmartPlaylists.splitNames(t.secondaryGenres))
+                sets.getValue("mood").addAll(SmartPlaylists.splitNames(t.mood))
+                t.vocals?.takeIf { it.isNotBlank() }?.let { sets.getValue("vocals").add(it) }
                 sets.getValue("language").addAll(SmartPlaylists.splitNames(t.language))
                 sets.getValue("country").addAll(SmartPlaylists.splitNames(t.country))
             }

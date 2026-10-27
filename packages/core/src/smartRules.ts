@@ -17,6 +17,11 @@ export type RuleField =
   | "genre"
   | "language"
   | "country"
+  | "featuredArtists"
+  | "subgenre"
+  | "secondaryGenres"
+  | "mood"
+  | "vocals"
   | "year"
   | "duration"
   | "playCount"
@@ -87,6 +92,11 @@ export interface RuleTrackInput {
   genre?: string;
   language?: string;
   country?: string;
+  featuredArtists?: string;
+  subgenre?: string;
+  secondaryGenres?: string;
+  mood?: string;
+  vocals?: string;
   year?: number;
   duration: number;
   playCount: number;
@@ -106,6 +116,11 @@ export const RULE_FIELDS: Record<RuleField, { label: string; type: RuleFieldType
   genre: { label: "Genre", type: "string" },
   language: { label: "Language", type: "string" },
   country: { label: "Country", type: "string" },
+  featuredArtists: { label: "Featured artists", type: "string" },
+  subgenre: { label: "Subgenre", type: "string" },
+  secondaryGenres: { label: "Secondary genres", type: "string" },
+  mood: { label: "Mood", type: "string" },
+  vocals: { label: "Vocals", type: "string" },
   year: { label: "Year", type: "number" },
   duration: { label: "Duration (seconds)", type: "number" },
   playCount: { label: "Play Count", type: "number" },
@@ -159,6 +174,16 @@ function stringField(track: RuleTrackInput, field: RuleField): string {
       return track.language ?? "";
     case "country":
       return track.country ?? "";
+    case "featuredArtists":
+      return track.featuredArtists ?? "";
+    case "subgenre":
+      return track.subgenre ?? "";
+    case "secondaryGenres":
+      return track.secondaryGenres ?? "";
+    case "mood":
+      return track.mood ?? "";
+    case "vocals":
+      return track.vocals ?? "";
     default:
       return "";
   }

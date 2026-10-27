@@ -28,8 +28,13 @@ object TrackForm {
     val FIELDS: List<Pair<String, String>> = listOf(
         "title" to "Title",
         "artist" to "Artist",
+        "featured_artists" to "Featured artists",
         "album" to "Album",
         "genre" to "Genre",
+        "subgenre" to "Subgenre",
+        "secondary_genres" to "Secondary genres",
+        "mood" to "Mood",
+        "vocals" to "Vocals",
         "language" to "Language",
         "country" to "Country",
         "release_date" to "Release date",
@@ -37,8 +42,11 @@ object TrackForm {
         "lyrics_synced" to "Synced lyrics (LRC)",
     )
 
-    val UPLOAD_FIELDS = listOf("title", "artist", "album", "genre", "language", "country", "release_date")
-    val SHARED_FIELDS = listOf("artist", "album", "genre", "language", "country", "release_date")
+    val UPLOAD_FIELDS = listOf(
+        "title", "artist", "featured_artists", "album", "genre", "subgenre", "secondary_genres",
+        "mood", "vocals", "language", "country", "release_date",
+    )
+    val SHARED_FIELDS = listOf("artist", "album", "genre", "subgenre", "secondary_genres", "language", "country", "release_date")
     val PLACEHOLDERS = mapOf("release_date" to "YYYY-MM-DD")
     val MULTILINE = setOf("lyrics_text", "lyrics_synced")
 
@@ -87,7 +95,7 @@ object TrackForm {
                     put(field, title)
                 }
                 "artist", "album" -> put(field, raw.trim())
-                "genre", "language", "country" ->
+                "featured_artists", "genre", "subgenre", "secondary_genres", "mood", "vocals", "language", "country" ->
                     put(field, raw.trim().ifEmpty { null }?.let { JsonPrimitive(it) } ?: JsonNull)
                 "lyrics_text" -> put(field, raw.trimEnd().ifBlank { null }?.let { JsonPrimitive(it) } ?: JsonNull)
                 "release_date" -> {
@@ -151,7 +159,12 @@ object TrackForm {
         "title" to t.title,
         "artist" to t.artist.takeUnless { it == "Unknown Artist" }.orEmpty(),
         "album" to t.album.takeUnless { it == "Unknown Album" }.orEmpty(),
+        "featured_artists" to t.featuredArtists.orEmpty(),
         "genre" to t.genre.orEmpty(),
+        "subgenre" to t.subgenre.orEmpty(),
+        "secondary_genres" to t.secondaryGenres.orEmpty(),
+        "mood" to t.mood.orEmpty(),
+        "vocals" to t.vocals.orEmpty(),
         "language" to t.language.orEmpty(),
         "country" to t.country.orEmpty(),
         "release_date" to t.releaseDate.orEmpty(),
@@ -163,7 +176,12 @@ object TrackForm {
         "title" to r.title,
         "artist" to r.artist,
         "album" to r.album,
+        "featured_artists" to r.featuredArtists.orEmpty(),
         "genre" to r.genre.orEmpty(),
+        "subgenre" to r.subgenre.orEmpty(),
+        "secondary_genres" to r.secondaryGenres.orEmpty(),
+        "mood" to r.mood.orEmpty(),
+        "vocals" to r.vocals.orEmpty(),
         "language" to r.language.orEmpty(),
         "country" to r.country.orEmpty(),
         "release_date" to r.releaseDate.orEmpty(),

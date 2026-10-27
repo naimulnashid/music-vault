@@ -49,8 +49,8 @@ export default function HelpPage() {
             onto the window), or “Share → Music Vault” and the upload button on Android.
           </Li>
           <Li>
-            Before anything uploads you review each song&apos;s details — title, artist, album,
-            genre, language, country, release date, cover and more. The file&apos;s tags only pre-fill the form.
+            Before anything uploads you review each song&apos;s details — title, artist, featured
+            artists, album, genre, mood, vocals, language, country, release date, cover and more. The file&apos;s tags only pre-fill the form.
           </Li>
           <Li>
             Details live online: edit them any time (one track or several at once) and the change

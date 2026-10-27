@@ -15,8 +15,13 @@ import type { LyricLine } from "./types";
 export type EditableTrackField =
   | "title"
   | "artist"
+  | "featured_artists"
   | "album"
   | "genre"
+  | "subgenre"
+  | "secondary_genres"
+  | "mood"
+  | "vocals"
   | "language"
   | "country"
   | "release_date"
@@ -48,8 +53,13 @@ export interface TrackFieldMeta<K extends string = string> {
 export const EDITABLE_TRACK_FIELDS: readonly TrackFieldMeta<EditableTrackField>[] = [
   { key: "title", label: "Title", kind: "text" },
   { key: "artist", label: "Artist", kind: "text" },
+  { key: "featured_artists", label: "Featured artists", kind: "text" },
   { key: "album", label: "Album", kind: "text" },
   { key: "genre", label: "Genre", kind: "text" },
+  { key: "subgenre", label: "Subgenre", kind: "text" },
+  { key: "secondary_genres", label: "Secondary genres", kind: "text" },
+  { key: "mood", label: "Mood", kind: "text" },
+  { key: "vocals", label: "Vocals", kind: "text" },
   { key: "language", label: "Language", kind: "text" },
   { key: "country", label: "Country", kind: "text" },
   { key: "release_date", label: "Release date", kind: "date" },
@@ -80,8 +90,13 @@ const NOT_NULL_TEXT = new Set<string>(["artist", "album"]);
 export type TrackEditPatch = Partial<{
   title: string;
   artist: string | null;
+  featured_artists: string | null;
   album: string | null;
   genre: string | null;
+  subgenre: string | null;
+  secondary_genres: string | null;
+  mood: string | null;
+  vocals: string | null;
   language: string | null;
   country: string | null;
   release_date: string | null;
@@ -270,7 +285,12 @@ export function normalizeTrackPatch(input: Record<string, unknown>): TrackEditPa
       case "album":
         out[key] = typeof value === "string" ? value.trim() : "";
         break;
+      case "featured_artists":
       case "genre":
+      case "subgenre":
+      case "secondary_genres":
+      case "mood":
+      case "vocals":
       case "language":
       case "country":
         out[key] = typeof value === "string" && value.trim() !== "" ? value.trim() : null;

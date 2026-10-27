@@ -15,6 +15,14 @@ data class Track(
     val year: Int? = null,
     val language: String? = null,
     val country: String? = null,
+    /** Guest artists, comma-separated. */
+    val featuredArtists: String? = null,
+    val subgenre: String? = null,
+    /** Comma-separated. */
+    val secondaryGenres: String? = null,
+    /** Comma-separated. */
+    val mood: String? = null,
+    val vocals: String? = null,
     /** "2019", "2019-05" or "2019-05-14". */
     val releaseDate: String? = null,
     val composer: String? = null,

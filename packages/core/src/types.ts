@@ -24,6 +24,14 @@ export interface Track {
   year?: number;
   language?: string;
   country?: string;
+  /** Guest artists, comma-separated. */
+  featuredArtists?: string;
+  subgenre?: string;
+  /** Comma-separated. */
+  secondaryGenres?: string;
+  /** Comma-separated. */
+  mood?: string;
+  vocals?: string;
   /** "2019", "2019-05" or "2019-05-14". */
   releaseDate?: string;
   composer?: string;

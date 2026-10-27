@@ -95,6 +95,14 @@ data class TrackRow(
     val genre: String? = null,
     val language: String? = null,
     val country: String? = null,
+    /** Guest artists, comma-separated (0010). */
+    @SerialName("featured_artists") val featuredArtists: String? = null,
+    val subgenre: String? = null,
+    /** Comma-separated (0010). */
+    @SerialName("secondary_genres") val secondaryGenres: String? = null,
+    /** Comma-separated (0010). */
+    val mood: String? = null,
+    val vocals: String? = null,
     /** "2019", "2019-05" or "2019-05-14" (0006). */
     @SerialName("release_date") val releaseDate: String? = null,
     /** Follows releaseDate (a server trigger keeps it in step). */

@@ -23,7 +23,8 @@ object TrackEdit {
 
     /** Descriptive fields; everything else on a track is read-only. */
     val EDITABLE: Set<String> = linkedSetOf(
-        "title", "artist", "album", "genre", "language", "country", "release_date",
+        "title", "artist", "featured_artists", "album", "genre", "subgenre", "secondary_genres",
+        "mood", "vocals", "language", "country", "release_date",
         "lyrics_text", "lyrics_synced", "artwork_key",
     )
 
@@ -112,6 +113,11 @@ object TrackEdit {
         "genre" -> row.copy(genre = value.text())
         "language" -> row.copy(language = value.text())
         "country" -> row.copy(country = value.text())
+        "featured_artists" -> row.copy(featuredArtists = value.text())
+        "subgenre" -> row.copy(subgenre = value.text())
+        "secondary_genres" -> row.copy(secondaryGenres = value.text())
+        "mood" -> row.copy(mood = value.text())
+        "vocals" -> row.copy(vocals = value.text())
         "release_date" -> value.text().let { row.copy(releaseDate = it, year = yearOf(it)) }
         "lyrics_text" -> row.copy(lyricsText = value.text())
         "artwork_key" -> row.copy(artworkKey = value.text())

@@ -35,8 +35,9 @@ A file already in the vault is reported as such; a known song keeps its history.
 ### Track details, edited online
 **Status** ✅ All three platforms (`TrackEditor` on desktop/web,
 [TrackEditor.kt](../apps/android/app/src/main/java/com/musicvault/ui/vault/TrackEditor.kt) on Android).
-**What** — title, artist, album, genre, language, country, release date (a year, year and month,
-or full date), plain and synced lyrics, and the cover are stored in the Supabase row and edited from any app,
+**What** — title, artist, featured artists, album, genre, subgenre, secondary genres, mood,
+vocals, language, country, release date (a year, year and month, or full date), plain and synced
+lyrics, and the cover are stored in the Supabase row and edited from any app,
 one track or several at once. Technical facts (duration, codec, sample rate, bit depth, channels,
 size, ReplayGain, hash) are read-only. Edits travel as `track.edit` sync ops with field-level
 last-writer-wins ([core/trackFields.ts](../packages/core/src/trackFields.ts), Kotlin
@@ -306,8 +307,8 @@ the same way. Kotlin port:
 ### 2. Rule-based smart playlists (Phase 2)
 **Status** ✅ A JSON rule **AST** — nested AND/OR groups of field/op/value conditions plus optional
 sort and limit ([core/smartRules.ts:63-80](../packages/core/src/smartRules.ts)).
-- **12 fields**: title, artist, album, genre, language, country, year, duration,
-  playCount, addedAt, lastPlayedAt, favorite ([smartRules.ts](../packages/core/src/smartRules.ts)).
+- **17 fields**: title, artist, album, genre, language, country, featured artists, subgenre,
+  secondary genres, mood, vocals, year, duration, playCount, addedAt, lastPlayedAt, favorite ([smartRules.ts](../packages/core/src/smartRules.ts)).
   A saved rule naming a retired field (albumArtist, composer, bpm, trackNo, discNo, rating) counts it as
   never set.
 - **21 operators** across string / number / date / presence / boolean families

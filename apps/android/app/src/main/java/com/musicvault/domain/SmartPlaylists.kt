@@ -3,7 +3,7 @@ package com.musicvault.domain
 import com.musicvault.domain.model.Track
 
 /** Port of smartPlaylists.ts. */
-enum class SmartKey { RECENTLY_ADDED, RECENTLY_PLAYED, MOST_PLAYED, FAVORITES, NEVER_PLAYED, GENRE, ARTIST, YEAR, LANGUAGE, COUNTRY }
+enum class SmartKey { RECENTLY_ADDED, RECENTLY_PLAYED, MOST_PLAYED, FAVORITES, NEVER_PLAYED, GENRE, ARTIST, YEAR, LANGUAGE, COUNTRY, MOOD, VOCALS }
 
 enum class SmartKind { LIST, GROUP }
 
@@ -33,6 +33,8 @@ object SmartPlaylists {
         SmartDef(SmartKey.YEAR, "By Year", SmartKind.GROUP, "No year tags found in your library."),
         SmartDef(SmartKey.LANGUAGE, "By Language", SmartKind.GROUP, "No language tags found in your library."),
         SmartDef(SmartKey.COUNTRY, "By Country", SmartKind.GROUP, "No country tags found in your library."),
+        SmartDef(SmartKey.MOOD, "By Mood", SmartKind.GROUP, "No moods set in your library."),
+        SmartDef(SmartKey.VOCALS, "By Vocals", SmartKind.GROUP, "No vocals set in your library."),
     )
 
     fun def(key: SmartKey): SmartDef = ALL.first { it.key == key }
@@ -71,6 +73,8 @@ object SmartPlaylists {
             SmartKey.YEAR -> listOf(track.year?.toString() ?: "Unknown Year")
             SmartKey.LANGUAGE -> splitNames(track.language).or("Unknown Language")
             SmartKey.COUNTRY -> splitNames(track.country).or("Unknown Country")
+            SmartKey.MOOD -> splitNames(track.mood).or("Unknown Mood")
+            SmartKey.VOCALS -> listOf(track.vocals?.takeIf { it.isNotBlank() } ?: "Unknown Vocals")
             else -> emptyList()
         }
     }

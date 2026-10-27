@@ -19,6 +19,12 @@
 ## [Unreleased]
 
 ### Added
+- Every app: five more song details, edited like genre or country and set in the upload form:
+  Featured artists, Subgenre, Secondary genres, Mood and Vocals. Featured artists, Secondary genres
+  and Mood take several values separated by commas, and every field suggests the values already
+  in the library. They show in the Now Playing details on Windows and the web, can be used in
+  smart playlist rules, and two new collections browse them: By Mood and By Vocals. Migration
+  0010, live since 2026-10-27, adds the columns and lets `apply_track_edit` accept them.
 - Landing page: How it works animates as it scrolls in. The diagram's parts appear in order,
   each connection draws out from the devices, dots then keep flowing along the connections (out
   and back for sync and for audio) and Cloudflare R2 glows softly; the three cards lift on

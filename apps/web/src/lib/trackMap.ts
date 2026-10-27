@@ -22,6 +22,11 @@ export function trackFromRow(row: TrackRow): Track {
     year: yearOfReleaseDate(row.release_date) ?? row.year ?? undefined,
     language: row.language ?? undefined,
     country: row.country ?? undefined,
+    featuredArtists: row.featured_artists ?? undefined,
+    subgenre: row.subgenre ?? undefined,
+    secondaryGenres: row.secondary_genres ?? undefined,
+    mood: row.mood ?? undefined,
+    vocals: row.vocals ?? undefined,
     releaseDate: row.release_date ?? undefined,
     composer: row.composer ?? undefined,
     trackNo: row.track_no ?? undefined,
@@ -66,6 +71,21 @@ export function applyPatchToTrack(track: Track, patch: TrackEditPatch): Track {
         break;
       case "country":
         t.country = v as string | undefined;
+        break;
+      case "featured_artists":
+        t.featuredArtists = v as string | undefined;
+        break;
+      case "subgenre":
+        t.subgenre = v as string | undefined;
+        break;
+      case "secondary_genres":
+        t.secondaryGenres = v as string | undefined;
+        break;
+      case "mood":
+        t.mood = v as string | undefined;
+        break;
+      case "vocals":
+        t.vocals = v as string | undefined;
         break;
       case "release_date":
         t.releaseDate = v as string | undefined;

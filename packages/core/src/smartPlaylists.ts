@@ -10,7 +10,9 @@ export type SmartKey =
   | "artist"
   | "year"
   | "language"
-  | "country";
+  | "country"
+  | "mood"
+  | "vocals";
 
 export type SmartKind = "list" | "group";
 
@@ -32,6 +34,8 @@ export const SMART_PLAYLISTS: SmartDef[] = [
   { key: "year", label: "By Year", kind: "group", emptyMessage: "No year tags found in your library." },
   { key: "language", label: "By Language", kind: "group", emptyMessage: "No language tags found in your library." },
   { key: "country", label: "By Country", kind: "group", emptyMessage: "No country tags found in your library." },
+  { key: "mood", label: "By Mood", kind: "group", emptyMessage: "No moods set in your library." },
+  { key: "vocals", label: "By Vocals", kind: "group", emptyMessage: "No vocals set in your library." },
 ];
 
 export function smartDef(key: SmartKey): SmartDef {
@@ -101,6 +105,10 @@ function groupsOf(key: SmartKey, track: Track): string[] {
       return or(splitNames(track.language), "Unknown Language");
     case "country":
       return or(splitNames(track.country), "Unknown Country");
+    case "mood":
+      return or(splitNames(track.mood), "Unknown Mood");
+    case "vocals":
+      return [track.vocals || "Unknown Vocals"];
     default:
       return [];
   }
