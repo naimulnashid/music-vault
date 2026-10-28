@@ -43,6 +43,8 @@
   JPEG like any other cover: `resvg` on Windows, the browser on the web, AndroidSVG on Android.
   Android picks covers with the system's file picker (images only) instead of the photo picker,
   which doesn't list SVG files.
+- Landing page: a `favicon.ico` of the app icon beside the SVG one, for browsers and crawlers
+  that ask for `/favicon.ico`. `scripts/make-icons.mjs` writes it with the other icons.
 
 ## [1.5.0] - 2026-10-27
 

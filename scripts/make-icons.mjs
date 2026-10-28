@@ -28,4 +28,7 @@ await png(fullBleed, 512, "apps/web/public/icons/maskable-512.png");
 await png(fullBleed, 256, "apps/web/src/app/apple-icon.png");
 // The Windows app's icons (icon.ico and the Store tiles) come from the Tauri CLI.
 execSync("npx tauri icon src-tauri/icons/icon-source.png", { cwd: "apps/desktop", stdio: "inherit" });
-writeFileSync("apps/web/src/app/favicon.ico", readFileSync("apps/desktop/src-tauri/icons/icon.ico"));
+const ico = readFileSync("apps/desktop/src-tauri/icons/icon.ico");
+writeFileSync("apps/web/src/app/favicon.ico", ico);
+// Browsers and crawlers that skip the SVG link still ask for /favicon.ico.
+writeFileSync("apps/site/public/favicon.ico", ico);
