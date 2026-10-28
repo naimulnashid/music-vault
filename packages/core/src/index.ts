@@ -10,6 +10,7 @@ export * from "./smartRules";
 export * from "./stats";
 export * from "./trackFields";
 export * from "./upload";
+export * from "./uploadJson";
 export * from "./vault";
 export * from "./supabase/client";
 export * from "./supabase/auth";

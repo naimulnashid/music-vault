@@ -53,6 +53,12 @@ export default function HelpPage() {
             artists, album, genre, mood, vocals, language, country, release date, cover and more. The file&apos;s tags only pre-fill the form.
           </Li>
           <Li>
+            Paste details fills the form from JSON: one song as {"{ … }"} or several as{" "}
+            {"[ { … } ]"}, each matched to the file with the same title, or pasted on one file with its
+            own paste button. The dialog copies the template. Only the fields you include change, and
+            you can still edit them before uploading.
+          </Li>
+          <Li>
             Details live online: edit them any time (one track or several at once) and the change
             reaches every device.
           </Li>

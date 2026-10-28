@@ -23,6 +23,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CloudUpload
+import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material3.Button
@@ -69,6 +70,8 @@ fun UploadScreen(viewModel: VaultViewModel) {
     val running by viewModel.running.collectAsStateWithLifecycle()
     val lastUploaded by viewModel.lastUploaded.collectAsStateWithLifecycle()
     var coverError by remember { mutableStateOf<String?>(null) }
+    // Which row a paste fills: null = no dialog, "" = every matching row.
+    var pastingRow by remember { mutableStateOf<String?>(null) }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         viewModel.addUris(uris)
@@ -118,9 +121,21 @@ fun UploadScreen(viewModel: VaultViewModel) {
             }
         } else {
             Row(
-                horizontalArrangement = Arrangement.Center,
+                horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            ) { addFiles() }
+            ) {
+                addFiles()
+                if (withSource > 0) {
+                    PillButton(
+                        "Paste details",
+                        onClick = { pastingRow = "" },
+                        icon = Icons.Rounded.ContentPaste,
+                        enabled = !running,
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp),
+                        modifier = Modifier.height(48.dp),
+                    )
+                }
+            }
 
             LazyColumn(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -169,9 +184,13 @@ fun UploadScreen(viewModel: VaultViewModel) {
                     }
                 }
                 items(items, key = { it.id }) { item ->
-                    UploadRow(item, viewModel, running, sharedCover)
+                    UploadRow(item, viewModel, running, sharedCover, onPaste = { pastingRow = item.id })
                 }
             }
+        }
+
+        pastingRow?.let { row ->
+            PasteDetailsDialog(rowId = row.ifEmpty { null }, viewModel = viewModel, onDismiss = { pastingRow = null })
         }
 
         Row(
@@ -203,7 +222,7 @@ fun UploadScreen(viewModel: VaultViewModel) {
 }
 
 @Composable
-private fun UploadRow(item: UploadItem, viewModel: VaultViewModel, running: Boolean, sharedCover: SharedCover) {
+private fun UploadRow(item: UploadItem, viewModel: VaultViewModel, running: Boolean, sharedCover: SharedCover, onPaste: () -> Unit) {
     val colors = LocalVaultColors.current
     val editable = item.status == UploadStatus.READY || item.status == UploadStatus.FAILED
     val coverForRow = when (sharedCover) {
@@ -236,6 +255,11 @@ private fun UploadRow(item: UploadItem, viewModel: VaultViewModel, running: Bool
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
+                    if (item.source != null && editable && !running) {
+                        IconButton(onClick = onPaste, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Rounded.ContentPaste, "Paste this song's details", tint = colors.textMuted, modifier = Modifier.size(16.dp))
+                        }
+                    }
                     if (!running && item.status != UploadStatus.UPLOADING) {
                         IconButton(onClick = { viewModel.remove(item.id) }, modifier = Modifier.size(28.dp)) {
                             Icon(Icons.Rounded.Close, "Remove", tint = colors.textMuted, modifier = Modifier.size(16.dp))
@@ -262,9 +286,71 @@ private fun UploadRow(item: UploadItem, viewModel: VaultViewModel, running: Bool
                 TrackForm.UPLOAD_FIELDS.filter { it != "title" && it != "artist" }.forEach { field ->
                     FieldInput(field, item.values, { f, v -> viewModel.setValue(item.id, f, v) })
                 }
+                // Lyrics show once pasted: they replace the file's own, and can still be edited or cleared.
+                listOf("lyrics_text", "lyrics_synced").filter { it in item.values }.forEach { field ->
+                    FieldInput(field, item.values, { f, v -> viewModel.setValue(item.id, f, v) })
+                }
             }
         }
     }
+}
+
+/** Paste song details as JSON (data/vault/UploadJson.kt) into one row, or every row they match. */
+@Composable
+private fun PasteDetailsDialog(rowId: String?, viewModel: VaultViewModel, onDismiss: () -> Unit) {
+    val colors = LocalVaultColors.current
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+    var text by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var result by remember { mutableStateOf<String?>(null) }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = colors.surface,
+        title = { Text(if (rowId != null) "Paste details for this song" else "Paste song details", color = colors.text) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    if (rowId != null) "One song as { … }. Only the fields you include change, and you can still edit them."
+                    else "One song as { … } or several as [ { … } ]. Each fills the file with the same title. You can still edit them.",
+                    color = colors.textMuted,
+                    fontSize = 13.sp,
+                )
+                androidx.compose.material3.OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    minLines = 6,
+                    maxLines = 12,
+                    textStyle = androidx.compose.ui.text.TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontSize = 12.sp, color = colors.text),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = { clipboard.getText()?.text?.let { text = it } }) { Text("Paste from clipboard") }
+                    TextButton(onClick = {
+                        clipboard.setText(androidx.compose.ui.text.AnnotatedString(com.musicvault.data.vault.UploadJson.TEMPLATE))
+                        result = "Template copied."
+                    }) { Text("Copy template") }
+                }
+                error?.let { Text(it, color = colors.danger, fontSize = 12.sp) }
+                result?.let { Text(it, color = colors.accent, fontSize = 12.sp) }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = text.isNotBlank(),
+                onClick = {
+                    try {
+                        result = viewModel.pasteDetails(text, rowId)
+                        error = null
+                        text = ""
+                    } catch (e: com.musicvault.data.vault.UploadJson.Invalid) {
+                        result = null
+                        error = e.message
+                    }
+                },
+            ) { Text("Fill") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(if (result != null) "Done" else "Cancel") } },
+    )
 }
 
 @Composable

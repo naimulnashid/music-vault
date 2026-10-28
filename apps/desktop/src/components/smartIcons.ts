@@ -9,7 +9,6 @@ import {
   Heart,
   Languages,
   Mic,
-  Smile,
   Tags,
   Users,
 } from "lucide-react";
@@ -28,7 +27,6 @@ export const SMART_ICONS: Record<SmartKey, IconType> = {
   year: CalendarClock,
   language: Languages,
   country: Globe,
-  mood: Smile,
   vocals: Mic,
 };
 
@@ -44,6 +42,5 @@ export const SMART_GRADIENTS: Record<SmartKey, string> = {
   year: "from-amber-500 to-orange-700",
   language: "from-cyan-500 to-blue-700",
   country: "from-lime-500 to-emerald-700",
-  mood: "from-rose-400 to-pink-700",
   vocals: "from-indigo-400 to-purple-700",
 };

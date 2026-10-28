@@ -11,7 +11,7 @@ import { artistPhotoKey } from "./artistPhotos";
 export const COLLECTION_COVER_SCOPE = "collection_cover";
 
 /** What a cover belongs to: a user playlist, a built-in smart playlist, or one group of a grouped one. */
-export type CollectionKind = "playlist" | "smart" | "genre" | "year" | "language" | "country" | "mood" | "vocals";
+export type CollectionKind = "playlist" | "smart" | "genre" | "year" | "language" | "country" | "vocals";
 
 /** "playlist:<uuid>", "smart:favorites", "country:Bangladesh". */
 export function collectionKey(kind: CollectionKind, id: string): string {

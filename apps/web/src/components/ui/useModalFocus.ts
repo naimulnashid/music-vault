@@ -25,6 +25,10 @@ function returnTarget(): HTMLElement | null {
   return null;
 }
 
+// Open dialogs, oldest first. Only the newest answers Escape and Tab, so
+// closing a dialog opened from another one leaves the first one open.
+const openStack: object[] = [];
+
 function focusables(root: HTMLElement): HTMLElement[] {
   return [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => !el.hidden && el.offsetParent !== null);
 }
@@ -63,7 +67,11 @@ export function useModalFocus(panel: RefObject<HTMLElement | null>, open: boolea
     const start = items.find((el) => el.matches("input, textarea, select")) ?? items[0];
     (start ?? root).focus({ preventScroll: true });
 
+    const token = {};
+    openStack.push(token);
+
     const onKey = (e: KeyboardEvent) => {
+      if (openStack[openStack.length - 1] !== token) return;
       if (e.key === "Escape" && escape.current) {
         escape.current();
         return;
@@ -90,6 +98,7 @@ export function useModalFocus(panel: RefObject<HTMLElement | null>, open: boolea
 
     return () => {
       document.removeEventListener("keydown", onKey);
+      openStack.splice(openStack.indexOf(token), 1);
       inerted.forEach((el) => (el.inert = false));
       // Back to whatever opened the dialog (or the newest control still on the page).
       returnTarget()?.focus({ preventScroll: true });

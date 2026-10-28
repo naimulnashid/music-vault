@@ -58,6 +58,7 @@ class VaultViewModel @Inject constructor(
     fun setSharedCover(cover: SharedCover) = uploads.setSharedCover(cover)
     fun remove(id: String) = uploads.remove(id)
     fun clearFinished() = uploads.clearFinished()
+    fun pasteDetails(text: String, rowId: String? = null): String = uploads.pasteDetails(text, rowId)
     fun startUploads() = uploads.start()
 
     /** Turns a picked image into a vault cover (off the main thread). */

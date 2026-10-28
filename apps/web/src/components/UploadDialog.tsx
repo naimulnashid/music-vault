@@ -1,12 +1,13 @@
 import { useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useModalFocus } from "./ui/useModalFocus";
-import { AlertCircle, CheckCircle2, FilePlus2, Link2, Loader2, UploadCloud, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, ClipboardPaste, FilePlus2, Link2, Loader2, UploadCloud, X } from "lucide-react";
 import { formatTime } from "@musicvault/core";
 import { useUploadStore, type UploadItem } from "../store/uploadStore";
 import { SHARED_FIELDS, UPLOAD_FORM_FIELDS } from "../lib/trackForm";
 import { AUDIO_EXTS } from "@musicvault/core";
 import { CoverControl, FieldInput } from "./TrackFields";
+import { PasteDetailsDialog } from "./PasteDetailsDialog";
 import { coverPreviewUrl } from "../lib/uploadPrepare";
 
 /**
@@ -80,6 +81,7 @@ function ItemRow({ item, sharedCoverUrl }: { item: UploadItem; sharedCoverUrl?: 
   const setItemCover = useUploadStore((s) => s.setItemCover);
   const remove = useUploadStore((s) => s.remove);
   const running = useUploadStore((s) => s.running);
+  const [pasting, setPasting] = useState(false);
   const editable = item.status === "ready" || item.status === "failed";
   const coverUrl = sharedCoverUrl !== undefined ? sharedCoverUrl ?? undefined : coverPreviewUrl(item.cover);
   const fileName = item.name;
@@ -106,6 +108,11 @@ function ItemRow({ item, sharedCoverUrl }: { item: UploadItem; sharedCoverUrl?: 
             </span>
             {item.source && <span className="shrink-0">· {formatTime(item.source.technical.duration)}</span>}
             <div className="flex-1" />
+            {item.source && editable && !running && (
+              <button onClick={() => setPasting(true)} title="Paste this song's details as JSON" className="hover:text-fg">
+                <ClipboardPaste className="w-3.5 h-3.5" />
+              </button>
+            )}
             {!running && item.status !== "uploading" && (
               <button onClick={() => remove(item.id)} title="Remove from this upload" className="hover:text-fg">
                 <X className="w-3.5 h-3.5" />
@@ -133,6 +140,17 @@ function ItemRow({ item, sharedCoverUrl }: { item: UploadItem; sharedCoverUrl?: 
           ))}
         </div>
       )}
+      {/* Lyrics show once pasted: they replace the file's own, and can still be edited or cleared. */}
+      {item.source && (item.values.lyrics_text !== undefined || item.values.lyrics_synced !== undefined) && (
+        <div className="grid sm:grid-cols-2 gap-2 mt-2">
+          {(["lyrics_text", "lyrics_synced"] as const)
+            .filter((f) => item.values[f] !== undefined)
+            .map((field) => (
+              <FieldInput key={field} field={field} values={item.values} onChange={(f, v) => setValue(item.id, f, v)} />
+            ))}
+        </div>
+      )}
+      <PasteDetailsDialog open={pasting} rowId={item.id} onClose={() => setPasting(false)} />
     </div>
   );
 }
@@ -146,6 +164,7 @@ export function UploadDialog() {
   const lastUploaded = useUploadStore((s) => s.lastUploaded);
   const { addFiles, setShared, setSharedCover, close, start, clearFinished } = useUploadStore.getState();
   const [coverError, setCoverError] = useState<string | null>(null);
+  const [pasting, setPasting] = useState(false);
   const picker = useRef<HTMLInputElement>(null);
 
   const panel = useRef<HTMLDivElement>(null);
@@ -184,6 +203,16 @@ export function UploadDialog() {
               e.target.value = "";
             }}
           />
+          {withSource.length > 0 && (
+            <button
+              onClick={() => setPasting(true)}
+              disabled={running}
+              title="Fill the songs' details from JSON"
+              className="flex items-center gap-2 h-9 px-4 rounded-full text-sm font-semibold bg-surface-2 hover:bg-surface-3 transition-colors disabled:opacity-50"
+            >
+              <ClipboardPaste className="w-4 h-4" /> Paste details
+            </button>
+          )}
           <button
             onClick={() => picker.current?.click()}
             disabled={running}
@@ -238,6 +267,7 @@ export function UploadDialog() {
             </section>
           )}
 
+          <PasteDetailsDialog open={pasting} onClose={() => setPasting(false)} />
           {items.map((item) => (
             <ItemRow key={item.id} item={item} sharedCoverUrl={sharedCoverUrl} />
           ))}

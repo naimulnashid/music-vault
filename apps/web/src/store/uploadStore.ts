@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import {
   applyBatchFields,
+  matchPastedSongs,
+  parseUploadJson,
   draftFromSource,
   normalizeTrackPatch,
   uploadTrack,
@@ -63,6 +65,12 @@ interface UploadState {
   openWith: (files?: File[]) => void;
   addFiles: (files: File[]) => Promise<void>;
   setValue: (id: string, field: keyof FormValues, value: string) => void;
+  /**
+   * Fills rows from pasted JSON (core uploadJson.ts): into `rowId` alone, or
+   * into every row a pasted song matches. Returns what happened, for the
+   * dialog; throws when the paste can't be read.
+   */
+  pasteDetails: (text: string, rowId?: string) => string;
   setItemCover: (id: string, cover: PreparedCover | null) => void;
   setShared: (field: keyof FormValues, value: string) => void;
   setSharedCover: (cover: PreparedCover | null | undefined) => void;
@@ -91,6 +99,9 @@ async function findExisting(sources: WebSource[]): Promise<Map<string, RemoteTra
   return found;
 }
 
+/** Lyrics fields a paste can fill; they show in the row only once filled. */
+const PASTED_LYRICS = ["lyrics_text", "lyrics_synced"] as const;
+
 function draftFor(item: UploadItem, shared: FormValues, sharedCover: PreparedCover | null | undefined): UploadDraft {
   const source = item.source!;
   const base = draftFromSource(source);
@@ -98,6 +109,9 @@ function draftFor(item: UploadItem, shared: FormValues, sharedCover: PreparedCov
   // Lyrics come from the file (or its .lrc) for a new song; a known song keeps its online lyrics.
   if (!item.existing && source.tags.lyrics_text) fields.lyrics_text = source.tags.lyrics_text;
   if (!item.existing && source.tags.lyrics_synced) fields.lyrics_synced = source.tags.lyrics_synced;
+  // Lyrics pasted with the song's details replace the file's own (and a known song's online ones).
+  const pasted = PASTED_LYRICS.filter((f) => (item.values[f] ?? "").trim() !== "");
+  if (pasted.length > 0) Object.assign(fields, normalizeTrackPatch(patchInput(item.values, pasted)));
   const sharedFields = SHARED_FIELDS.filter((f) => (shared[f] ?? "").trim() !== "");
   const sharedPatch = normalizeTrackPatch(patchInput(shared, sharedFields));
   const [draft] = applyBatchFields([{ ...base, fields, cover: item.cover }], sharedPatch, sharedCover);
@@ -235,6 +249,28 @@ export const useUploadStore = create<UploadState>((set, get) => ({
       resolved.set(p.id, problems.length > 0 ? { ...item, status: "invalid", error: problems.join("; ") } : item);
     }
     set((s) => ({ items: s.items.map((i) => resolved.get(i.id) ?? i) }));
+  },
+
+  pasteDetails: (text, rowId) => {
+    const { songs, ignored } = parseUploadJson(text);
+    const rows = get()
+      .items.filter((i) => i.source && (i.status === "ready" || i.status === "failed") && (!rowId || i.id === rowId))
+      .map((i) => ({ id: i.id, title: i.values.title, fileName: i.name }));
+    if (rows.length === 0) throw new Error("Add the files first, then paste their details.");
+    // A row's own paste takes the song matching its title, else the first one.
+    const { matches, unmatched } = rowId
+      ? { matches: [{ rowId, song: matchPastedSongs(songs, rows).matches[0]?.song ?? songs[0] }], unmatched: [] }
+      : matchPastedSongs(songs, rows);
+    const byRow = new Map(matches.map((m) => [m.rowId, m.song]));
+    set((s) => ({
+      items: s.items.map((i) => (byRow.has(i.id) ? { ...i, values: { ...i.values, ...byRow.get(i.id) } } : i)),
+    }));
+    const parts = [`Filled ${matches.length} ${matches.length === 1 ? "song" : "songs"}.`];
+    if (unmatched.length > 0) {
+      parts.push(`No file matched ${unmatched.map((u) => `“${u.title ?? "untitled"}”`).join(", ")}; use that file's own paste button.`);
+    }
+    if (ignored.length > 0) parts.push(`Ignored: ${ignored.join(", ")}.`);
+    return parts.join(" ");
   },
 
   setValue: (id, field, value) =>

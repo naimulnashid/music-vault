@@ -98,8 +98,8 @@ On Android: an album and Downloads.
 - Edit a song's details and cover online from any app, one song or several at once: title, artist,
   featured artists, album, genre, subgenre, secondary genres, mood, vocals, language, country,
   release date and lyrics.
-- Browse by song, album, artist, genre, year, language, country, mood and vocals; search across
-  all of them.
+- Browse by song, album, artist, genre, year, language, country and vocals; search across all of
+  them.
   Songs show as a list or as covers on Windows and the web. Give an artist a photo of their own.
 - Playlists with drag-and-drop ordering, favorites, and smart playlists: built-in ones (Recently
   Added, Most Played, Never Played…) and your own, built from rules.
@@ -233,7 +233,8 @@ Every variable, what reads it and how exposed it is:
    same email and password work on every device.
 2. **Upload music.** Use the upload button, drop files on the Windows or web window, or share files
    to Music Vault on Android. Review each song's details before it uploads; the file's tags only
-   pre-fill the form.
+   pre-fill the form. Paste details fills the form from JSON, one song or many
+   ([the format](docs/upload-json.md)), and every field stays editable.
 3. **Play.** Click a song to play it and queue what follows. The queue, lyrics and equalizer open from
    the player.
 4. **Keep music offline.** Use Download on a song, album, artist or playlist, or switch on

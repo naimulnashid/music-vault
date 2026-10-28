@@ -19,11 +19,18 @@
 ## [Unreleased]
 
 ### Added
+- Every app: Paste details on the upload screen fills songs' details from JSON
+  ([docs/upload-json.md](../docs/upload-json.md)): one song as an object or several as an array,
+  each matched to the file with the same title, or pasted on one file with its own button. Lists
+  become comma-separated values, missing or empty keys leave a field as it is, pasted lyrics
+  replace the file's own and show as editable fields, and keys with no field (such as links) are
+  ignored and named. The research file's own names (`track_title`, `primary_genre`, `vocal_type`,
+  `languages`, `plain_lyrics`, `synchronized_lyrics`) work too. The dialog copies the template.
 - Every app: five more song details, edited like genre or country and set in the upload form:
   Featured artists, Subgenre, Secondary genres, Mood and Vocals. Featured artists, Secondary genres
   and Mood take several values separated by commas, and every field suggests the values already
   in the library. They show in the Now Playing details on Windows and the web, can be used in
-  smart playlist rules, and two new collections browse them: By Mood and By Vocals. Migration
+  smart playlist rules, and a new collection browses them: By Vocals. Migration
   0010, live since 2026-10-27, adds the columns and lets `apply_track_edit` accept them.
 - Landing page: How it works animates as it scrolls in. The diagram's parts appear in order,
   each connection draws out from the devices, dots then keep flowing along the connections (out
@@ -160,6 +167,8 @@ everywhere; Android `versionCode 7`. Migration 0009 is live (2026-10-27).
   for now. The loop files stay in `apps/site/public/video/` and in the video project, unused.
 
 ### Fixed
+- Web and desktop: Escape in a dialog opened from another dialog (such as Paste details on the
+  upload screen) closes only that dialog; it used to close both.
 - Android upload: the screen moves above the keyboard so the field being typed in stays in
   view; the release date keeps its cursor after each digit (typing 2026-09-09 used to give
   2026-90-90) and has a calendar button; and the screen clears itself when an upload finishes,

@@ -134,6 +134,32 @@ class UploadManager @Inject constructor(
 
     fun setValue(id: String, field: String, value: String) = patch(id) { it.copy(values = it.values + (field to value)) }
 
+    /**
+     * Fills rows from pasted JSON ([UploadJson]): [rowId] alone, or every row a
+     * pasted song matches. Returns what happened; throws [UploadJson.Invalid].
+     */
+    fun pasteDetails(text: String, rowId: String? = null): String {
+        val (songs, ignored) = UploadJson.parse(text)
+        val rows = _items.value
+            .filter { it.source != null && (it.status == UploadStatus.READY || it.status == UploadStatus.FAILED) && (rowId == null || it.id == rowId) }
+            .map { UploadJson.Row(it.id, it.values["title"], it.name) }
+        if (rows.isEmpty()) throw UploadJson.Invalid("Add the files first, then paste their details.")
+        // A row's own paste takes the song matching its title, else the first one.
+        val (matches, unmatched) = if (rowId != null) {
+            mapOf(rowId to (UploadJson.match(songs, rows).first.values.firstOrNull() ?: songs[0])) to emptyList()
+        } else {
+            UploadJson.match(songs, rows)
+        }
+        _items.update { list -> list.map { item -> matches[item.id]?.let { item.copy(values = item.values + it) } ?: item } }
+        return buildString {
+            append("Filled ${matches.size} ${if (matches.size == 1) "song" else "songs"}.")
+            if (unmatched.isNotEmpty()) {
+                append(" No file matched ${unmatched.joinToString { "“${it["title"] ?: "untitled"}”" }}; use that file's own paste button.")
+            }
+            if (ignored.isNotEmpty()) append(" Ignored: ${ignored.joinToString()}.")
+        }
+    }
+
     fun setItemCover(id: String, cover: PreparedCover?) = patch(id) { it.copy(cover = cover) }
 
     fun setShared(field: String, value: String) = _shared.update { it + (field to value) }
@@ -412,7 +438,7 @@ class UploadManager @Inject constructor(
             }
             // Only what the form changed relative to the online details becomes an edit.
             val online = TrackForm.valuesFromRow(existing)
-            val changed = TrackForm.UPLOAD_FIELDS.filter { values[it].orEmpty() != online[it].orEmpty() }
+            val changed = TrackForm.UPLOAD_FIELDS.filter { values[it].orEmpty() != online[it].orEmpty() } + pastedLyrics(values)
             val extra: Map<String, JsonElement> = if (artworkKey != null) mapOf("artwork_key" to JsonPrimitive(artworkKey)) else emptyMap()
             edit = JsonObject(TrackForm.normalize(values, changed) + extra).takeIf { it.isNotEmpty() }
         } else {
@@ -425,6 +451,8 @@ class UploadManager @Inject constructor(
                 fields.forEach { (k, v) -> put(k, v) }
                 put("artwork_key", artworkKey?.let { JsonPrimitive(it) } ?: JsonNull)
                 source.tags.lyricsText?.takeIf { it.isNotBlank() }?.let { put("lyrics_text", it) }
+                // Lyrics pasted with the song's details replace the file's own.
+                TrackForm.normalize(values, pastedLyrics(values)).forEach { (k, v) -> put(k, v) }
             }
             trackId = withContext(Dispatchers.IO) {
                 client.from("tracks").insert(row) { select() }.decodeSingle<TrackRow>().id
@@ -460,3 +488,7 @@ internal fun coverSampleSize(width: Int, height: Int, target: Int): Int {
     while (minOf(width, height) / (sample * 2) >= target) sample *= 2
     return sample
 }
+
+/** Lyrics fields a paste filled; they show in the row only once filled. */
+internal fun pastedLyrics(values: Map<String, String>): List<String> =
+    listOf("lyrics_text", "lyrics_synced").filter { values[it].orEmpty().isNotBlank() }
