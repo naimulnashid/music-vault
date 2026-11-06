@@ -132,5 +132,10 @@ class CollectionCovers @Inject constructor(
         const val SCOPE = "collection_cover"
 
         fun key(kind: String, id: String) = "$kind:$id"
+
+        /** Width / height of a collection's cover: By Country groups show flags, cut 3:2 (core coverShapeFor). */
+        fun aspectFor(collection: String): Float = if (collection.startsWith("country:")) FLAG_ASPECT else 1f
+
+        const val FLAG_ASPECT = 1.5f
     }
 }

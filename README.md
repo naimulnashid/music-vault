@@ -96,7 +96,7 @@ On Android: an album and Downloads.
 - Upload songs from any app: pick files (or drop them on the Windows and web windows, or share
   them to the Android app), review each song's details, then upload. Tags only pre-fill the form.
 - Edit a song's details and cover online from any app, one song or several at once: title, artist,
-  featured artists, album, genre, subgenre, secondary genres, mood, vocals, language, country,
+  featured artists, album, genre, subgenre, mood, vocals, language, country,
   release date and lyrics.
 - Browse by song, album, artist, genre, year, language, country and vocals; search across all of
   them.
@@ -112,8 +112,9 @@ On Android: an album and Downloads.
   and crossfade, the same equalizer, swipe between songs, and a volume slider on the full player.
   APE and WavPack play here too, besides the formats Android itself decodes.
 - Web: plays in the browser and installs as an app (PWA) that opens offline.
-- Everywhere: a queue with play next and add to queue, synced lyrics, a visualizer and a sleep
-  timer.
+- Everywhere: a queue with play next and add to queue, synced lyrics, a sleep timer, a
+  visualizer in three styles (bars, wave and a scrolling loudness timeline) shown in the full
+  player, and a spinning disc in place of the cover.
 
 **Offline**
 - Songs you play are cached on the device (Off to 10 GB, with Clear cache), so nothing downloads

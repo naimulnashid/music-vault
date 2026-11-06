@@ -267,8 +267,12 @@ class UploadManager @Inject constructor(
         "release_date" to s.tags.releaseDate.orEmpty(),
     )
 
-    /** Square-crops and resizes an image into the vault's cover format. */
-    fun prepareCover(bytes: ByteArray): PreparedCover {
+    /**
+     * Crops an image to width / height = [aspect] (square by default, 3:2 for
+     * flags) and resizes it into the vault's cover format: the full image's long
+     * edge and the thumb's short edge are capped (core coverOutputSize).
+     */
+    fun prepareCover(bytes: ByteArray, aspect: Float = 1f): PreparedCover {
         // Decode no bigger than the cover needs: a phone photo at full size is ~100 MB of
         // bitmap before the crop and scale even start.
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -279,19 +283,29 @@ class UploadManager @Inject constructor(
         val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
             ?: svgBitmap(bytes)
             ?: throw IllegalArgumentException("That image couldn't be read — try a JPEG, PNG or SVG.")
-        val size = minOf(bitmap.width, bitmap.height)
-        val square = Bitmap.createBitmap(bitmap, (bitmap.width - size) / 2, (bitmap.height - size) / 2, size, size)
-        if (square !== bitmap) bitmap.recycle()
-        fun jpeg(edge: Int): ByteArray {
-            val scaled = if (edge == size) square else Bitmap.createScaledBitmap(square, edge, edge, true)
+        var cw = bitmap.width
+        var ch = Math.round(bitmap.width / aspect)
+        if (ch > bitmap.height) {
+            ch = bitmap.height
+            cw = Math.round(bitmap.height * aspect)
+        }
+        cw = cw.coerceIn(1, bitmap.width)
+        ch = ch.coerceIn(1, bitmap.height)
+        val cropped = Bitmap.createBitmap(bitmap, (bitmap.width - cw) / 2, (bitmap.height - ch) / 2, cw, ch)
+        if (cropped !== bitmap) bitmap.recycle()
+        fun jpeg(scale: Float): ByteArray {
+            val s = scale.coerceAtMost(1f)
+            val w = Math.round(cw * s).coerceAtLeast(1)
+            val h = Math.round(ch * s).coerceAtLeast(1)
+            val scaled = if (w == cw && h == ch) cropped else Bitmap.createScaledBitmap(cropped, w, h, true)
             return ByteArrayOutputStream().use { out ->
                 scaled.compress(Bitmap.CompressFormat.JPEG, 88, out)
                 out.toByteArray()
-            }.also { if (scaled !== square) scaled.recycle() }
+            }.also { if (scaled !== cropped) scaled.recycle() }
         }
-        val full = jpeg(minOf(size, COVER_EDGE))
-        val thumb = jpeg(minOf(size, 256))
-        square.recycle()
+        val full = jpeg(COVER_EDGE / maxOf(cw, ch).toFloat())
+        val thumb = jpeg(256f / minOf(cw, ch).toFloat())
+        cropped.recycle()
         val sha = MessageDigest.getInstance("SHA-256").digest(full).joinToString("") { "%02x".format(it) }
         val fullFile = File(staging, "$sha.jpg").apply { writeBytes(full) }
         val thumbFile = File(staging, "$sha.thumb.jpg").apply { writeBytes(thumb) }
@@ -322,10 +336,10 @@ class UploadManager @Inject constructor(
         return bitmap
     }
 
-    fun prepareCover(uri: Uri): PreparedCover {
+    fun prepareCover(uri: Uri, aspect: Float = 1f): PreparedCover {
         val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
             ?: throw IllegalArgumentException("Couldn't open that image")
-        return prepareCover(bytes)
+        return prepareCover(bytes, aspect)
     }
 
     /** Read-only lookup of online rows matching the files (by content hash). */

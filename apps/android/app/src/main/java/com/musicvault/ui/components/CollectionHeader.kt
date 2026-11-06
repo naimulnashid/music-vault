@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -57,6 +59,8 @@ fun CollectionHeader(
     onSubtitleClick: (() -> Unit)? = null,
     meta: String? = null,
     coverShape: Shape = RoundedCornerShape(14.dp),
+    /** Width / height of the cover; flags (By Country) are wider than tall. */
+    coverAspect: Float = 1f,
     /** Replaces the artwork cover (smart-list tiles, playlist icons). */
     cover: (@Composable (Modifier) -> Unit)? = null,
     extraActions: @Composable () -> Unit = {},
@@ -80,7 +84,7 @@ fun CollectionHeader(
             .padding(horizontal = 20.dp, vertical = 16.dp),
     ) {
         val coverModifier = Modifier
-            .size(220.dp)
+            .then(if (coverAspect == 1f) Modifier.size(220.dp) else Modifier.width(270.dp).aspectRatio(coverAspect))
             .shadow(24.dp, coverShape)
             .clip(coverShape)
         if (cover != null) cover(coverModifier) else AlbumArt(art, modifier = coverModifier, shape = coverShape)

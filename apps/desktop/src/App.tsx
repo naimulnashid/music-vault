@@ -25,6 +25,7 @@ import { Visualizer } from "./components/Visualizer";
 import { ErrorToast } from "./components/ErrorToast";
 import { UploadDialog } from "./components/UploadDialog";
 import { TrackEditor } from "./components/TrackEditor";
+import { ConfirmHost } from "./components/ConfirmHost";
 import { useAuthStore } from "./store/authStore";
 import { useAudioEngine } from "./hooks/useAudioEngine";
 import { useMiniBridge } from "./hooks/useMiniBridge";
@@ -107,6 +108,10 @@ function App() {
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [activePanel, closePanel]);
+
+  // With the full player open, Queue and Lyrics are its tabs and the visualizer
+  // spreads across it; only the sound panel floats, above the player.
+  const sidePanel = nowPlayingExpanded && activePanel !== "equalizer" ? null : activePanel;
 
   const smartIsGroup = mainView === "smart" && smartKey && smartDef(smartKey).kind === "group";
   const viewKey = [mainView, activePlaylistId, smartKey, activeGroup, activeAlbumKey, activeArtist].join("|");
@@ -195,7 +200,7 @@ function App() {
 
             {/* Side panels float over the content's right edge. */}
             <AnimatePresence>
-              {activePanel && (
+              {sidePanel && (
                 <>
                   <motion.div
                     key="panel-scrim"
@@ -212,12 +217,12 @@ function App() {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 40 }}
                     transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                    className="fixed md:absolute z-40 md:z-10 inset-y-0 right-0 md:top-0 md:bottom-3 md:right-3 w-full max-w-sm md:w-[380px] bg-surface md:rounded-2xl border-l md:border border-line shadow-[0_20px_60px_-15px_rgb(0_0_0/0.6)] overflow-hidden"
+                    className={`fixed md:absolute z-40 ${nowPlayingExpanded ? "md:z-30" : "md:z-10"} inset-y-0 right-0 md:top-0 md:bottom-3 md:right-3 w-full max-w-sm md:w-[380px] bg-surface md:rounded-2xl border-l md:border border-line shadow-[0_20px_60px_-15px_rgb(0_0_0/0.6)] overflow-hidden`}
                   >
-                    {activePanel === "queue" && <QueuePanel />}
-                    {activePanel === "equalizer" && <EqualizerPanel />}
-                    {activePanel === "lyrics" && <LyricsPanel />}
-                    {activePanel === "visualizer" && <Visualizer />}
+                    {sidePanel === "queue" && <QueuePanel />}
+                    {sidePanel === "equalizer" && <EqualizerPanel />}
+                    {sidePanel === "lyrics" && <LyricsPanel />}
+                    {sidePanel === "visualizer" && <Visualizer />}
                   </motion.aside>
                 </>
               )}
@@ -231,6 +236,7 @@ function App() {
         <ErrorToast />
         <UploadDialog />
         <TrackEditor />
+        <ConfirmHost />
       </div>
     </MotionConfig>
   );

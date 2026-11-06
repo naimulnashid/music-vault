@@ -2,6 +2,8 @@ import { create } from "zustand";
 import type { SmartKey } from "@musicvault/core";
 
 export type PanelKey = "queue" | "equalizer" | "lyrics" | "visualizer" | null;
+/** The full player's side tabs. */
+export type NowPlayingTab = "next" | "lyrics" | "details";
 export type MainView =
   | "tracks"
   | "albums"
@@ -47,7 +49,13 @@ function loadCollapsed(): boolean {
 
 interface UiState extends Location {
   activePanel: PanelKey;
+  /**
+   * Opens or closes a side panel. While the full player is open, Queue and
+   * Lyrics pick its own tabs instead (a side panel would sit behind it).
+   */
   togglePanel: (panel: PanelKey) => void;
+  nowPlayingTab: NowPlayingTab;
+  setNowPlayingTab: (tab: NowPlayingTab) => void;
   closePanel: () => void;
   /** Mobile drawer. */
   sidebarOpen: boolean;
@@ -116,7 +124,19 @@ export const useUiStore = create<UiState>((set, get) => {
   return {
     ...HOME,
     activePanel: null,
-    togglePanel: (panel) => set({ activePanel: get().activePanel === panel ? null : panel }),
+    togglePanel: (panel) => {
+      const { activePanel, nowPlayingExpanded } = get();
+      if (nowPlayingExpanded && (panel === "queue" || panel === "lyrics")) {
+        set({
+          nowPlayingTab: panel === "queue" ? "next" : "lyrics",
+          activePanel: activePanel === "queue" || activePanel === "lyrics" ? null : activePanel,
+        });
+        return;
+      }
+      set({ activePanel: activePanel === panel ? null : panel });
+    },
+    nowPlayingTab: "next",
+    setNowPlayingTab: (nowPlayingTab) => set({ nowPlayingTab }),
     closePanel: () => set({ activePanel: null }),
     sidebarOpen: false,
     setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),

@@ -84,6 +84,7 @@ fun GroupedBrowseScreen(
     val def = SmartPlaylists.def(smartKey)
     val groups = remember(smartKey, tracks) { SmartPlaylists.computeSmartGroups(smartKey, tracks) }
     val isArtist = smartKey == SmartKey.ARTIST
+    val coverAspect = if (smartKey == SmartKey.COUNTRY) CollectionCovers.FLAG_ASPECT else 1f
 
     if (groups.isEmpty()) {
         Column(Modifier.fillMaxSize()) {
@@ -94,7 +95,7 @@ fun GroupedBrowseScreen(
     }
 
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(150.dp),
+        columns = GridCells.Adaptive(if (coverAspect > 1f) 170.dp else 150.dp),
         contentPadding = contentPadding,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -121,7 +122,7 @@ fun GroupedBrowseScreen(
                         val art = photos[group.name] ?: group.tracks.firstNotNullOfOrNull { it.artworkPath }
                         AlbumArt(art, modifier = Modifier.fillMaxWidth().aspectRatio(1f), shape = CircleShape)
                     } else {
-                        GroupCover(covers[collection], group.tracks, Modifier.fillMaxWidth().aspectRatio(1f), RoundedCornerShape(12.dp))
+                        GroupCover(covers[collection], group.tracks, Modifier.fillMaxWidth().aspectRatio(coverAspect), RoundedCornerShape(12.dp))
                     }
                     CoverMenu(libraryViewModel, collection, menuOpen) { menuOpen = false }
                 }
@@ -238,6 +239,7 @@ fun GroupScreen(
                 playerViewModel = playerViewModel,
                 meta = "${group.tracks.size} ${if (group.tracks.size == 1) "song" else "songs"} • ${Format.formatDurationLong(group.tracks.sumOf { it.durationMs } / 1000)}",
                 cover = { m -> GroupCover(custom, group.tracks, m, RoundedCornerShape(14.dp)) },
+                coverAspect = CollectionCovers.aspectFor(collection),
                 extraActions = {
                     if (libraryViewModel.canEditArtistPhotos) {
                         Box {

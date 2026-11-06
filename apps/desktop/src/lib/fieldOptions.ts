@@ -8,7 +8,6 @@ export type OptionField =
   | "album"
   | "genre"
   | "subgenre"
-  | "secondary_genres"
   | "mood"
   | "vocals"
   | "language"
@@ -27,7 +26,6 @@ function build(tracks: ReturnType<typeof useLibraryStore.getState>["tracks"]): L
     album: new Set(),
     genre: new Set(),
     subgenre: new Set(),
-    secondary_genres: new Set(),
     mood: new Set(),
     vocals: new Set(),
     language: new Set(),
@@ -45,7 +43,6 @@ function build(tracks: ReturnType<typeof useLibraryStore.getState>["tracks"]): L
     }
     for (const name of splitNames(t.artist)) if (t.artist !== "Unknown Artist") sets.featured_artists.add(name);
     if (t.subgenre) sets.subgenre.add(t.subgenre);
-    for (const name of splitNames(t.secondaryGenres)) sets.secondary_genres.add(name);
     for (const name of splitNames(t.mood)) sets.mood.add(name);
     if (t.vocals) sets.vocals.add(t.vocals);
     for (const name of splitNames(t.language)) sets.language.add(name);
@@ -59,7 +56,6 @@ function build(tracks: ReturnType<typeof useLibraryStore.getState>["tracks"]): L
     album: sorted(sets.album),
     genre: sorted(sets.genre),
     subgenre: sorted(sets.subgenre),
-    secondary_genres: sorted(sets.secondary_genres),
     mood: sorted(sets.mood),
     vocals: sorted(sets.vocals),
     language: sorted(sets.language),
@@ -86,7 +82,6 @@ export const OPTION_MODE: Record<OptionField, { show: "all" | "matches"; multi: 
   album: { show: "matches", multi: false },
   genre: { show: "matches", multi: true },
   subgenre: { show: "matches", multi: false },
-  secondary_genres: { show: "matches", multi: true },
   mood: { show: "all", multi: true },
   vocals: { show: "all", multi: false },
   language: { show: "all", multi: true },

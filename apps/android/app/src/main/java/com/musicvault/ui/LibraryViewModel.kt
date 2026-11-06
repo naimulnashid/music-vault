@@ -67,7 +67,8 @@ class LibraryViewModel @Inject constructor(
     /** Sets a collection's cover from a picked image, or back to the default when [uri] is null. */
     fun setCollectionCover(collection: String, uri: Uri?, onDone: (String?) -> Unit) = viewModelScope.launch {
         val error = runCatching {
-            val cover = uri?.let { withContext(Dispatchers.IO) { uploads.prepareCover(it) } }
+            val aspect = com.musicvault.data.vault.CollectionCovers.aspectFor(collection)
+            val cover = uri?.let { withContext(Dispatchers.IO) { uploads.prepareCover(it, aspect) } }
             collectionCovers.set(collection, cover)
         }.exceptionOrNull()
         onDone(error?.message)

@@ -42,6 +42,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
@@ -81,6 +82,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -125,6 +127,11 @@ fun NowPlayingScreen(
     val libraryTrack = tracks.firstOrNull { it.id == track.id }
     val isFavorite = libraryTrack?.favorite == true
     var menuOpen by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    // The visualizer and the spinning disc take the cover's place on the current page.
+    var vizOn by remember { mutableStateOf(false) }
+    var vizMode by remember { mutableStateOf(loadVisualizerMode(context)) }
+    var disc by remember { mutableStateOf(loadSpinningDisc(context)) }
 
     BackHandler(onBack = onCollapse)
 
@@ -204,6 +211,17 @@ fun NowPlayingScreen(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
+                IconButton(onClick = {
+                    disc = !disc
+                    saveSpinningDisc(context, disc)
+                }) {
+                    Icon(
+                        Icons.Rounded.Album,
+                        if (disc) "Show cover" else "Spinning disc",
+                        tint = if (disc) colors.accent else colors.text,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
                 IconButton(onClick = { menuOpen = true }) {
                     Icon(Icons.Rounded.MoreVert, "More", tint = colors.text, modifier = Modifier.size(24.dp))
                 }
@@ -250,17 +268,35 @@ fun NowPlayingScreen(
                         label = "artScale",
                     )
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(vertical = 24.dp)) {
-                    AlbumArt(
-                        entry?.track?.artworkPath,
-                        modifier = Modifier
+                        val sized = Modifier
                             .size(artSize)
                             .graphicsLayer {
                                 scaleX = scale
                                 scaleY = scale
                             }
-                            .shadow(20.dp, RoundedCornerShape(16.dp)),
-                        shape = RoundedCornerShape(16.dp),
-                    )
+                        when {
+                            isCurrentPage && vizOn -> VisualizerView(
+                                audioSessionId = playerViewModel.audioSessionId,
+                                mode = vizMode,
+                                onModeChange = {
+                                    vizMode = it
+                                    saveVisualizerMode(context, it)
+                                },
+                                modifier = sized
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(colors.text.copy(alpha = 0.06f)),
+                            )
+                            disc -> SpinningDisc(
+                                entry?.track?.artworkPath,
+                                playing = isCurrentPage && playback.isPlaying,
+                                modifier = sized,
+                            )
+                            else -> AlbumArt(
+                                entry?.track?.artworkPath,
+                                modifier = sized.shadow(20.dp, RoundedCornerShape(16.dp)),
+                                shape = RoundedCornerShape(16.dp),
+                            )
+                        }
                     }
                 }
             }
@@ -375,8 +411,13 @@ fun NowPlayingScreen(
                         onStart = playerViewModel::startSleepTimer,
                         onCancel = playerViewModel::cancelSleepTimer,
                     )
-                    IconButton(onClick = { onOpenPanel(PanelKey.VISUALIZER) }) {
-                        Icon(Icons.Rounded.GraphicEq, "Visualizer", tint = colors.textMuted, modifier = Modifier.size(22.dp))
+                    IconButton(onClick = { vizOn = !vizOn }) {
+                        Icon(
+                            Icons.Rounded.GraphicEq,
+                            if (vizOn) "Hide visualizer" else "Visualizer",
+                            tint = if (vizOn) colors.accent else colors.textMuted,
+                            modifier = Modifier.size(22.dp),
+                        )
                     }
                     IconButton(onClick = { onOpenPanel(PanelKey.EQUALIZER) }) {
                         Icon(Icons.Rounded.Tune, "Sound", tint = colors.textMuted, modifier = Modifier.size(22.dp))

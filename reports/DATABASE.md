@@ -210,7 +210,7 @@ client's library is a projection of these rows.
 | `year` | int | nullable — follows `release_date` (trigger `tracks_sync_year`, **0006**) |
 | `featured_artists` | text | nullable — guest artists, comma-separated (**0010**) |
 | `subgenre` | text | nullable — a narrower genre than `genre` (**0010**) |
-| `secondary_genres` | text | nullable — other genres, comma-separated (**0010**) |
+| `secondary_genres` | text | nullable — other genres, comma-separated (**0010**); the apps stopped editing and showing it on 2026-11-06, existing values stay |
 | `mood` | text | nullable — how the song feels, comma-separated (**0010**) |
 | `vocals` | text | nullable — "Male", "Female", "Male and Female" or "Instrumental" (**0010**) |
 | `sample_rate`, `bit_depth`, `channels` | int | nullable |

@@ -21,7 +21,6 @@ One song:
   "album": "",
   "genre": "",
   "subgenre": "",
-  "secondary_genres": "",
   "mood": "",
   "vocals": "",
   "language": "",
@@ -44,7 +43,6 @@ Several songs are an array of these: `[ { … }, { … } ]`.
 | `album` | Album | |
 | `genre` | Main genre | yes |
 | `subgenre` | A narrower genre | |
-| `secondary_genres` | Other genres the song belongs to | yes |
 | `mood` | How the song feels, such as `Romantic, Yearning` | yes |
 | `vocals` | `Male`, `Female`, `Male and Female` or `Instrumental` | |
 | `language` | Language | yes |

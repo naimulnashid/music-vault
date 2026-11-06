@@ -32,7 +32,6 @@ object TrackForm {
         "album" to "Album",
         "genre" to "Genre",
         "subgenre" to "Subgenre",
-        "secondary_genres" to "Secondary genres",
         "mood" to "Mood",
         "vocals" to "Vocals",
         "language" to "Language",
@@ -43,10 +42,10 @@ object TrackForm {
     )
 
     val UPLOAD_FIELDS = listOf(
-        "title", "artist", "featured_artists", "album", "genre", "subgenre", "secondary_genres",
+        "title", "artist", "featured_artists", "album", "genre", "subgenre",
         "mood", "vocals", "language", "country", "release_date",
     )
-    val SHARED_FIELDS = listOf("artist", "album", "genre", "subgenre", "secondary_genres", "language", "country", "release_date")
+    val SHARED_FIELDS = listOf("artist", "album", "genre", "subgenre", "language", "country", "release_date")
     val PLACEHOLDERS = mapOf("release_date" to "YYYY-MM-DD")
     val MULTILINE = setOf("lyrics_text", "lyrics_synced")
 
@@ -162,7 +161,6 @@ object TrackForm {
         "featured_artists" to t.featuredArtists.orEmpty(),
         "genre" to t.genre.orEmpty(),
         "subgenre" to t.subgenre.orEmpty(),
-        "secondary_genres" to t.secondaryGenres.orEmpty(),
         "mood" to t.mood.orEmpty(),
         "vocals" to t.vocals.orEmpty(),
         "language" to t.language.orEmpty(),
@@ -179,7 +177,6 @@ object TrackForm {
         "featured_artists" to r.featuredArtists.orEmpty(),
         "genre" to r.genre.orEmpty(),
         "subgenre" to r.subgenre.orEmpty(),
-        "secondary_genres" to r.secondaryGenres.orEmpty(),
         "mood" to r.mood.orEmpty(),
         "vocals" to r.vocals.orEmpty(),
         "language" to r.language.orEmpty(),

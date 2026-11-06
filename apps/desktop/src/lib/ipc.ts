@@ -339,7 +339,8 @@ export interface VaultUploadProgress {
 }
 
 export const vaultPrepareFiles = (paths: string[]) => invoke<PrepareResultDto[]>("vault_prepare_files", { paths });
-export const vaultPrepareCover = (path: string) => invoke<PreparedCoverDto>("vault_prepare_cover", { path });
+export const vaultPrepareCover = (path: string, shape: "square" | "flag" = "square") =>
+  invoke<PreparedCoverDto>("vault_prepare_cover", { path, shape });
 /** `expectedBlake3` (audio): the upload fails, and nothing is stored, if the file no longer has this hash. */
 export const vaultPutFile = (url: string, path: string, uploadId: string, contentType: string, expectedBlake3?: string) =>
   invoke<void>("vault_put_file", { url, path, uploadId, contentType, expectedBlake3: expectedBlake3 ?? null });

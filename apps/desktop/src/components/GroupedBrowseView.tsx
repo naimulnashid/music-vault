@@ -34,6 +34,8 @@ export function GroupedBrowseView({ smartKey }: { smartKey: SmartKey }) {
   const def = smartDef(smartKey);
 
   const groups = useMemo(() => computeSmartGroups(smartKey, tracks), [smartKey, tracks]);
+  // Country covers are flags, cut 3:2 (core coverShapeFor), so their tiles are too.
+  const flag = smartKey === "country";
 
   if (activeGroup !== null) {
     const group = groups.find((g) => g.name === activeGroup);
@@ -50,7 +52,7 @@ export function GroupedBrowseView({ smartKey }: { smartKey: SmartKey }) {
               tracks={group.tracks}
               collection={collectionKey(smartKey as CollectionKind, group.name)}
               full
-              className="w-48 h-48 md:w-56 md:h-56 rounded-xl"
+              className={flag ? "w-60 h-40 md:w-72 md:h-48 rounded-xl" : "w-48 h-48 md:w-56 md:h-56 rounded-xl"}
             />
           }
           meta={`${group.tracks.length} ${group.tracks.length === 1 ? "song" : "songs"} • ${formatDurationLong(total)}`}
@@ -79,7 +81,7 @@ export function GroupedBrowseView({ smartKey }: { smartKey: SmartKey }) {
         {groups.length === 0 ? (
           <p className="text-sm text-muted py-10 text-center">{def.emptyMessage}</p>
         ) : (
-          <CardGrid min={isArtist ? 150 : 168}>
+          <CardGrid min={isArtist ? 150 : flag ? 200 : 168}>
             {groups.map((group, i) =>
               isArtist ? (
                 <motion.button
@@ -106,6 +108,7 @@ export function GroupedBrowseView({ smartKey }: { smartKey: SmartKey }) {
                   group={group}
                   index={i}
                   collection={collectionKey(smartKey as CollectionKind, group.name)}
+                  flag={flag}
                   onOpen={() => showGroup(smartKey, group.name)}
                 />
               ),
@@ -122,11 +125,13 @@ function GroupCard({
   group,
   index,
   collection,
+  flag,
   onOpen,
 }: {
   group: SmartGroup<Track>;
   index: number;
   collection: string;
+  flag: boolean;
   onOpen: () => void;
 }) {
   const context = useCoverContextMenu(collection);
@@ -142,7 +147,7 @@ function GroupCard({
           <Mosaic
             tracks={group.tracks}
             collection={collection}
-            className="w-full aspect-square transition-transform duration-500 group-hover:scale-[1.04]"
+            className={`w-full ${flag ? "aspect-[3/2]" : "aspect-square"} transition-transform duration-500 group-hover:scale-[1.04]`}
           />
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors duration-200" />
           <CardPlayButton tracks={group.tracks} />

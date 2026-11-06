@@ -2,13 +2,14 @@ import { parseBlob } from "music-metadata";
 import { createBLAKE3 } from "hash-wasm";
 import {
   audioExtOf,
+  aspectCrop,
+  COVER_ASPECT,
   COVER_JPEG_QUALITY,
   COVER_MAX_PX,
-  COVER_THUMB_PX,
-  coverEdge,
+  coverOutputSize,
   parseLrc,
   releaseDateFromTag,
-  squareCrop,
+  type CoverShape,
   type LyricLine,
   type PreparedCover,
   type TrackEditPatch,
@@ -19,7 +20,7 @@ import {
  * Browser-side upload preparation (the web counterpart of desktop's Rust
  * vault::prepare): the BLAKE3 identity, the
  * file's tags and technical facts via music-metadata, and covers turned into
- * the vault's square JPEG + thumbnail with a canvas. Nothing leaves the
+ * the vault's JPEG + thumbnail with a canvas. Nothing leaves the
  * browser here.
  */
 
@@ -51,12 +52,16 @@ async function sha256Hex(blob: Blob): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-async function encodeSquare(bitmap: ImageBitmap, crop: { sx: number; sy: number; size: number }, edge: number): Promise<Blob> {
-  const canvas = new OffscreenCanvas(edge, edge);
+async function encodeCrop(
+  bitmap: ImageBitmap,
+  crop: { sx: number; sy: number; w: number; h: number },
+  size: { width: number; height: number },
+): Promise<Blob> {
+  const canvas = new OffscreenCanvas(size.width, size.height);
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas isn't available in this browser");
   ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(bitmap, crop.sx, crop.sy, crop.size, crop.size, 0, 0, edge, edge);
+  ctx.drawImage(bitmap, crop.sx, crop.sy, crop.w, crop.h, 0, 0, size.width, size.height);
   return canvas.convertToBlob({ type: "image/jpeg", quality: COVER_JPEG_QUALITY });
 }
 
@@ -91,8 +96,8 @@ async function svgBitmap(image: Blob): Promise<ImageBitmap> {
   }
 }
 
-/** Square-crops and resizes an image (SVG too) into the vault's cover format. */
-export async function prepareCover(image: Blob): Promise<PreparedCover> {
+/** Crops (square, or 3:2 for flags) and resizes an image (SVG too) into the vault's cover format. */
+export async function prepareCover(image: Blob, shape: CoverShape = "square"): Promise<PreparedCover> {
   let bitmap: ImageBitmap;
   try {
     bitmap = isSvg(image) ? await svgBitmap(image) : await createImageBitmap(image);
@@ -100,10 +105,10 @@ export async function prepareCover(image: Blob): Promise<PreparedCover> {
     throw new Error("That image couldn't be read — try a JPEG, PNG or SVG.");
   }
   try {
-    const crop = squareCrop(bitmap.width, bitmap.height);
-    if (crop.size === 0) throw new Error("That image has no pixels.");
-    const full = await encodeSquare(bitmap, crop, coverEdge(crop.size, COVER_MAX_PX));
-    const thumb = await encodeSquare(bitmap, crop, coverEdge(crop.size, COVER_THUMB_PX));
+    const crop = aspectCrop(bitmap.width, bitmap.height, COVER_ASPECT[shape]);
+    if (crop.w === 0 || crop.h === 0) throw new Error("That image has no pixels.");
+    const full = await encodeCrop(bitmap, crop, coverOutputSize(crop, "full"));
+    const thumb = await encodeCrop(bitmap, crop, coverOutputSize(crop, "thumb"));
     const handle: WebCoverHandle = { full, thumb, previewUrl: URL.createObjectURL(thumb) };
     return { sha256: await sha256Hex(full), fullSize: full.size, thumbSize: thumb.size, handle };
   } finally {

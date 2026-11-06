@@ -45,6 +45,35 @@
   which doesn't list SVG files.
 - Landing page: a `favicon.ico` of the app icon beside the SVG one, for browsers and crawlers
   that ask for `/favicon.ico`. `scripts/make-icons.mjs` writes it with the other icons.
+- Every app: a spinning disc in the full player. The button at its top right turns the cover into
+  the label of a record that turns while the song plays and stops where it is on pause; the
+  choice is remembered on the device.
+- Windows and web: Ctrl+S saves the Edit details dialog.
+
+### Changed
+- Every app: a new visualizer with three styles, remembered on the device. Bars is a
+  log-spaced spectrum (bass gets as many bars as treble) that rises fast, falls slowly and leaves
+  falling peak caps; Wave holds the waveform still (it starts each frame on a rising zero crossing
+  and eases between frames) and draws it as one smooth line; Flow scrolls the song's loudness over
+  the last seconds. On Windows and the web it spreads across the full width of the full player
+  under the cover; on Android it takes the cover's place in the full player instead of opening a
+  sheet.
+- Windows and web: with the full player open, Lyrics and Queue in the player bar pick the full
+  player's own tabs, and Sound opens above it. They used to open side panels hidden behind it.
+- Windows and web: deleting a song from the vault or a playlist asks in the app's own dialog
+  instead of the system's (Windows) or the browser's (web).
+- Every app: covers picked for By Country groups are cut 3:2, the most common flag shape, and
+  the group cards and group pages show them that way. Other covers stay square. Flags picked
+  before this change were cut square, so pick them again to see the whole flag.
+
+### Removed
+- Every app: the Secondary genres field, from the editor, the upload form, the Now Playing
+  details, the JSON template and the smart playlist rule fields. The column and any values
+  already saved stay in the database, and a smart playlist rule saved with it still works.
+
+### Fixed
+- Windows and web: the play/pause icon no longer slides sideways while it swaps; both icons now
+  cross-fade in place.
 
 ## [1.5.0] - 2026-10-27
 

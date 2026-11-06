@@ -17,8 +17,11 @@ pub const AUDIO_EXTS: &[&str] = &[
     "mp3", "flac", "wav", "ogg", "oga", "opus", "m4a", "mp4", "aac", "alac", "aiff", "aif", "ape", "wv",
 ];
 
-/// Cover rules (core upload.ts): square centre crop, ≤ 1200 px JPEG + 256 px thumb.
+/// Cover rules (core upload.ts): centre crop (square, or 3:2 for flags), long
+/// edge ≤ 1200 px JPEG + a thumb whose short edge is ≤ 256 px.
 pub const COVER_MAX_PX: u32 = 1200;
+/// Width / height of a "flag" cover (By Country groups).
+pub const FLAG_ASPECT: f64 = 1.5;
 pub const COVER_THUMB_PX: u32 = 256;
 const COVER_JPEG_QUALITY: u8 = 88;
 
@@ -152,20 +155,35 @@ pub fn prepare_file(path: &Path, staging_dir: &Path) -> Result<PreparedFile> {
 /// Square-crops, resizes and JPEG-encodes an image into the vault's cover
 /// format, staging `<sha256>.jpg` and `<sha256>.thumb.jpg` in `staging_dir`.
 pub fn prepare_cover(bytes: &[u8], staging_dir: &Path) -> Result<PreparedCover> {
+    prepare_cover_shaped(bytes, staging_dir, 1.0)
+}
+
+/// `prepare_cover` with a centred crop of width / height = `aspect` (core aspectCrop).
+pub fn prepare_cover_shaped(bytes: &[u8], staging_dir: &Path, aspect: f64) -> Result<PreparedCover> {
     let img = match image::load_from_memory(bytes) {
         Ok(img) => img,
         Err(_) if looks_like_svg(bytes) => render_svg(bytes)?,
         Err(e) => return Err(e).context("not a readable image"),
     };
     let (w, h) = (img.width(), img.height());
-    let size = w.min(h);
-    if size == 0 {
+    if w == 0 || h == 0 {
         bail!("image has no pixels");
     }
-    let square = img.crop_imm((w - size) / 2, (h - size) / 2, size, size);
+    let (mut cw, mut ch) = (w, ((w as f64) / aspect).round() as u32);
+    if ch > h {
+        ch = h;
+        cw = ((h as f64) * aspect).round() as u32;
+    }
+    let (cw, ch) = (cw.clamp(1, w), ch.clamp(1, h));
+    let cropped = img.crop_imm((w - cw) / 2, (h - ch) / 2, cw, ch);
 
-    let full = encode_jpeg(&square, size.min(COVER_MAX_PX))?;
-    let thumb = encode_jpeg(&square, size.min(COVER_THUMB_PX))?;
+    let (long, short) = (cw.max(ch) as f64, cw.min(ch) as f64);
+    let fit = |scale: f64| {
+        let s = scale.min(1.0);
+        (((cw as f64) * s).round().max(1.0) as u32, ((ch as f64) * s).round().max(1.0) as u32)
+    };
+    let full = encode_jpeg(&cropped, fit(COVER_MAX_PX as f64 / long))?;
+    let thumb = encode_jpeg(&cropped, fit(COVER_THUMB_PX as f64 / short))?;
     let sha256 = format!("{:x}", Sha256::digest(&full));
 
     std::fs::create_dir_all(staging_dir)?;
@@ -213,11 +231,11 @@ fn render_svg(bytes: &[u8]) -> Result<image::DynamicImage> {
     Ok(image::DynamicImage::ImageRgba8(rgba))
 }
 
-fn encode_jpeg(img: &image::DynamicImage, edge: u32) -> Result<Vec<u8>> {
-    let resized = if img.width() == edge {
+fn encode_jpeg(img: &image::DynamicImage, (width, height): (u32, u32)) -> Result<Vec<u8>> {
+    let resized = if img.width() == width && img.height() == height {
         img.to_rgb8()
     } else {
-        img.resize_exact(edge, edge, FilterType::Lanczos3).to_rgb8()
+        img.resize_exact(width, height, FilterType::Lanczos3).to_rgb8()
     };
     let mut out = Vec::new();
     image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, COVER_JPEG_QUALITY).encode_image(&resized)?;
@@ -290,6 +308,20 @@ mod tests {
         assert_eq!((full.width(), full.height()), (COVER_MAX_PX, COVER_MAX_PX));
         let px = full.to_rgb8().get_pixel(600, 600).0;
         assert!(px[2] > 200 && px[1] < 100, "the shape is drawn, not left white: {px:?}");
+    }
+
+    #[test]
+    fn flag_covers_are_cut_three_by_two() {
+        let dir = temp_dir("flag");
+        let cover = prepare_cover_shaped(&png(2000, 2000), &dir, FLAG_ASPECT).unwrap();
+        let full = image::open(&cover.full_path).unwrap();
+        let thumb = image::open(&cover.thumb_path).unwrap();
+        assert_eq!((full.width(), full.height()), (COVER_MAX_PX, 800));
+        assert_eq!((thumb.width(), thumb.height()), (384, COVER_THUMB_PX));
+        // A wide image keeps its full height and loses the sides.
+        let wide = prepare_cover_shaped(&png(900, 300), &dir, FLAG_ASPECT).unwrap();
+        let full = image::open(&wide.full_path).unwrap();
+        assert_eq!((full.width(), full.height()), (450, 300));
     }
 
     #[test]

@@ -150,6 +150,13 @@ export function TrackEditor() {
         tabIndex={-1}
         className="w-full max-w-2xl max-h-[88vh] flex flex-col rounded-2xl bg-surface border border-line shadow-[0_24px_80px_-16px_rgb(0_0_0/0.6)] animate-slide-up"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          // Ctrl+S (Cmd+S on a Mac) saves, as in a document editor.
+          if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "s") {
+            e.preventDefault();
+            if (!busy) void save();
+          }
+        }}
       >
         <div className="flex items-center gap-3 px-5 py-4 border-b border-line">
           <h2 id={titleId} className="text-lg font-bold flex-1 truncate">
@@ -216,6 +223,7 @@ export function TrackEditor() {
           </button>
           <button
             onClick={() => void save()}
+            title="Save (Ctrl+S)"
             disabled={busy}
             className="flex items-center gap-2 h-10 px-5 rounded-full text-sm font-semibold bg-accent text-accent-fg hover:bg-accent-hover active:scale-[0.97] transition-[background-color,transform] disabled:opacity-50"
           >

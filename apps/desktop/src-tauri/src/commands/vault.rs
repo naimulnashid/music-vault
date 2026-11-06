@@ -57,13 +57,19 @@ pub async fn vault_prepare_files(app: AppHandle, paths: Vec<String>) -> Result<V
     .map_err(|e| e.to_string())
 }
 
-/// Turns a picked image into the vault's cover format (square JPEG + thumb).
+/// Turns a picked image into the vault's cover format (JPEG + thumb): square,
+/// or 3:2 when `shape` is "flag" (By Country covers).
 #[tauri::command]
-pub async fn vault_prepare_cover(app: AppHandle, path: String) -> Result<prepare::PreparedCover, String> {
+pub async fn vault_prepare_cover(
+    app: AppHandle,
+    path: String,
+    shape: Option<String>,
+) -> Result<prepare::PreparedCover, String> {
     let staging = staging_dir(&app)?;
+    let aspect = if shape.as_deref() == Some("flag") { prepare::FLAG_ASPECT } else { 1.0 };
     tauri::async_runtime::spawn_blocking(move || {
         let bytes = std::fs::read(&path).map_err(|e| format!("can't read {path}: {e}"))?;
-        prepare::prepare_cover(&bytes, &staging).map_err(|e| e.to_string())
+        prepare::prepare_cover_shaped(&bytes, &staging, aspect).map_err(|e| e.to_string())
     })
     .await
     .map_err(|e| e.to_string())?

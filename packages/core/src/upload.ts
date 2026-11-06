@@ -40,6 +40,35 @@ export function coverEdge(size: number, max: number): number {
   return Math.max(1, Math.min(size, max));
 }
 
+/**
+ * A cover is square, or "flag": 3:2, the most common flag proportion, for
+ * By Country groups. Flags keep the long edge within COVER_MAX_PX and the
+ * short edge of the thumbnail at COVER_THUMB_PX, so a square comes out exactly
+ * as before.
+ */
+export type CoverShape = "square" | "flag";
+
+export const COVER_ASPECT: Record<CoverShape, number> = { square: 1, flag: 3 / 2 };
+
+/** The centred w:h = `aspect` rectangle to crop from a width×height image. */
+export function aspectCrop(width: number, height: number, aspect: number): { sx: number; sy: number; w: number; h: number } {
+  let w = width;
+  let h = Math.round(width / aspect);
+  if (h > height) {
+    h = height;
+    w = Math.round(height * aspect);
+  }
+  return { sx: Math.floor((width - w) / 2), sy: Math.floor((height - h) / 2), w, h };
+}
+
+/** Output size for a crop: full keeps the long edge ≤ COVER_MAX_PX, the thumb the short edge ≤ COVER_THUMB_PX; never upscales. */
+export function coverOutputSize(crop: { w: number; h: number }, variant: "full" | "thumb"): { width: number; height: number } {
+  const long = Math.max(crop.w, crop.h);
+  const short = Math.min(crop.w, crop.h);
+  const scale = Math.min(1, variant === "full" ? COVER_MAX_PX / long : COVER_THUMB_PX / short);
+  return { width: Math.max(1, Math.round(crop.w * scale)), height: Math.max(1, Math.round(crop.h * scale)) };
+}
+
 /** Properties read from the audio itself: shown in the editor, never editable. */
 export interface TechnicalProps {
   duration: number;

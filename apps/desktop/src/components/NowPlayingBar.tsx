@@ -51,6 +51,10 @@ export function NowPlayingBar() {
   const togglePanel = useUiStore((s) => s.togglePanel);
   const nowPlayingExpanded = useUiStore((s) => s.nowPlayingExpanded);
   const toggleNowPlaying = useUiStore((s) => s.toggleNowPlaying);
+  const nowPlayingTab = useUiStore((s) => s.nowPlayingTab);
+  // In the full player, Queue and Lyrics show which of its tabs is up.
+  const lyricsActive = nowPlayingExpanded ? nowPlayingTab === "lyrics" : activePanel === "lyrics";
+  const queueActive = nowPlayingExpanded ? nowPlayingTab === "next" : activePanel === "queue";
   const showArtist = useUiStore((s) => s.showArtist);
   const showAlbum = useUiStore((s) => s.showAlbum);
   const { openMenu, menu } = useTrackMenu();
@@ -182,7 +186,7 @@ export function NowPlayingBar() {
           <IconButton label="Visualizer" active={activePanel === "visualizer"} onClick={() => togglePanel("visualizer")}>
             <AudioLines className="w-5 h-5" />
           </IconButton>
-          <IconButton label="Lyrics" active={activePanel === "lyrics"} onClick={() => togglePanel("lyrics")}>
+          <IconButton label="Lyrics" active={lyricsActive} onClick={() => togglePanel("lyrics")}>
             <MicVocal className="w-5 h-5" />
           </IconButton>
           <IconButton label="Sound" active={activePanel === "equalizer"} onClick={() => togglePanel("equalizer")}>
@@ -190,7 +194,7 @@ export function NowPlayingBar() {
           </IconButton>
           <IconButton
             label="Queue"
-            active={activePanel === "queue"}
+            active={queueActive}
             onClick={() => togglePanel("queue")}
             data-queue-toggle
           >

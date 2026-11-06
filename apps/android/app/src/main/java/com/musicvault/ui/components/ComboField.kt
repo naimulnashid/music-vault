@@ -32,9 +32,9 @@ class FieldOptions(private val lists: Map<String, List<String>>) {
 
         /** Short lists show everything when opened; long ones show matches while typing. */
         val SHOW_ALL = setOf("language", "country", "mood", "vocals")
-        val MULTI = setOf("artist", "featured_artists", "genre", "secondary_genres", "mood", "language", "country")
+        val MULTI = setOf("artist", "featured_artists", "genre", "mood", "language", "country")
         val FIELDS = setOf(
-            "title", "artist", "featured_artists", "album", "genre", "subgenre", "secondary_genres",
+            "title", "artist", "featured_artists", "album", "genre", "subgenre",
             "mood", "vocals", "language", "country",
         )
 
@@ -52,7 +52,6 @@ class FieldOptions(private val lists: Map<String, List<String>>) {
                 }
                 if (t.artist != "Unknown Artist") sets.getValue("featured_artists").addAll(SmartPlaylists.splitNames(t.artist))
                 t.subgenre?.takeIf { it.isNotBlank() }?.let { sets.getValue("subgenre").add(it) }
-                sets.getValue("secondary_genres").addAll(SmartPlaylists.splitNames(t.secondaryGenres))
                 sets.getValue("mood").addAll(SmartPlaylists.splitNames(t.mood))
                 t.vocals?.takeIf { it.isNotBlank() }?.let { sets.getValue("vocals").add(it) }
                 sets.getValue("language").addAll(SmartPlaylists.splitNames(t.language))

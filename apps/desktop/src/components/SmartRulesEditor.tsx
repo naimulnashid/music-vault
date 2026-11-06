@@ -21,7 +21,8 @@ interface SmartRulesEditorProps {
   onChange: (rules: SmartRules) => void;
 }
 
-const FIELD_KEYS = Object.keys(RULE_FIELDS) as RuleField[];
+// Secondary genres is no longer offered; a rule saved with it still shows (and works).
+const FIELD_KEYS: RuleField[] = (Object.keys(RULE_FIELDS) as RuleField[]).filter((f) => f !== "secondaryGenres");
 const NO_VALUE_OPS: RuleOp[] = ["isSet", "notSet", "isTrue", "isFalse"];
 
 const inputClass =
@@ -119,7 +120,7 @@ function ConditionRow({
         onChange={(e) => onChange(defaultConditionFor(e.target.value as RuleField))}
         className={inputClass}
       >
-        {FIELD_KEYS.map((f) => (
+        {(FIELD_KEYS.includes(cond.field) ? FIELD_KEYS : [...FIELD_KEYS, cond.field]).map((f) => (
           <option key={f} value={f}>
             {RULE_FIELDS[f].label}
           </option>

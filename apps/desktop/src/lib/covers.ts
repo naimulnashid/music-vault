@@ -1,5 +1,5 @@
 import { open } from "@tauri-apps/plugin-dialog";
-import type { PreparedCover } from "@musicvault/core";
+import type { CoverShape, PreparedCover } from "@musicvault/core";
 import { vaultPrepareCover, type PreparedCoverDto } from "./ipc";
 
 /** Wraps Rust's prepared cover (staged JPEG paths) as a core PreparedCover. */
@@ -8,14 +8,14 @@ export function coverFromDto(dto: PreparedCoverDto): PreparedCover {
 }
 
 /** Lets the user pick an image file and turns it into a vault cover. */
-export async function pickCover(): Promise<PreparedCover | null> {
+export async function pickCover(shape: CoverShape = "square"): Promise<PreparedCover | null> {
   const picked = await open({
     multiple: false,
     title: "Choose a cover image",
     filters: [{ name: "Images", extensions: ["jpg", "jpeg", "png", "webp", "bmp", "gif", "svg"] }],
   });
   if (!picked || Array.isArray(picked)) return null;
-  return coverFromDto(await vaultPrepareCover(picked));
+  return coverFromDto(await vaultPrepareCover(picked, shape));
 }
 
 /** artworkPath (relative to the artwork dir) of a staged cover, for previews. */

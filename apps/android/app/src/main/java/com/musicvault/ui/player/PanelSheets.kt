@@ -52,7 +52,8 @@ import com.musicvault.ui.components.AlbumArt
 import com.musicvault.ui.components.HorizontalBorder
 import com.musicvault.ui.theme.LocalVaultColors
 
-enum class PanelKey { QUEUE, EQUALIZER, LYRICS, VISUALIZER }
+/** The visualizer is not a sheet: it takes the cover's place in the full player. */
+enum class PanelKey { QUEUE, EQUALIZER, LYRICS }
 
 /** The web app's right-side panels as bottom sheets (App.tsx activePanel). */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -79,7 +80,6 @@ fun PanelSheets(
                 PanelKey.QUEUE -> QueueSheet(playerViewModel)
                 PanelKey.EQUALIZER -> EqualizerSheet(playerViewModel)
                 PanelKey.LYRICS -> LyricsSheet(playerViewModel)
-                PanelKey.VISUALIZER -> VisualizerSheet(playerViewModel)
             }
         }
     }

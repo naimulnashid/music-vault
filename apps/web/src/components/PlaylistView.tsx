@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { MoreHorizontal, Pencil, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useLibraryStore } from "../store/libraryStore";
+import { askConfirm } from "./ConfirmHost";
 import { useHistoryStore } from "../store/historyStore";
 import { useUiStore } from "../store/uiStore";
 import { TrackCollection } from "./TrackCollection";
@@ -63,7 +64,13 @@ export function PlaylistView() {
   };
 
   const handleDelete = async () => {
-    const ok = window.confirm(`Delete the playlist “${playlist.name}”? The songs stay in your library.`);
+    const ok = await askConfirm({
+      title: "Delete playlist",
+      message: `Delete the playlist “${playlist.name}”?`,
+      detail: "The songs stay in your library.",
+      confirmLabel: "Delete",
+      danger: true,
+    });
     if (!ok) return;
     void deletePlaylist(playlist.id);
     showTracks();

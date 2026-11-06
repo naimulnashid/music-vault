@@ -209,7 +209,8 @@ private fun ConditionRow(
         Row(verticalAlignment = Alignment.CenterVertically) {
             RuleDropdown(
                 label = meta.label,
-                options = SmartRulesMeta.FIELDS.map { it.key to it.label },
+                options = SmartRulesMeta.FIELDS.filter { it in SmartRulesMeta.PICKABLE_FIELDS || it.key == cond.field }
+                    .map { it.key to it.label },
                 onSelect = { onChange(SmartRulesMeta.defaultConditionFor(it)) },
             )
             Spacer(Modifier.size(6.dp))

@@ -35,16 +35,17 @@ A file already in the vault is reported as such; a known song keeps its history.
 ### Track details, edited online
 **Status** ✅ All three platforms (`TrackEditor` on desktop/web,
 [TrackEditor.kt](../apps/android/app/src/main/java/com/musicvault/ui/vault/TrackEditor.kt) on Android).
-**What** — title, artist, featured artists, album, genre, subgenre, secondary genres, mood,
+**What** — title, artist, featured artists, album, genre, subgenre, mood,
 vocals, language, country, release date (a year, year and month, or full date), plain and synced
 lyrics, and the cover are stored in the Supabase row and edited from any app,
-one track or several at once. Technical facts (duration, codec, sample rate, bit depth, channels,
+one track or several at once (Ctrl+S saves on desktop and web). Technical facts (duration, codec, sample rate, bit depth, channels,
 size, ReplayGain, hash) are read-only. Edits travel as `track.edit` sync ops with field-level
 last-writer-wins ([core/trackFields.ts](../packages/core/src/trackFields.ts), Kotlin
 `TrackEdit.kt`, SQL `apply_track_edit`), pinned by `docs/fixtures/track-edit.golden.json`.
 
 ### Delete from vault
-**Status** ✅ All three platforms — track menu and multi-select, behind a confirmation.
+**Status** ✅ All three platforms — track menu and multi-select, behind a confirmation (the
+app's own dialog on desktop and web: [ConfirmHost.tsx](../apps/desktop/src/components/ConfirmHost.tsx)).
 **What** — removes the audio (and the cover if no other track uses it) and the track's ratings,
 favorites, playlist entries and play history; the row becomes a tombstone that every device
 pulls, and each device drops its downloaded copy.
@@ -151,8 +152,19 @@ gain inside `StreamState::pull` so it stays per-track-correct across gapless spl
 ### Visualizer
 **Status** ✅ Desktop FFT via `rustfft` ([audio/analyzer.rs](../apps/desktop/src-tauri/src/audio/analyzer.rs),
 toggled by `player_set_visualizer` at [commands/player.rs:75](../apps/desktop/src-tauri/src/commands/player.rs));
-web [Visualizer.tsx](../apps/web/src/components/Visualizer.tsx); Android
-[VisualizerSheet.kt](../apps/android/app/src/main/java/com/musicvault/ui/player/VisualizerSheet.kt).
+web AnalyserNode; drawing shared by desktop and web in
+[lib/vizRender.ts](../apps/desktop/src/lib/vizRender.ts); Android
+[VisualizerView.kt](../apps/android/app/src/main/java/com/musicvault/ui/player/VisualizerView.kt) on the
+platform `Visualizer` effect.
+**What**: three styles, remembered per device: Bars (log-spaced spectrum, fast rise, slow fall,
+peak caps), Wave (trigger-aligned, eased waveform drawn as one curve) and Flow (scrolling loudness
+timeline). Desktop/web: a side panel, or a strip across the full player's width while it is open.
+Android: in the full player, in place of the cover.
+
+### Spinning disc
+**Status** ✅ The full player can show the cover as the label of a turning record, paused with the
+song ([SpinningDisc.tsx](../apps/desktop/src/components/SpinningDisc.tsx),
+[SpinningDisc.kt](../apps/android/app/src/main/java/com/musicvault/ui/player/SpinningDisc.kt)).
 
 ### Lyrics (plain + synced LRC)
 **Status** ✅ Parser shared: [core/lrc.ts](../packages/core/src/lrc.ts) ported to
@@ -242,7 +254,9 @@ eviction ([AudioCache.kt](../apps/android/app/src/main/java/com/musicvault/data/
 ([commands/vault.rs](../apps/desktop/src-tauri/src/commands/vault.rs)).
 
 ### Artwork thumbnails
-**Status** ✅ Every vault cover is uploaded with a 256 px `.thumb.jpg` beside the full image
+**Status** ✅ Every vault cover is uploaded with a 256 px `.thumb.jpg` beside the full image (a
+By Country cover is cut 3:2 instead of square: long edge ≤ 1200 px, thumb short edge 256 px;
+core `aspectCrop` / `coverShapeFor`)
 ([vault/prepare.rs](../apps/desktop/src-tauri/src/vault/prepare.rs), web canvas, Android Bitmap);
 desktop list rows and grids load the thumb ([AlbumArt.tsx](../apps/desktop/src/components/AlbumArt.tsx)),
 the web caches covers and thumbs in IndexedDB ([lib/artwork.ts](../apps/web/src/lib/artwork.ts)),
@@ -309,6 +323,7 @@ the same way. Kotlin port:
 sort and limit ([core/smartRules.ts:63-80](../packages/core/src/smartRules.ts)).
 - **17 fields**: title, artist, album, genre, language, country, featured artists, subgenre,
   secondary genres, mood, vocals, year, duration, playCount, addedAt, lastPlayedAt, favorite ([smartRules.ts](../packages/core/src/smartRules.ts)).
+  The editors no longer offer secondary genres; a rule saved with it still runs and still shows it.
   A saved rule naming a retired field (albumArtist, composer, bpm, trackNo, discNo, rating) counts it as
   never set.
 - **21 operators** across string / number / date / presence / boolean families

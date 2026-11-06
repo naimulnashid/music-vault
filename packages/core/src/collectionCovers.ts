@@ -18,6 +18,11 @@ export function collectionKey(kind: CollectionKind, id: string): string {
   return `${kind}:${id}`;
 }
 
+/** By Country groups show flags, so their covers are cut 3:2 and their cards drawn that way. */
+export function coverShapeFor(collection: string): "square" | "flag" {
+  return collection.startsWith("country:") ? "flag" : "square";
+}
+
 /** The `setting.set` op that sets (or with null, resets) a collection's cover. */
 export function collectionCoverOp(collection: string, artworkKey: string | null, editedAt: string): SyncOpPayload {
   return { kind: "setting.set", scope: COLLECTION_COVER_SCOPE, key: collection, value: artworkKey, editedAt };

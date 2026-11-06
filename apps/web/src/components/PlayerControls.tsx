@@ -1,6 +1,5 @@
 import { useRef } from "react";
 import { Pause, Play, Repeat, Repeat1, Shuffle, Volume1, Volume2, VolumeX } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
 import { usePlayerStore } from "../store/playerStore";
 import { useSettingsStore } from "../store/settingsStore";
 import { IconButton } from "./ui/Button";
@@ -22,22 +21,20 @@ export function PlayPauseButton({ size = "md", className = "" }: { size?: "md" |
       aria-label={isPlaying ? "Pause" : "Play"}
       className={`${dims} shrink-0 rounded-full bg-fg text-bg flex items-center justify-center shadow-[0_6px_20px_-6px_rgb(0_0_0/0.5)] transition-transform duration-150 hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100 ${className}`}
     >
-      <AnimatePresence mode="popLayout" initial={false}>
-        <motion.span
-          key={isPlaying ? "pause" : "play"}
-          initial={{ scale: 0.5, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.5, opacity: 0 }}
-          transition={{ duration: 0.14 }}
-          className="flex"
-        >
-          {isPlaying ? (
-            <Pause className={`${icon} fill-current`} strokeWidth={0} />
-          ) : (
-            <Play className={`${icon} fill-current translate-x-[1px]`} strokeWidth={0} />
-          )}
-        </motion.span>
-      </AnimatePresence>
+      {/* Both icons share one grid cell and cross-fade in place. AnimatePresence's
+          popLayout took the outgoing icon out of the flow, which slid it sideways. */}
+      <span className="grid place-items-center">
+        <Pause
+          className={`${icon} fill-current col-start-1 row-start-1 transition-[opacity,scale] duration-150 ${isPlaying ? "opacity-100 scale-100" : "opacity-0 scale-50"}`}
+          strokeWidth={0}
+          aria-hidden
+        />
+        <Play
+          className={`${icon} fill-current col-start-1 row-start-1 translate-x-[1px] transition-[opacity,scale] duration-150 ${isPlaying ? "opacity-0 scale-50" : "opacity-100 scale-100"}`}
+          strokeWidth={0}
+          aria-hidden
+        />
+      </span>
     </button>
   );
 }

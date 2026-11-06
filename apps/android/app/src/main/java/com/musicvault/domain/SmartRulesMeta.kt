@@ -79,5 +79,8 @@ object SmartRulesMeta {
     }
 
     /** Sortable fields (favorite excluded, as in the TS editor). */
-    val SORT_FIELDS: List<FieldMeta> = FIELDS.filter { it.key != "favorite" }
+    /** What the rule editor offers: Secondary genres is retired, though saved rules using it still run. */
+    val PICKABLE_FIELDS: List<FieldMeta> = FIELDS.filter { it.key != "secondaryGenres" }
+
+    val SORT_FIELDS: List<FieldMeta> = PICKABLE_FIELDS.filter { it.key != "favorite" }
 }

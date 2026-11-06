@@ -4,9 +4,12 @@ import type { TrackRow } from "../src/supabase/database.types";
 import type { TrackEditPatch } from "../src/trackFields";
 import {
   applyBatchFields,
+  aspectCrop,
   AUDIO_EXTS,
   audioExtOf,
+  COVER_ASPECT,
   coverEdge,
+  coverOutputSize,
   draftFromSource,
   newTrackRow,
   type PreparedCover,
@@ -57,6 +60,17 @@ describe("upload helpers", () => {
     expect(squareCrop(500, 701)).toEqual({ sx: 0, sy: 100, size: 500 });
     expect(coverEdge(3000, 1200)).toBe(1200);
     expect(coverEdge(300, 1200)).toBe(300);
+  });
+
+  it("cuts flag covers 3:2 and sizes them by the long edge (full) and short edge (thumb)", () => {
+    expect(aspectCrop(2000, 2000, COVER_ASPECT.flag)).toEqual({ sx: 0, sy: 333, w: 2000, h: 1333 });
+    expect(aspectCrop(900, 300, COVER_ASPECT.flag)).toEqual({ sx: 225, sy: 0, w: 450, h: 300 });
+    expect(coverOutputSize({ w: 1800, h: 1200 }, "full")).toEqual({ width: 1200, height: 800 });
+    expect(coverOutputSize({ w: 1800, h: 1200 }, "thumb")).toEqual({ width: 384, height: 256 });
+    expect(coverOutputSize({ w: 450, h: 300 }, "full")).toEqual({ width: 450, height: 300 });
+    // A square comes out as before.
+    expect(aspectCrop(1600, 1200, COVER_ASPECT.square)).toEqual({ sx: 200, sy: 0, w: 1200, h: 1200 });
+    expect(coverOutputSize({ w: 3000, h: 3000 }, "thumb")).toEqual({ width: 256, height: 256 });
   });
 
   it("starts the form from the tags, with the file name as a fallback title", () => {

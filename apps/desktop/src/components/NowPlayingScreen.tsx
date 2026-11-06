@@ -1,30 +1,41 @@
 import { useEffect, useState } from "react";
-import { AudioLines, ChevronDown, Heart, SlidersVertical } from "lucide-react";
+import { AudioLines, ChevronDown, Disc3, Heart, SlidersVertical } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { usePlayerStore } from "../store/playerStore";
 import { useLibraryStore } from "../store/libraryStore";
 import { useHistoryStore } from "../store/historyStore";
-import { useUiStore } from "../store/uiStore";
+import { useUiStore, type NowPlayingTab } from "../store/uiStore";
 import { albumKey, formatTime } from "@musicvault/core";
 import { AlbumArt, Ambient } from "./AlbumArt";
 import { IconButton } from "./ui/Button";
 import { QueuePanel } from "./QueuePanel";
 import { LyricsPanel } from "./LyricsPanel";
 import { SleepTimer } from "./SleepTimer";
+import { SpinningDisc } from "./SpinningDisc";
+import { Visualizer } from "./Visualizer";
 import type { Track } from "../types";
 
-type Tab = "next" | "lyrics" | "details";
-
-const TABS: { key: Tab; label: string }[] = [
+const TABS: { key: NowPlayingTab; label: string }[] = [
   { key: "next", label: "Up next" },
   { key: "lyrics", label: "Lyrics" },
   { key: "details", label: "Details" },
 ];
 
+const DISC_KEY = "mv.npDisc";
+
+function loadDisc(): boolean {
+  try {
+    return localStorage.getItem(DISC_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Full-window player that rises over the library (the player bar stays
- * below it): big artwork on a colour wash from the art, and Up next /
- * Lyrics / Details alongside.
+ * below it): big artwork (or a spinning disc) on a colour wash from the art,
+ * Up next / Lyrics / Details alongside, and the visualizer across the bottom
+ * when it is on.
  */
 export function NowPlayingScreen() {
   const currentTrack = usePlayerStore((s) => s.currentTrack);
@@ -37,7 +48,23 @@ export function NowPlayingScreen() {
   );
   const activePanel = useUiStore((s) => s.activePanel);
   const togglePanel = useUiStore((s) => s.togglePanel);
-  const [tab, setTab] = useState<Tab>("next");
+  const tab = useUiStore((s) => s.nowPlayingTab);
+  const setTab = useUiStore((s) => s.setNowPlayingTab);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const [disc, setDisc] = useState(loadDisc);
+  const toggleDisc = () => {
+    setDisc((on) => {
+      try {
+        localStorage.setItem(DISC_KEY, on ? "0" : "1");
+      } catch {
+        // the choice just doesn't persist
+      }
+      return !on;
+    });
+  };
+  const vizOpen = activePanel === "visualizer";
+  // The art gives up height to the visualizer strip so the title still fits.
+  const artSize = vizOpen ? "w-[min(100%,34vh,440px)]" : "w-[min(100%,52vh,560px)]";
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -68,6 +95,10 @@ export function NowPlayingScreen() {
         <IconButton label="Close player" size="md" onClick={closeNowPlaying}>
           <ChevronDown className="w-6 h-6" />
         </IconButton>
+        <div className="flex-1" />
+        <IconButton label={disc ? "Show cover" : "Spinning disc"} size="md" active={disc} onClick={toggleDisc}>
+          <Disc3 className="w-5 h-5" />
+        </IconButton>
       </div>
 
       <div className="relative flex-1 min-h-0 flex flex-col lg:flex-row gap-6 lg:gap-12 px-6 md:px-10 xl:px-16 pb-6 overflow-y-auto lg:overflow-hidden">
@@ -82,13 +113,17 @@ export function NowPlayingScreen() {
               transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
               className="w-full flex justify-center"
             >
-              <AlbumArt
-                track={currentTrack}
-                className="w-[min(100%,52vh,560px)] aspect-square rounded-2xl object-cover shadow-[0_30px_80px_-20px_rgb(0_0_0/0.7)]"
-              />
+              {disc ? (
+                <SpinningDisc track={currentTrack} playing={isPlaying} className={`${artSize} transition-[width] duration-300`} />
+              ) : (
+                <AlbumArt
+                  track={currentTrack}
+                  className={`${artSize} aspect-square rounded-2xl object-cover shadow-[0_30px_80px_-20px_rgb(0_0_0/0.7)] transition-[width] duration-300`}
+                />
+              )}
             </motion.div>
           </AnimatePresence>
-          <div className="w-[min(100%,52vh,560px)] flex items-start gap-3">
+          <div className={`${artSize} flex items-start gap-3 transition-[width] duration-300`}>
             <div className="min-w-0 flex-1">
               <motion.h1
                 key={`t-${currentTrack.id}`}
@@ -125,7 +160,7 @@ export function NowPlayingScreen() {
             </IconButton>
           </div>
           {/* The player bar drops these below md; the full player keeps them reachable. */}
-          <div className="md:hidden w-[min(100%,52vh,560px)] flex items-center justify-center gap-6">
+          <div className={`md:hidden ${artSize} flex items-center justify-center gap-6`}>
             <SleepTimer />
             <IconButton label="Visualizer" size="md" active={activePanel === "visualizer"} onClick={() => togglePanel("visualizer")}>
               <AudioLines className="w-5 h-5" />
@@ -166,6 +201,23 @@ export function NowPlayingScreen() {
           </div>
         </div>
       </div>
+
+      <AnimatePresence initial={false}>
+        {vizOpen && (
+          <motion.div
+            key="viz"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="relative shrink-0 overflow-hidden"
+          >
+            <div className="h-[clamp(120px,24vh,260px)] px-6 md:px-10 xl:px-16 pb-4">
+              <Visualizer variant="stage" />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
@@ -179,7 +231,6 @@ function TrackDetails({ track }: { track: Track }) {
     ["Album", track.album],
     ["Genre", track.genre],
     ["Subgenre", track.subgenre],
-    ["Secondary genres", track.secondaryGenres],
     ["Mood", track.mood],
     ["Vocals", track.vocals],
     ["Language", track.language],

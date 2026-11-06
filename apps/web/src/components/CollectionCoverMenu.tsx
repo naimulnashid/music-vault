@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { ImagePlus, Loader2, MoreHorizontal, RotateCcw } from "lucide-react";
+import { coverShapeFor } from "@musicvault/core";
 import { useCollectionCoverStore } from "../store/collectionCoverStore";
 import { useAuthStore } from "../store/authStore";
 import { emitAppError } from "../lib/errorBus";
@@ -22,7 +23,7 @@ export function useCoverMenuItems(collection: string): MenuItem[] {
 
   const choose = async () => {
     try {
-      const picked = await pickImage();
+      const picked = await pickImage(coverShapeFor(collection));
       if (!picked) return;
       setUploading(collection, true);
       setCover(collection, await uploadCover(picked));
