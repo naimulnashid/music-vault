@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { AudioLines, ChevronDown, Disc3, Heart, SlidersVertical } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { usePlayerStore } from "../store/playerStore";
@@ -21,16 +21,6 @@ const TABS: { key: NowPlayingTab; label: string }[] = [
   { key: "details", label: "Details" },
 ];
 
-const DISC_KEY = "mv.npDisc";
-
-function loadDisc(): boolean {
-  try {
-    return localStorage.getItem(DISC_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
 /**
  * Full-window player that rises over the library (the player bar stays
  * below it): big artwork (or a spinning disc) on a colour wash from the art,
@@ -51,17 +41,8 @@ export function NowPlayingScreen() {
   const tab = useUiStore((s) => s.nowPlayingTab);
   const setTab = useUiStore((s) => s.setNowPlayingTab);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
-  const [disc, setDisc] = useState(loadDisc);
-  const toggleDisc = () => {
-    setDisc((on) => {
-      try {
-        localStorage.setItem(DISC_KEY, on ? "0" : "1");
-      } catch {
-        // the choice just doesn't persist
-      }
-      return !on;
-    });
-  };
+  const disc = useUiStore((s) => s.spinningDisc);
+  const toggleDisc = useUiStore((s) => s.toggleSpinningDisc);
   const vizOpen = activePanel === "visualizer";
   // The art gives up height to the visualizer strip so the title still fits.
   const artSize = vizOpen ? "w-[min(100%,34vh,440px)]" : "w-[min(100%,52vh,560px)]";
@@ -94,10 +75,6 @@ export function NowPlayingScreen() {
       <div className="relative h-14 shrink-0 flex items-center px-3 md:px-5">
         <IconButton label="Close player" size="md" onClick={closeNowPlaying}>
           <ChevronDown className="w-6 h-6" />
-        </IconButton>
-        <div className="flex-1" />
-        <IconButton label={disc ? "Show cover" : "Spinning disc"} size="md" active={disc} onClick={toggleDisc}>
-          <Disc3 className="w-5 h-5" />
         </IconButton>
       </div>
 
@@ -167,6 +144,9 @@ export function NowPlayingScreen() {
             </IconButton>
             <IconButton label="Sound" size="md" active={activePanel === "equalizer"} onClick={() => togglePanel("equalizer")}>
               <SlidersVertical className="w-5 h-5" />
+            </IconButton>
+            <IconButton label="Spinning disc" size="md" active={disc} onClick={toggleDisc}>
+              <Disc3 className="w-5 h-5" />
             </IconButton>
           </div>
         </div>

@@ -39,6 +39,15 @@ export const HOME: Location = {
 };
 
 const SIDEBAR_KEY = "mv.sidebarCollapsed";
+const DISC_KEY = "mv.npDisc";
+
+function loadDisc(): boolean {
+  try {
+    return localStorage.getItem(DISC_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 function loadCollapsed(): boolean {
   try {
@@ -57,6 +66,9 @@ interface UiState extends Location {
   togglePanel: (panel: PanelKey) => void;
   nowPlayingTab: NowPlayingTab;
   setNowPlayingTab: (tab: NowPlayingTab) => void;
+  /** The full player shows the cover as a spinning disc (remembered on this device). */
+  spinningDisc: boolean;
+  toggleSpinningDisc: () => void;
   closePanel: () => void;
   /** Mobile drawer. */
   sidebarOpen: boolean;
@@ -139,6 +151,16 @@ export const useUiStore = create<UiState>((set, get) => {
     },
     nowPlayingTab: "next",
     setNowPlayingTab: (nowPlayingTab) => set({ nowPlayingTab }),
+    spinningDisc: loadDisc(),
+    toggleSpinningDisc: () => {
+      const spinningDisc = !get().spinningDisc;
+      try {
+        localStorage.setItem(DISC_KEY, spinningDisc ? "1" : "0");
+      } catch {
+        // the choice just doesn't persist
+      }
+      set({ spinningDisc });
+    },
     closePanel: () => set({ activePanel: null }),
     sidebarOpen: false,
     setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),

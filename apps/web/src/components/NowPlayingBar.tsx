@@ -1,6 +1,7 @@
 import { useRef, type MouseEvent } from "react";
 import {
   AudioLines,
+  Disc3,
   ChevronDown,
   ChevronUp,
   Heart,
@@ -50,6 +51,8 @@ export function NowPlayingBar() {
   const nowPlayingExpanded = useUiStore((s) => s.nowPlayingExpanded);
   const toggleNowPlaying = useUiStore((s) => s.toggleNowPlaying);
   const nowPlayingTab = useUiStore((s) => s.nowPlayingTab);
+  const spinningDisc = useUiStore((s) => s.spinningDisc);
+  const toggleSpinningDisc = useUiStore((s) => s.toggleSpinningDisc);
   // In the full player, Queue and Lyrics show which of its tabs is up.
   const lyricsActive = nowPlayingExpanded ? nowPlayingTab === "lyrics" : activePanel === "lyrics";
   const queueActive = nowPlayingExpanded ? nowPlayingTab === "next" : activePanel === "queue";
@@ -169,11 +172,15 @@ export function NowPlayingBar() {
         </div>
 
         {/* Sound + panels */}
-        <div className="hidden md:flex items-center justify-end gap-0.5 md:w-[30%]">
+        {/* Natural width (at least 30%), so a new control squeezes the transport rather than overlapping it. */}
+        <div className="hidden md:flex shrink-0 items-center justify-end gap-0.5 md:min-w-[30%]">
           <VolumeControl className="hidden lg:flex mr-1" iconClassName="w-5 h-5" />
           <div className="hidden xl:block">
             <SleepTimer />
           </div>
+          <IconButton label="Spinning disc" active={spinningDisc} onClick={toggleSpinningDisc}>
+            <Disc3 className="w-5 h-5" />
+          </IconButton>
           <IconButton label="Visualizer" active={activePanel === "visualizer"} onClick={() => togglePanel("visualizer")}>
             <AudioLines className="w-5 h-5" />
           </IconButton>

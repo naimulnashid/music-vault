@@ -45,9 +45,10 @@
   which doesn't list SVG files.
 - Landing page: a `favicon.ico` of the app icon beside the SVG one, for browsers and crawlers
   that ask for `/favicon.ico`. `scripts/make-icons.mjs` writes it with the other icons.
-- Every app: a spinning disc in the full player. The button at its top right turns the cover into
-  the label of a record that turns while the song plays and stops where it is on pause; the
-  choice is remembered on the device.
+- Every app: a spinning disc in the full player. A button turns the cover into the label of a
+  record that turns while the song plays and stops where it is on pause; the choice is
+  remembered on the device. On Windows and the web the button is in the player bar, beside the
+  visualizer; on Android it is at the top right of the full player.
 - Windows and web: Ctrl+S saves the Edit details dialog.
 
 ### Changed
